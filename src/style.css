@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;800&family=JetBrains+Mono:wght@400;700&display=swap');
+
+:root {
+  --u: 1px; /* one world unit in CSS px; set by Renderer.resize() */
+  --neon-a: #3ef0ff;
+  --neon-b: #ff3fb4;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #030208;
+  overflow: hidden;
+  color: #e8f6ff;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  user-select: none;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 50% 120%, rgba(255, 63, 180, 0.12), transparent 60%),
+    radial-gradient(ellipse at 50% -20%, rgba(62, 240, 255, 0.10), transparent 60%),
+    #030208;
+}
+
+#stage {
+  position: relative;
+  box-shadow: 0 0 60px rgba(62, 240, 255, 0.12), 0 0 0 1px rgba(62, 240, 255, 0.18);
+}
+
+#game {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#hud, #debug {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#debug {
+  inset: auto auto auto 0;
+  top: calc(6 * var(--u));
+  left: calc(6 * var(--u));
+  padding: calc(4 * var(--u)) calc(6 * var(--u));
+  white-space: pre;
+  font-size: calc(8.5 * var(--u));
+  line-height: 1.35;
+  color: #9ff6ff;
+  background: rgba(2, 4, 12, 0.55);
+  border-left: 2px solid var(--neon-a);
+}
+
+.hud-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(8 * var(--u));
+  text-align: center;
+  font-size: calc(8 * var(--u));
+  letter-spacing: 0.06em;
+  color: rgba(220, 240, 255, 0.75);
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+}
+
+.hud-hint b { color: var(--neon-a); font-weight: 700; }
+
+.hud-banner {
+  position: absolute;
+  top: 38%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 800;
+  font-size: calc(26 * var(--u));
+  letter-spacing: 0.18em;
+  color: #fff;
+  text-shadow: 0 0 calc(10 * var(--u)) var(--neon-b), 0 0 calc(24 * var(--u)) var(--neon-a);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.hud-banner small {
+  display: block;
+  font-size: 0.38em;
+  letter-spacing: 0.4em;
+  color: var(--neon-a);
+  margin-top: 0.5em;
+}
+
+.hud-banner.show { opacity: 1; }
+
+.fatal {
+  max-width: 520px;
+  padding: 24px;
+  border: 1px solid #ff3fb4;
+  font-size: 14px;
+  line-height: 1.5;
+}
