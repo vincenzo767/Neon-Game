@@ -4,7 +4,8 @@ export class DebugOverlay {
   constructor(el, game) {
     this.el = el;
     this.game = game;
-    this.visible = true;
+    this.visible = false;
+    el.style.display = 'none';
     this.frames = 0;
     this.accum = 0;
     this.fps = 0;

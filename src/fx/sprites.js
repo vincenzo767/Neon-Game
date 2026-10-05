@@ -459,6 +459,88 @@ function drawHolo(ctx, w, h) {
   for (let y = 0; y < h; y += 2) ctx.fillRect(0, y, w, 0.7);
 }
 
+// ------------------------------------------------------------- beams / melee
+
+/** Horizontal laser segment: soft vertical profile, stretched along a beam. */
+function drawLaser(ctx, w, h) {
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, 'rgba(255,255,255,0)');
+  g.addColorStop(0.3, 'rgba(255,255,255,0.25)');
+  g.addColorStop(0.5, 'rgba(255,255,255,1)');
+  g.addColorStop(0.7, 'rgba(255,255,255,0.25)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+}
+
+/** Crescent slash arc, open side facing -X (the cut travels toward +X). */
+function drawSlash(ctx, w, h) {
+  const cx = w / 2, cy = h / 2, R = w / 2 - 1;
+  const g = ctx.createRadialGradient(cx - R * 0.3, cy, R * 0.5, cx, cy, R);
+  g.addColorStop(0, 'rgba(255,255,255,0.2)');
+  g.addColorStop(0.8, 'rgba(255,255,255,1)');
+  g.addColorStop(1, 'rgba(255,255,255,0.6)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.beginPath(); ctx.arc(cx - R * 0.38, cy, R * 0.98, 0, Math.PI * 2); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+// ------------------------------------------------------------------- items
+
+const ITEM_STYLE = {
+  P: { fill: ['#ff6a3d', '#a01a10'], text: 'P' },
+  B: { fill: ['#4dff8a', '#0d7a35'], text: 'B' },
+  S: { fill: ['#4db8ff', '#0d3d8a'], text: 'S' },
+  L: { fill: ['#ff5ad9', '#7a0d6a'], text: '1UP' },
+};
+
+function drawItem(ctx, w, h, kind) {
+  const st = ITEM_STYLE[kind];
+  const r = 4;
+  const rr = (x, y, ww, hh) => {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + ww, y, x + ww, y + hh, r); ctx.arcTo(x + ww, y + hh, x, y + hh, r);
+    ctx.arcTo(x, y + hh, x, y, r); ctx.arcTo(x, y, x + ww, y, r); ctx.closePath();
+  };
+  ctx.fillStyle = OUTLINE; rr(0.5, 0.5, w - 1, h - 1); ctx.fill();
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, st.fill[0]); g.addColorStop(1, st.fill[1]);
+  ctx.fillStyle = g; rr(2, 2, w - 4, h - 4); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(4, 3, w - 8, 2);
+  ctx.fillStyle = '#fff';
+  ctx.font = `900 ${st.text.length > 1 ? 7 : 12}px sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(st.text, w / 2, h / 2 + 1);
+}
+
+function drawMedal(ctx, w, h) {
+  const cx = w / 2, cy = h / 2, R = w / 2 - 0.5;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+    const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R;
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = OUTLINE; ctx.fill();
+  const g = ctx.createLinearGradient(0, 0, w, h);
+  g.addColorStop(0, '#fff6c0'); g.addColorStop(0.45, '#ffc93d'); g.addColorStop(1, '#8a5500');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(cx, cy, R * 0.78, 0, Math.PI * 2); ctx.fill();
+  // Star badge.
+  ctx.fillStyle = '#fffbe8';
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+    const rad = i % 2 ? R * 0.22 : R * 0.5;
+    const x = cx + Math.cos(a) * rad, y = cy + Math.sin(a) * rad;
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.closePath(); ctx.fill();
+}
+
 // ------------------------------------------------------------------ build
 
 /** Rasterise every sprite into the atlas. Returns lookup helpers. */
@@ -480,6 +562,10 @@ export function buildSprites(atlas) {
   atlas.add('girder', 256, 34, drawGirder, { scale: 1.5 });
   for (let i = 0; i < 3; i++) atlas.add(`roof${i}`, 110, 90, (c, w, h) => drawRoof(c, w, h, 900 + i), { scale: 1.5 });
   atlas.add('holo', 90, 34, drawHolo);
+  atlas.add('laser', 64, 24, drawLaser, { scale: 1 });
+  atlas.add('slash', 64, 64, drawSlash);
+  for (const k of Object.keys(ITEM_STYLE)) atlas.add(`item_${k}`, 18, 18, (c, w, h) => drawItem(c, w, h, k), { scale: 3 });
+  atlas.add('item_M', 16, 16, drawMedal, { scale: 3 });
 
   // Bullets: [shape][colour] -> frame id.
   const bulletFrames = {};

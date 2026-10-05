@@ -9,7 +9,8 @@ import { WORLD_W, WORLD_H } from '../constants.js';
 // the batcher, the background and the post-processing chain.
 
 export class Renderer {
-  constructor(canvas, stage, settings) {
+  /** @param spriteBuilders extra fns(atlas) that add content sprites (pilots, enemies...) */
+  constructor(canvas, stage, settings, spriteBuilders = []) {
     this.canvas = canvas;
     this.stage = stage;
     this.settings = settings;
@@ -28,6 +29,7 @@ export class Renderer {
     this.atlas = new Atlas(2048);
     const { bulletFrames } = buildSprites(this.atlas);
     this.bulletFrames = bulletFrames;
+    for (const build of spriteBuilders) build(this.atlas);
     this.frames = this.atlas.frames;
     this.texture = this.atlas.upload(gl);
 

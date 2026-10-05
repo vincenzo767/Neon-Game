@@ -1,6 +1,7 @@
 import './style.css';
+import './ui/ui.css';
 import { Game } from './core/Game.js';
-import { SandboxScene } from './scenes/SandboxScene.js';
+import { PilotSelectScene } from './scenes/PilotSelectScene.js';
 
 function boot() {
   const stage = document.getElementById('stage');
@@ -11,7 +12,7 @@ function boot() {
       hud: document.getElementById('hud'),
       debug: document.getElementById('debug'),
     });
-    game.setScene(new SandboxScene());
+    game.setScene(new PilotSelectScene());
     game.start();
     // Exposed for console debugging only.
     window.__npo = game;

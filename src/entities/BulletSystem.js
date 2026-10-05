@@ -30,7 +30,15 @@ export class BulletSystem {
     this.color = new Uint8Array(capacity);
     this.grazed = new Uint8Array(capacity);
     this.dyn = new Uint8Array(capacity); // 1 if accel/curve active
+    // Player-shot behaviour fields.
+    this.maxAge = new F(capacity);     // range limit in steps (0 = default)
+    this.homing = new F(capacity);     // max turn rate (rad/step) toward a target
+    this.aux = new F(capacity);        // kind-specific (e.g. flak burst radius)
+    this.pierce = new Uint8Array(capacity);
+    this.kind = new Uint8Array(capacity);
     this.spawnedTotal = 0;
+    /** Optional callback(i) when a bullet reaches maxAge (before removal). */
+    this.onExpire = null;
   }
 
   /**
@@ -57,6 +65,11 @@ export class BulletSystem {
     this.color[i] = colorIdx;
     this.grazed[i] = 0;
     this.dyn[i] = 0;
+    this.maxAge[i] = 0;
+    this.homing[i] = 0;
+    this.aux[i] = 0;
+    this.pierce[i] = 0;
+    this.kind[i] = 0;
     this.spawnedTotal++;
     return i;
   }
@@ -68,6 +81,24 @@ export class BulletSystem {
     this.minSpd[i] = minSpd;
     this.maxSpd[i] = maxSpd;
     this.dyn[i] = accel !== 0 || angVel !== 0 ? 1 : 0;
+  }
+
+  /** Set player-shot behaviour for bullet i. */
+  behave(i, damage = 1, maxAge = 0, pierce = 0, homing = 0, kind = 0, aux = 0) {
+    this.damage[i] = damage;
+    this.maxAge[i] = maxAge;
+    this.pierce[i] = pierce;
+    this.homing[i] = homing;
+    this.kind[i] = kind;
+    this.aux[i] = aux;
+  }
+
+  /** Re-aim bullet i (used by homing and reflection). */
+  setHeading(i, angle, speed = this.spd[i]) {
+    this.ang[i] = angle;
+    this.spd[i] = speed;
+    this.vx[i] = Math.cos(angle) * speed;
+    this.vy[i] = Math.sin(angle) * speed;
   }
 
   update() {
@@ -87,7 +118,13 @@ export class BulletSystem {
       }
       const x = (this.x[i] += this.vx[i]);
       const y = (this.y[i] += this.vy[i]);
-      this.age[i]++;
+      const age = ++this.age[i];
+      const ma = this.maxAge[i];
+      if (ma > 0 && age >= ma) {
+        if (this.onExpire) this.onExpire(i);
+        this.remove(i);
+        continue;
+      }
       if (x < -MARGIN || x > maxX || y < -MARGIN || y > maxY || this.age[i] > 1800) {
         this.remove(i);
         continue;
@@ -109,6 +146,8 @@ export class BulletSystem {
     this.age[i] = this.age[j]; this.damage[i] = this.damage[j];
     this.frame[i] = this.frame[j]; this.color[i] = this.color[j];
     this.grazed[i] = this.grazed[j]; this.dyn[i] = this.dyn[j];
+    this.maxAge[i] = this.maxAge[j]; this.homing[i] = this.homing[j];
+    this.aux[i] = this.aux[j]; this.pierce[i] = this.pierce[j]; this.kind[i] = this.kind[j];
   }
 
   /** Remove every bullet, calling fn(x, y, colorRGB) for each (bomb cancel FX). */
@@ -124,6 +163,23 @@ export class BulletSystem {
     while (i < this.count) {
       const dx = this.x[i] - cx, dy = this.y[i] - cy;
       if (dx * dx + dy * dy <= r2) {
+        if (fn) fn(this.x[i], this.y[i], COLOR_RGB[this.color[i]]);
+        this.remove(i);
+      } else i++;
+    }
+  }
+
+  /** Remove bullets within `width` of segment (x0,y0)-(x1,y1). */
+  clearLine(x0, y0, x1, y1, width, fn) {
+    const dx = x1 - x0, dy = y1 - y0;
+    const len2 = dx * dx + dy * dy || 1;
+    const w2 = width * width;
+    let i = 0;
+    while (i < this.count) {
+      let t = ((this.x[i] - x0) * dx + (this.y[i] - y0) * dy) / len2;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const ex = x0 + dx * t - this.x[i], ey = y0 + dy * t - this.y[i];
+      if (ex * ex + ey * ey <= w2) {
         if (fn) fn(this.x[i], this.y[i], COLOR_RGB[this.color[i]]);
         this.remove(i);
       } else i++;

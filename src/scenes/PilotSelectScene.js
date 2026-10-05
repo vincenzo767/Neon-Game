@@ -1,0 +1,170 @@
+import { WORLD_W } from '../core/constants.js';
+import { World } from '../entities/World.js';
+import { Parallax } from '../fx/Parallax.js';
+import { ROSTER } from '../pilots/index.js';
+import { drawPortrait } from '../ui/portraits.js';
+import { handleDevKeys } from './devKeys.js';
+import { TestRangeScene } from './TestRangeScene.js';
+
+// Pilot select: 16-slot roster grid, animated portrait, stat bars, bio,
+// ability list, and a live WebGL vehicle preview that cycles through all
+// four power tiers and both fire modes.
+
+const COLS = 8;
+const STAT_KEYS = [['speed', 'SPEED'], ['power', 'POWER'], ['range', 'RANGE'], ['bomb', 'BOMB']];
+const PREVIEW_Y = 588;
+const TIER_STEPS = 150;
+
+export class PilotSelectScene {
+  constructor(opts = {}) { this.index = opts.index ?? 0; }
+
+  enter(g) {
+    this.g = g;
+    this.world = new World(g);
+    this.parallax = new Parallax(g);
+    this.t = 0;
+    this.demoT = 0;
+    this._buildDom();
+    this._spawnTargets();
+    this._select(this.index);
+  }
+
+  exit() {
+    this.g.hud.innerHTML = '';
+  }
+
+  _buildDom() {
+    const tiles = ROSTER.map((p, i) => `
+      <div class="sel-tile ${p.locked ? 'locked' : ''}" data-i="${i}" style="--pc:${p.css || '#555'}">
+        <canvas width="60" height="75"></canvas>
+      </div>`).join('');
+    this.g.hud.innerHTML = `
+      <div class="select">
+        <div class="sel-title">SELECT PILOT<span>NEON PRECINCT · RAPID RESPONSE DIVISION</span></div>
+        <div class="sel-grid">${tiles}</div>
+        <div class="sel-main">
+          <div class="sel-portrait"><canvas width="240" height="300"></canvas></div>
+          <div class="sel-info">
+            <div class="sel-name"></div>
+            <div class="sel-vehicle"></div>
+            <div class="sel-stats"></div>
+          </div>
+        </div>
+        <div class="sel-bio"></div>
+        <div class="sel-abilities"></div>
+        <div class="sel-tier"></div>
+        <div class="sel-hint"><b>←→↑↓</b> choose · <b>Z / ENTER</b> launch</div>
+      </div>`;
+    const root = this.g.hud;
+    this.el = {
+      tiles: [...root.querySelectorAll('.sel-tile')],
+      portrait: root.querySelector('.sel-portrait canvas'),
+      name: root.querySelector('.sel-name'),
+      vehicle: root.querySelector('.sel-vehicle'),
+      stats: root.querySelector('.sel-stats'),
+      bio: root.querySelector('.sel-bio'),
+      abil: root.querySelector('.sel-abilities'),
+      tier: root.querySelector('.sel-tier'),
+      main: root.querySelector('.sel-main'),
+    };
+    this.el.tiles.forEach((t, i) => drawPortrait(t.querySelector('canvas'), ROSTER[i], 0.5));
+  }
+
+  /** Two indestructible practice targets so homing / flak can be seen. */
+  _spawnTargets() {
+    const f = this.g.renderer.frame('drone');
+    for (const x of [120, WORLD_W - 120]) {
+      this.world.spawnEnemy({
+        kind: 'target', x, y: 470, r: 14, hp: 1e9, f, blast: 0, score: 0, ult: 0,
+        ai: (e) => { e.x = x + Math.sin(e.t * 0.02 + x) * 30; },
+      });
+    }
+  }
+
+  _select(i) {
+    this.index = i;
+    const p = ROSTER[i];
+    const el = this.el;
+    el.tiles.forEach((t, k) => t.classList.toggle('sel', k === i));
+    el.main.style.setProperty('--pc', p.css || '#ff3f7a');
+    this.g.hud.querySelector('.select').style.setProperty('--pc', p.css || '#ff3f7a');
+    el.name.textContent = p.locked ? 'CLASSIFIED' : p.name;
+    el.vehicle.textContent = p.locked ? `${p.vehicle} · AVAILABLE IN A LATER BUILD` : `${p.vehicle} — ${p.role}`;
+    el.stats.innerHTML = STAT_KEYS.map(([k, label]) => {
+      const v = p.locked ? 0 : p.stats[k];
+      return `<div class="stat"><label>${label}</label><div class="pips">${[1, 2, 3, 4, 5]
+        .map((n) => `<i class="${n <= v ? 'on' : ''}" style="animation-delay:${n * 40}ms"></i>`).join('')}</div></div>`;
+    }).join('');
+    el.bio.textContent = p.locked ? 'Personnel file sealed by order of the Commissioner.' : p.bio;
+    el.abil.innerHTML = p.locked ? '' : `
+      <div><b>SHOT</b> ${p.weapons.main}</div>
+      <div><b>FOCUS</b> ${p.weapons.focus}</div>
+      <div><b>SPECIAL</b> ${p.special.name} — ${p.special.desc}</div>
+      <div><b>BOMB</b> ${p.bomb.name} ×${p.bombStock} · <b>ULT</b> ${p.ultimate.name}</div>`;
+
+    // Restart the stat-pip fill animation.
+    el.stats.classList.remove('anim'); void el.stats.offsetWidth; el.stats.classList.add('anim');
+
+    const w = this.world;
+    w.bullets.clearAll();
+    w.shots.clearAll();
+    if (p.locked) {
+      if (w.player) w.player.def.reset?.(w.player, w);
+      w.player = null;
+    } else {
+      const pl = w.setPlayer(p, { demo: true });
+      pl.x = pl.px = WORLD_W / 2;
+      pl.y = pl.py = PREVIEW_Y;
+    }
+    this.demoT = 0;
+  }
+
+  update() {
+    const g = this.g, inp = g.input;
+    this.t++;
+    const n = ROSTER.length;
+    let i = this.index;
+    if (inp.pressed('left')) i = (i + n - 1) % n;
+    if (inp.pressed('right')) i = (i + 1) % n;
+    if (inp.pressed('up')) i = (i + n - COLS) % n;
+    if (inp.pressed('down')) i = (i + COLS) % n;
+    if (i !== this.index) this._select(i);
+
+    if (inp.pressed('confirm')) {
+      const p = ROSTER[this.index];
+      if (p.locked) {
+        this.el.name.classList.remove('deny'); void this.el.name.offsetWidth; this.el.name.classList.add('deny');
+      } else {
+        g.renderer.post.flash(...p.color, 0.5, 0.04);
+        g.setScene(new TestRangeScene(p));
+        return;
+      }
+    }
+    handleDevKeys(g);
+
+    // Demo preview: cycle tiers and fire modes.
+    const pl = this.world.player;
+    if (pl) {
+      this.demoT++;
+      const tier = Math.floor(this.demoT / TIER_STEPS) % 4;
+      pl.power = tier * 100;
+      pl.demoFocus = Math.floor(this.demoT / (TIER_STEPS * 4)) % 2 === 1;
+      pl.y = PREVIEW_Y;
+      const label = `${pl.demoFocus ? 'FOCUS' : 'SHOT'} · TIER ${tier + 1}`;
+      if (this.el.tier.textContent !== label) this.el.tier.textContent = label;
+    } else if (this.el.tier.textContent) this.el.tier.textContent = '';
+
+    if (this.t % 2 === 0) drawPortrait(this.el.portrait, ROSTER[this.index], g.time);
+
+    g.renderer.background.update();
+    this.parallax.update();
+    this.world.update();
+  }
+
+  render(r, alpha) {
+    const b = r.batch;
+    this.parallax.render(b, alpha, this.g.time);
+    this.world.renderMid(b, alpha);
+    this.world.renderTop(b, alpha);
+  }
+}

@@ -5,6 +5,7 @@ import { Camera } from './Camera.js';
 import { RNG, randomSeedString } from './RNG.js';
 import { Renderer } from './gl/Renderer.js';
 import { DebugOverlay } from '../ui/DebugOverlay.js';
+import { PILOT_SPRITES } from '../pilots/index.js';
 
 // Top-level engine object: owns subsystems and runs the fixed-step loop.
 //
@@ -20,7 +21,7 @@ export class Game {
     this.settings = new Settings();
     this.input = new Input(this.settings);
     this.camera = new Camera(this.settings);
-    this.renderer = new Renderer(canvas, stage, this.settings);
+    this.renderer = new Renderer(canvas, stage, this.settings, PILOT_SPRITES);
     this.hud = hud;
     this.debug = new DebugOverlay(debug, this);
 
@@ -78,11 +79,13 @@ export class Game {
   };
 
   _step() {
-    this.input.poll();
-    if (this.input.pressed('debug')) this.debug.toggle();
     if (this.hitstop > 0) {
+      // Don't poll during the freeze: latched presses carry over to the
+      // first live step instead of being swallowed by the hit-stop.
       this.hitstop--;
     } else if (this.scene) {
+      this.input.poll();
+      if (this.input.pressed('debug')) this.debug.toggle();
       this.scene.update(STEP);
       this.frameCount++;
     }

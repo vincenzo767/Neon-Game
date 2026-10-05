@@ -5,8 +5,8 @@
 | Milestone | Scope | State |
 |---|---|---|
 | **M1** | Engine core: loop, input, rendering, pooling, collision, camera, post-FX | ✅ Done |
-| M2 | Player system + 4 pilots fully playable | ⏳ Next |
-| M3 | Enemy AI, bullet-pattern library, procedural stage generator | — |
+| **M2** | Player system + 4 pilots fully playable | ✅ Done |
+| M3 | Enemy AI, bullet-pattern library, procedural stage generator | ⏳ Next |
 | M4 | Boss framework + one boss of each archetype | — |
 | M5 | Remaining 12 pilots, ultimates, cut-ins | — |
 | M6 | Audio engine and adaptive music | — |
@@ -20,33 +20,93 @@ npm run dev        # http://localhost:5173
 npm run build      # production bundle in dist/
 ```
 
-## Architecture (M1)
+Flow right now: **Pilot Select → Test Range** (placeholder waves until M3) → Pause / Game Over → Continue or Pilot Select.
 
-- **Raw WebGL2 rather than PixiJS.** This gives full control of the sprite batch and the post chain. The renderer is about 600 lines, with no framework API churn.
-- **Fixed 60 Hz simulation + render interpolation** ([src/core/Game.js](src/core/Game.js)). Gameplay is deterministic per step, which seeded and replayable runs need. Rendering lerps `prev → current` by `alpha`, so 120/144 Hz screens stay smooth. Hit-stop freezes simulation steps while the camera and post-FX keep animating.
-- **One atlas, one blend mode, one draw call.** All art is drawn procedurally with Canvas2D into a 2048² atlas ([src/fx/sprites.js](src/fx/sprites.js)) and uploaded premultiplied. The instanced [SpriteBatch](src/core/gl/SpriteBatch.js) uses `ONE, ONE_MINUS_SRC_ALPHA`. A sprite becomes additive by zeroing its output alpha, so mixed additive and alpha sprites never split the batch. In testing, ~4,750 sprites rendered in 1 draw call.
-- **Struct-of-arrays systems** for high-volume objects ([BulletSystem](src/entities/BulletSystem.js) and [Particles](src/fx/Particles.js)). They use dense typed arrays with swap-remove and allocate nothing per frame. Heavier entities use the generic [Pool](src/core/Pool.js).
-- **Spatial hash** ([SpatialGrid](src/core/SpatialGrid.js)): a uniform grid of typed-array linked lists, rebuilt every step. Point and AABB inserts are supported, and queries de-duplicate with a stamp. It's used for enemy bullets vs the player (hit + graze) and player shots vs enemies.
-- **HDR post chain** ([PostFX](src/fx/PostFX.js)): an RGBA16F scene (falls back to RGBA8), a bright pass, then a half-res and a quarter-res gaussian bloom. The composite applies CRT barrel warp, up to 8 refraction shockwaves, heat haze, chromatic aberration, ACES tonemap, flash, vignette, scanlines + aperture mask, and grain.
-- **Background** ([Background.js](src/fx/Background.js)): a fullscreen shader draws a 2.5D tilted procedural megacity. It has rooftops, neon trims, holo panels, road traffic, light shafts and fog, and all palettes are uniforms so M3 biomes can drive it. Sprite parallax layers sit on top: hover traffic (mid), girders/rooftops/holo billboards (fore), light shafts and rain.
-- **Explosions** ([Explosions.js](src/fx/Explosions.js)): layered flash → fireball → debris shards → smoke → embers, plus a shock ring, refraction wave, aberration, shake and hit-stop. `breakApart()` chains staggered blasts into a final detonation, ready for large enemies and bosses.
-- **Input** ([Input.js](src/core/Input.js)): keyboard (`KeyboardEvent.code`, so it's layout independent) + Gamepad API standard mapping. It has a radial stick deadzone, latched taps, rumble, and remappable bindings persisted in [Settings](src/core/Settings.js).
-- **Seeded RNG** ([RNG.js](src/core/RNG.js)): `game.rng` is for gameplay only. `game.fxRng` is cosmetic, so particles never perturb a seed's sequence.
+## Controls
 
-## M1 sandbox controls
+| Action | Keyboard | Gamepad |
+|---|---|---|
+| Move | Arrows / WASD | Left stick / D-pad |
+| Shot (hold) | Z / J / Space | A / RT |
+| Focus (hold: slow, alt fire, shows hitbox) | Shift / K | RB / LB / LT |
+| Bomb | X / L | B |
+| Special | C / I | X |
+| Ultimate | V / U | Y |
+| Pause | Esc / P | Start |
+| Stats overlay | ` / F3 | — |
 
-`Arrows/WASD` move · `Z` shot · `Shift` focus (shows hitbox + graze ring) · `X` bomb · `C` random blast · `V` break-apart sequence · `1–4` bullet density (MANIC ≈ 2,000+ bullets) · `T` CRT · `G` quality · `H` shake intensity · `R` reset · `` ` ``/`F3` stats overlay. Gamepad: stick/d-pad, A shot, RB focus, B bomb.
+Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` shake.
+
+## Architecture
+
+### Engine (M1)
+
+- **Raw WebGL2 rather than PixiJS.** This gives full control of the sprite batch and the post chain.
+- **Fixed 60 Hz simulation + render interpolation** ([Game.js](src/core/Game.js)). It's deterministic per step, for seeds and replays. Hit-stop freezes simulation while the camera and post-FX keep animating. Input is *not* polled during hit-stop, so a press made during a freeze lands on the next live step.
+- **One atlas, one blend mode, ~1 draw call.** The procedural Canvas2D atlas is uploaded premultiplied. The instanced [SpriteBatch](src/core/gl/SpriteBatch.js) makes a sprite additive by zeroing its alpha, so additive and alpha sprites share a batch.
+- **SoA systems** ([BulletSystem](src/entities/BulletSystem.js), [Particles](src/fx/Particles.js)) store data in dense typed arrays with swap-remove, and allocate nothing per frame. They sit alongside a [Pool](src/core/Pool.js) for objects and a [SpatialGrid](src/core/SpatialGrid.js) for collisions.
+- **HDR post chain** ([PostFX](src/fx/PostFX.js)): bloom, shockwaves, chromatic aberration, heat haze, flash, vignette, CRT, ACES.
+- **City background shader** ([Background.js](src/fx/Background.js)) plus sprite [Parallax](src/fx/Parallax.js) layers; layered [Explosions](src/fx/Explosions.js).
+
+### Gameplay (M2)
+
+- **[World](src/entities/World.js)** owns every live gameplay object: enemy bullets, player shots, beams, enemies, items, particles, score/graze/chain. Pilots and enemies use its API:
+  - spawning: `shot()`, `beam()`, `spawnEnemy()`, `spawnItem()`
+  - damage: `damage()`, `damageCircle()`, `damageLine()`
+  - bullet cancelling: `cancelAll()`, `cancelCircle()`, `cancelLine()`
+  - aiming: `aimAngle()`, which respects cloak decoys
+
+  Scenes receive gameplay events through `world.onEvent` (tier up, bomb, ultimate, death, game over...) and own only presentation.
+- **Player shot behaviours** are fields on BulletSystem: `damage`, `maxAge` (range), `pierce`, `homing` (turn rate), and `kind` (`SHOT_FLAK` bursts on hit or expiry). **Beams** are declared once per step and collide as segments.
+- **[Player](src/entities/Player.js)** is generic and data-driven. It handles:
+  - movement, focus and speed tune (S items)
+  - power 0–400 → **4 tiers**, which swap the ship sprite and options
+  - lives and bombs, plus a **15-step death-bomb window** (*counter bomb*)
+  - special cooldown and the ultimate meter (charged by graze and kills; full at 100)
+  - invulnerability, respawn, and continues
+
+  State machine: `alive → dying → dead → respawning`, or `gameover`.
+- **Pilots are data files** ([src/pilots/](src/pilots/)). Each exports stats, speeds, hitbox, bomb stock, engines, and portrait params, plus hooks:
+  - `sprites(atlas)` draws the 4 tier variants of its vehicle
+  - `fire`, `optionLayout`, `update`
+  - `special` / `bomb` / `ultimate` objects with `activate` / `update` / `end`
+  - `onHit` (lets a pilot absorb a hit)
+  - `render*` for pilot FX
+
+  To add a pilot, add a file and list it in [pilots/index.js](src/pilots/index.js).
+- **Items:** P (+25 power), B (+bomb), S (speed tune), 1UP, and medals (chained value that resets if one falls off-screen). Items are magnet-collected near the player (wider radius while focused) and auto-collected above the line at y=170 and after bombs.
+- **UI:**
+  - [PilotSelectScene](src/scenes/PilotSelectScene.js): 16-slot roster, procedural animated [portraits](src/ui/portraits.js), stat pips, bio, ability list, and a live vehicle preview that cycles tiers 1–4 and shot/focus against practice targets
+  - [Hud](src/ui/Hud.js): DOM HUD, diffed so it only updates on change
+  - [CutIn](src/ui/CutIn.js): ultimate cut-in with a 48-step hit-stop freeze
+  - pause menu and game-over/continue overlay in [TestRangeScene](src/scenes/TestRangeScene.js)
+
+### The four pilots
+
+| Pilot / Vehicle | Shot · Focus | Special | Bomb | Ultimate | Tier visuals |
+|---|---|---|---|---|---|
+| **Kairo Vance** — Stormlance | Piercing rail lances · continuous rail beam | Phase Dash (i-frames + afterimages) | Arc Cascade (6 sweeping rail beams) | Orbital Rail Grid: targeting grid, sequential column/row strikes, then a full-grid finale | wing blades → rail barrels + 2 pods → tail fins, glowing spine, 4 pods |
+| **Mira Solenne** — Halo Sprite | Homing needle spread · tight hard-homing needles | Shield Orbs (3 orbiting bullet erasers) | Halo Bloom (expanding cancel ring) | Prism Lattice: hex lattice that reflects every enemy bullet back as homing shots | 1–4 halo drones, more feather petals, extra halo ring |
+| **Bruno Hagen** — Ironhound | Wide flak airbursts (area dmg) · heavy siege shells | Brace (absorbs one lethal hit) | Flak Barrage (targeted airbursts) | Carpet-Bomb Run: 5-bomber V formation drops delayed bomb lines | chin turret → wing gun pods → armour skirts + missile racks; 2–4 pods |
+| **Tess Kuro** — Wireghost | Short-range piercing blades · melee slash that cuts bullets | Cloak (enemy aim locks to a decoy, double graze charge) | Thousand Cuts (screen-wide slash lines) | Shadow Clones: 4 clones mirror her attacks and erase bullets they touch | wingtip blades → canards → long blades + tail spikes |
 
 ## Known issues / notes
 
-- WebGL context loss isn't handled yet (it would need atlas + target re-creation). Planned for M7.
-- The sandbox player is a placeholder (no lives or power). It is replaced by the pilot system in M2.
-- The Google Fonts import (Orbitron / JetBrains Mono) falls back to system fonts when offline.
-- Verified in headless Chrome (software GL): no runtime or shader errors. JS CPU time is ~3 ms per frame at 2,000 bullets + ~400 particles. Real-GPU FPS hasn't been measured in this environment yet.
+- The test range uses placeholder enemies ([testEnemies.js](src/scenes/testEnemies.js)). Real enemies, patterns and stages come in M3.
+- Balance is first-pass only: DPS per pilot, ultimate charge rates, and item drop rates. Tune in M7.
+- Score is basic: kills × chain bonus, graze, cancels and medals. The full multiplier system, the no-bomb boss bonus, extends at score thresholds, and the high-score table (with pilot + seed) arrive in M7. Right now a single local hi-score is saved.
+- Key remap UI and the options menu are M7. Bindings are already remappable in [Settings](src/core/Settings.js).
+- No audio yet (M6).
+- WebGL context loss isn't handled yet (M7).
+- Verified in headless Chrome (software GL), with no runtime errors:
+  - each pilot: select, shot, focus, special, ultimate + cut-in, bomb, pause → pilot select
+  - game-over → continue flow
 
-## Next steps (M2)
+  Real-GPU FPS hasn't been measured in this environment.
 
-1. `src/pilots/*.js` data files: stats, shot patterns (tap/focus), 4 power tiers, bomb, special, ultimate hooks.
-2. A Player entity driven by pilot data: lives, power level, bomb stock, death-bomb window, respawn.
-3. Four fully playable pilots: Kairo Vance, Mira Solenne, Bruno Hagen, Tess Kuro.
-4. P/B/S item drops + magnet pickup, a basic HUD (lives, bombs, power, graze).
+## Next steps (M3)
+
+1. `src/patterns/`: a bullet-pattern library (rings, spirals, aimed fans, curtains, rain, lasers, homing) as composable emitters.
+2. `src/entities/enemies/` data files: 20+ enemy types, each with a movement script, pattern, HP, drops and elite variant.
+3. A procedural stage generator: seeded biome chunks (Skyway, Spire, Orbital Elevator, Acid Harbor, Magma Foundry, Data-Core Void, Storm Ring); intro → 3–5 wave sets → mid-boss slot → waves → boss slot → tally. Loop scaling and the LOOP X indicator.
+4. Drive the background shader palette per biome, and add a StageScene to replace the test range.

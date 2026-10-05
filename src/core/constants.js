@@ -11,3 +11,6 @@ export const MAX_STEPS_PER_FRAME = 5;
 // Atlas pixels per world unit. Sprites are rasterised at 2x so they stay
 // crisp when the canvas is scaled up on high-DPI / large displays.
 export const SPRITE_PX = 2;
+
+// Graze ring radius around the player's hitbox centre.
+export const GRAZE_RADIUS = 22;
