@@ -43,6 +43,7 @@ export class Player {
     this.demo = !!opts.demo;
     this.demoFocus = false;
     this.deaths = 0;
+    this.bombsUsed = 0;
     this.hitR = def.hitbox;
     this.moveX = 0;
     this.moveY = 0;
@@ -199,6 +200,7 @@ export class Player {
   _bomb(counter) {
     const w = this.w, def = this.def, post = w.r.post;
     this.bombs--;
+    this.bombsUsed++;
     this.bombT = def.bomb.duration;
     this.invuln = Math.max(this.invuln, def.bomb.duration + 30);
     w.bombId = (w.bombId || 0) + 1;

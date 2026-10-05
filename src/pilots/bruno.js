@@ -1,5 +1,5 @@
 import { WORLD_W, WORLD_H } from '../core/constants.js';
-import { mirrorPath, chrome, outline, glowDot, drawBolt, neonLines } from './art.js';
+import { mirrorPath, chrome, outline, glowDot, drawBolt, neonLines } from '../fx/art.js';
 import { SHOT_FLAK } from '../entities/World.js';
 
 // BRUNO HAGEN — IRONHOUND (armored gunship)

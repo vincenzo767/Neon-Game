@@ -5,6 +5,7 @@ import { BulletSystem } from './BulletSystem.js';
 import { Particles, FADE_OUT } from '../fx/Particles.js';
 import { Explosions } from '../fx/Explosions.js';
 import { Player } from './Player.js';
+import { KIND_SPLIT, splitBullet } from '../patterns/index.js';
 
 // The gameplay world: every live object of a play session plus the API that
 // pilots, enemies and scenes use to interact (damage, cancel, beams, items).
@@ -35,6 +36,12 @@ export class World {
     this.bullets = new BulletSystem(6000);   // enemy
     this.shots = new BulletSystem(1800);     // player
     this.shots.onExpire = (i) => { if (this.shots.kind[i] === SHOT_FLAK) this._flakBurst(i); };
+    this.bullets.onExpire = (i) => { if (this.bullets.kind[i] === KIND_SPLIT) splitBullet(this, i); };
+    this.lasers = [];        // telegraphed enemy lasers
+    /** Difficulty scaling applied by the pattern library and enemy factory. */
+    this.diff = { density: 1, speed: 1, fireRate: 1 };
+    this.boss = null;        // enemy shown on the boss HP bar
+    this.spawned = 0;        // enemies spawned (for kill-rate tallies)
     this.fxLow = new Particles(5000);
     this.fxHigh = new Particles(16000);
     this.explosions = new Explosions(game, this.fxLow, this.fxHigh);
@@ -108,8 +115,11 @@ export class World {
     e.kind = 'enemy'; e.r = 14; e.hp = 10; e.t = 0; e.flash = 0; e.rot = 0; e.scale = 1;
     e.score = 100; e.ult = 1.5; e.blast = 0.7; e.drops = null; e.ai = null; e.f = null;
     e.untargetable = false; e.glow = null; e.lastBomb = -1; e.onDeath = null; e.data = {};
+    e.ground = false; e.f2 = null; e.rot2 = 0; e.elite = false; e.armor = 1; e.entered = false;
+    e.boss = false; e.def = null; e.name = '';
     Object.assign(e, props);
     e.maxHp = e.hp;
+    this.spawned++;
     e.px = e.x; e.py = e.y;
     return e;
   }
@@ -127,7 +137,7 @@ export class World {
 
   damage(e, dmg) {
     if (!e.alive || e.untargetable) return;
-    e.hp -= dmg;
+    e.hp -= dmg * e.armor;
     e.flash = 2;
     this.score += Math.ceil(dmg * 2);
     if (e.hp <= 0) this.killEnemy(e);
@@ -145,6 +155,7 @@ export class World {
     if (e.drops) for (const k of e.drops) this.spawnItem(k, e.x, e.y, e.drops.length > 3 ? 2 : 1);
     if (this.player) this.player.addUlt(e.ult);
     if (e.onDeath) e.onDeath(e, this);
+    for (const L of this.lasers) if (L.owner === e) L.dead = true;
     this.event('kill', e);
   }
 
@@ -198,10 +209,15 @@ export class World {
       e.t++;
       if (e.flash > 0) e.flash--;
       if (e.ai) e.ai(e, this);
-      if (e.t > 60 && (e.y > WORLD_H + 70 || e.x < -90 || e.x > WORLD_W + 90)) e.alive = false; // left the field
+      // Remove enemies that entered the field and then left it (or got stuck off-screen).
+      const inside = e.x > -20 && e.x < WORLD_W + 20 && e.y > -20 && e.y < WORLD_H + 20;
+      if (inside) e.entered = true;
+      else if ((e.entered && (e.y > WORLD_H + 80 || e.y < -120 || e.x < -100 || e.x > WORLD_W + 100)) || e.t > 3600) e.alive = false;
     }
 
     this._steerShots();
+    this._steerBullets();
+    this._updateLasers();
     this.bullets.update();
     this.shots.update();
     this._collide();
@@ -226,6 +242,64 @@ export class World {
       S.setHeading(i, S.ang[i] + (d > h ? h : d < -h ? -h : d));
     }
   }
+
+  /** Enemy homing bullets steer toward the aim point for `aux` steps. */
+  _steerBullets() {
+    const B = this.bullets, ax = this.aimX, ay = this.aimY;
+    for (let i = 0; i < B.count; i++) {
+      const h = B.homing[i];
+      if (h <= 0 || B.age[i] > B.aux[i]) continue;
+      let d = Math.atan2(ay - B.y[i], ax - B.x[i]) - B.ang[i];
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      B.setHeading(i, B.ang[i] + (d > h ? h : d < -h ? -h : d));
+    }
+  }
+
+  // ----------------------------------------------------------- enemy lasers
+
+  /**
+   * Telegraphed laser owned by enemy `owner`: a thin warning line for
+   * `warn` steps, then a lethal beam for `fire` steps. Follows its owner.
+   * opts: { warn, fire, width, len, ox, oy, angVel, track, rgb }
+   */
+  enemyLaser(owner, ang, o = {}) {
+    const L = {
+      owner, ang, t: 0, dead: false,
+      warn: o.warn ?? 50, fire: o.fire ?? 60, width: o.width ?? 14, len: o.len ?? 900,
+      ox: o.ox ?? 0, oy: o.oy ?? 0, angVel: o.angVel ?? 0, track: !!o.track,
+      rgb: o.rgb || [1, 0.25, 0.45], x0: owner.x, y0: owner.y,
+    };
+    this.lasers.push(L);
+    return L;
+  }
+
+  _updateLasers() {
+    const p = this.player;
+    for (const L of this.lasers) {
+      if (!L.owner.alive) L.dead = true;
+      if (L.dead) continue;
+      L.t++;
+      L.x0 = L.owner.x + L.ox;
+      L.y0 = L.owner.y + L.oy;
+      if (L.t < L.warn) {
+        if (L.track) {
+          let d = this.aimAngle(L.x0, L.y0) - L.ang;
+          d = Math.atan2(Math.sin(d), Math.cos(d));
+          L.ang += d * 0.08;
+        }
+      } else {
+        L.ang += L.angVel;
+        if (L.t > L.warn + L.fire) { L.dead = true; continue; }
+        if (L.fire > 0 && p && p.collidable && !p.invulnerable) {
+          const x1 = L.x0 + Math.cos(L.ang) * L.len, y1 = L.y0 + Math.sin(L.ang) * L.len;
+          if (segDist2(p.x, p.y, L.x0, L.y0, x1, y1) < (L.width * 0.35 + p.hitR) ** 2) p.hit();
+        }
+      }
+    }
+    if (this.lasers.length && this.lasers.some((L) => L.dead)) this.lasers = this.lasers.filter((L) => !L.dead);
+  }
+
+  clearLasers() { this.lasers.length = 0; }
 
   _flakBurst(i) {
     const S = this.shots, x = S.x[i], y = S.y[i], r = S.aux[i] || 24;
@@ -271,7 +345,7 @@ export class World {
       // Body contact with enemies.
       if (!hit && !p.invulnerable) {
         for (const e of E) {
-          if (!e.alive || e.untargetable) continue;
+          if (!e.alive || e.untargetable || e.ground) continue;
           const dx = e.x - p.x, dy = e.y - p.y, rr = e.r * 0.6 + p.hitR;
           if (dx * dx + dy * dy < rr * rr) { hit = true; break; }
         }
@@ -382,19 +456,54 @@ export class World {
 
   // ------------------------------------------------------------------ render
 
+  _drawEnemy(b, e, alpha) {
+    if (!e.f) return;
+    const F = this.F;
+    const x = e.px + (e.x - e.px) * alpha, y = e.py + (e.y - e.py) * alpha;
+    const w = e.f.w * e.scale, h = e.f.h * e.scale;
+    if (e.elite) {
+      const pulse = 0.5 + 0.3 * Math.sin(e.t * 0.2);
+      b.draw(F.glow, x, y, w * 2.4, h * 2.4, 0, 1.4, 0.15, 0.2, pulse, 1);
+    } else if (e.glow) b.draw(F.glow, x, y, w * 2, h * 2, 0, e.glow[0], e.glow[1], e.glow[2], 0.35, 1);
+    b.draw(e.f, x, y, w, h, e.rot, 1, 1, 1, 1, 0);
+    if (e.f2) b.draw(e.f2, x, y, e.f2.w * e.scale, e.f2.h * e.scale, e.rot2, 1, 1, 1, 1, 0);
+    if (e.flash > 0) b.draw(e.f, x, y, w, h, e.rot, 1.5, 1.5, 1.5, 0.8, 1);
+  }
+
+  /** Ground units: drawn under foreground structures and air units. */
+  renderGround(b, alpha) {
+    for (const e of this.enemies.active) if (e.ground) this._drawEnemy(b, e, alpha);
+  }
+
+  _renderLasers(b) {
+    const F = this.F;
+    for (const L of this.lasers) {
+      if (L.dead) continue;
+      const len = L.len, c = L.rgb;
+      const mx = L.x0 + Math.cos(L.ang) * len / 2, my = L.y0 + Math.sin(L.ang) * len / 2;
+      if (L.t < L.warn) {
+        // Telegraph: thin flickering line that tightens as it's about to fire.
+        const k = L.t / L.warn;
+        const a = ((L.t >> 2) & 1 ? 0.7 : 0.35) * (0.5 + k * 0.5);
+        b.draw(F.laser, mx, my, len, 3 + (1 - k) * 4, L.ang, c[0] * 1.5, c[1] * 1.5, c[2] * 1.5, a, 1);
+        b.draw(F.glow, L.x0, L.y0, 20 + k * 20, 20 + k * 20, 0, c[0] * 2, c[1] * 2, c[2] * 2, 0.6 * k, 1);
+      } else if (L.fire > 0) {
+        const ft = L.t - L.warn;
+        const ramp = Math.min(1, ft / 5, (L.fire - ft) / 8);
+        const wv = L.width * ramp * (0.92 + 0.08 * Math.sin(L.t * 1.9));
+        b.draw(F.laser, mx, my, len, wv * 3, L.ang, c[0] * 1.6, c[1] * 1.6, c[2] * 1.6, 0.8, 1);
+        b.draw(F.laser, mx, my, len, wv, L.ang, 2.2, 2.2, 2.2, 1, 1);
+        b.draw(F.glow, L.x0, L.y0, wv * 5, wv * 5, 0, c[0] * 2, c[1] * 2, c[2] * 2, 0.9, 1);
+      }
+    }
+  }
+
   /** Everything between the parallax and the enemy-bullet layer. */
   renderMid(b, alpha) {
     const F = this.F, frames = this.r.frames;
     this.fxLow.render(b, frames, alpha);
 
-    for (const e of this.enemies.active) {
-      if (!e.f) continue;
-      const x = e.px + (e.x - e.px) * alpha, y = e.py + (e.y - e.py) * alpha;
-      const w = e.f.w * e.scale, h = e.f.h * e.scale;
-      if (e.glow) b.draw(F.glow, x, y, w * 2, h * 2, 0, e.glow[0], e.glow[1], e.glow[2], 0.35, 1);
-      b.draw(e.f, x, y, w, h, e.rot, 1, 1, 1, 1, 0);
-      if (e.flash > 0) b.draw(e.f, x, y, w, h, e.rot, 1.5, 1.5, 1.5, 0.8, 1);
-    }
+    for (const e of this.enemies.active) if (!e.ground) this._drawEnemy(b, e, alpha);
 
     for (const it of this.items.active) {
       const x = it.px + (it.x - it.px) * alpha, y = it.py + (it.y - it.py) * alpha;
@@ -425,6 +534,7 @@ export class World {
 
   /** Enemy bullets + player hitbox (always topmost world layer). */
   renderTop(b, alpha) {
+    this._renderLasers(b);
     this.bullets.render(b, this.r.frames, alpha, this.F.glow);
     if (this.player) this.player.renderTop(b, alpha);
   }

@@ -6,6 +6,7 @@ import { RNG, randomSeedString } from './RNG.js';
 import { Renderer } from './gl/Renderer.js';
 import { DebugOverlay } from '../ui/DebugOverlay.js';
 import { PILOT_SPRITES } from '../pilots/index.js';
+import { buildEnemySprites } from '../entities/enemies/index.js';
 
 // Top-level engine object: owns subsystems and runs the fixed-step loop.
 //
@@ -21,7 +22,7 @@ export class Game {
     this.settings = new Settings();
     this.input = new Input(this.settings);
     this.camera = new Camera(this.settings);
-    this.renderer = new Renderer(canvas, stage, this.settings, PILOT_SPRITES);
+    this.renderer = new Renderer(canvas, stage, this.settings, [...PILOT_SPRITES, buildEnemySprites]);
     this.hud = hud;
     this.debug = new DebugOverlay(debug, this);
 
@@ -37,6 +38,7 @@ export class Game {
     this.last = 0;
     this.cpuMs = 0;
     this.running = false;
+    this.turbo = 0;
   }
 
   setScene(scene) {
@@ -70,6 +72,7 @@ export class Game {
       steps++;
     }
     if (steps === MAX_STEPS_PER_FRAME) this.acc = 0; // fell behind: drop time
+    for (let k = 0; k < this.turbo; k++) this._step(); // dev: fast-forward (window.__npo.turbo = n)
 
     // During hit-stop nothing moves, so render the latest state exactly.
     const alpha = this.hitstop > 0 ? 1 : this.acc / STEP;

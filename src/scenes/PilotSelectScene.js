@@ -2,9 +2,11 @@ import { WORLD_W } from '../core/constants.js';
 import { World } from '../entities/World.js';
 import { Parallax } from '../fx/Parallax.js';
 import { ROSTER } from '../pilots/index.js';
+import { BIOMES } from '../stages/biomes.js';
 import { drawPortrait } from '../ui/portraits.js';
 import { handleDevKeys } from './devKeys.js';
 import { TestRangeScene } from './TestRangeScene.js';
+import { StageScene } from './StageScene.js';
 
 // Pilot select: 16-slot roster grid, animated portrait, stat bars, bio,
 // ability list, and a live WebGL vehicle preview that cycles through all
@@ -15,13 +17,16 @@ const STAT_KEYS = [['speed', 'SPEED'], ['power', 'POWER'], ['range', 'RANGE'], [
 const PREVIEW_Y = 588;
 const TIER_STEPS = 150;
 
+export const rosterIndexOf = (def) => Math.max(0, ROSTER.indexOf(def));
+
 export class PilotSelectScene {
   constructor(opts = {}) { this.index = opts.index ?? 0; }
 
   enter(g) {
     this.g = g;
     this.world = new World(g);
-    this.parallax = new Parallax(g);
+    g.renderer.background.setBiome(BIOMES[0].bg);
+    this.parallax = new Parallax(g, BIOMES[0]);
     this.t = 0;
     this.demoT = 0;
     this._buildDom();
@@ -53,7 +58,7 @@ export class PilotSelectScene {
         <div class="sel-bio"></div>
         <div class="sel-abilities"></div>
         <div class="sel-tier"></div>
-        <div class="sel-hint"><b>←→↑↓</b> choose · <b>Z / ENTER</b> launch</div>
+        <div class="sel-hint"><b>←→↑↓</b> choose · <b>Z / ENTER</b> launch · <b>C</b> test range<br>SEED <b>${this.g.seed}</b></div>
       </div>`;
     const root = this.g.hud;
     this.el = {
@@ -130,13 +135,14 @@ export class PilotSelectScene {
     if (inp.pressed('down')) i = (i + COLS) % n;
     if (i !== this.index) this._select(i);
 
-    if (inp.pressed('confirm')) {
+    const launch = inp.pressed('confirm'), test = inp.pressed('special');
+    if (launch || test) {
       const p = ROSTER[this.index];
       if (p.locked) {
         this.el.name.classList.remove('deny'); void this.el.name.offsetWidth; this.el.name.classList.add('deny');
       } else {
         g.renderer.post.flash(...p.color, 0.5, 0.04);
-        g.setScene(new TestRangeScene(p));
+        g.setScene(launch ? new StageScene(p) : new TestRangeScene(p));
         return;
       }
     }

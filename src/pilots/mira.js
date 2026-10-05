@@ -1,5 +1,5 @@
 import { WORLD_W, WORLD_H } from '../core/constants.js';
-import { mirrorPath, outline, canopy, glowDot, drawBolt, neonStroke } from './art.js';
+import { mirrorPath, outline, canopy, glowDot, drawBolt, neonStroke } from '../fx/art.js';
 
 // MIRA SOLENNE — HALO SPRITE (drone ship)
 // Homing light-needles · Focus: tight hard-homing needles · Special: shield orbs

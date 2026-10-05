@@ -23,6 +23,8 @@ export class Hud {
           <div class="hud-hi"><span>HI</span><b data-k="hi">0</b></div>
         </div>
         <div class="hud-pilot">${def.name} · ${def.vehicle}</div>
+        <div class="hud-stage" data-k="stage"></div>
+        <div class="hud-boss" data-k="boss"><div class="hud-boss-name" data-k="bossName"></div><div class="hud-boss-bar"><i data-k="bossHp"></i><div class="segs" data-k="bossSegs"></div></div></div>
         <div class="hud-left">
           <div class="hud-row"><span>LIFE</span><i data-k="lives"></i></div>
           <div class="hud-row"><span>BOMB</span><i data-k="bombs"></i></div>
@@ -78,6 +80,23 @@ export class Hud {
     const ready = p.ult >= 100;
     this._set('ultBox', ready, (el, v) => el.classList.toggle('ready', v));
     this._set('ultTxt', ready ? 'READY [V]' : `${ult}%`, txt);
+    this._updateBoss();
+  }
+
+  setStage(text) { this.k.stage.textContent = text; }
+
+  _updateBoss() {
+    const b = this.world.boss;
+    const show = !!(b && b.alive && b.entered);
+    this._set('boss', show, (el, v) => el.classList.toggle('on', v));
+    if (!show) return;
+    this._set('bossName', b.name, (el, v) => {
+      el.textContent = v;
+      // Phase segment markers.
+      const ph = (b.def && b.def.phases) || [];
+      this.k.bossSegs.innerHTML = ph.map((f) => `<span style='left:${f * 100}%'></span>`).join('');
+    });
+    this._set("bossHp", Math.max(0, Math.round((b.hp / b.maxHp) * 1000)), (el, v) => { el.style.width = `${v / 10}%`; });
   }
 
   destroy() { this.el.remove(); }

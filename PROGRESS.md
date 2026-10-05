@@ -6,8 +6,8 @@
 |---|---|---|
 | **M1** | Engine core: loop, input, rendering, pooling, collision, camera, post-FX | ✅ Done |
 | **M2** | Player system + 4 pilots fully playable | ✅ Done |
-| M3 | Enemy AI, bullet-pattern library, procedural stage generator | ⏳ Next |
-| M4 | Boss framework + one boss of each archetype | — |
+| **M3** | Enemy AI, bullet-pattern library, procedural stage generator | ✅ Done |
+| M4 | Boss framework + one boss of each archetype | ⏳ Next |
 | M5 | Remaining 12 pilots, ultimates, cut-ins | — |
 | M6 | Audio engine and adaptive music | — |
 | M7 | UI, scoring, polish, performance tuning | — |
@@ -20,7 +20,17 @@ npm run dev        # http://localhost:5173
 npm run build      # production bundle in dist/
 ```
 
-Flow right now: **Pilot Select → Test Range** (placeholder waves until M3) → Pause / Game Over → Continue or Pilot Select.
+Flow right now:
+- **Pilot Select → (Z) endless procedural stages**: intro → waves → mid-boss → waves → boss → tally → next stage...
+- **(C) Test Range**: placeholder waves with a selectable bullet density.
+- From either: Pause, or Game Over → Continue / Pilot Select.
+
+**Seeds:** a run is fully determined by its seed plus your inputs. The seed is shown on pilot select, in the pause menu and on the tally. Replay a run with `?seed=ABCD1234` in the URL.
+
+**Dev hooks (console):**
+- `__npo.turbo = n` runs n extra simulation steps per frame (fast-forward)
+- `__npoDev.spawnEnemy(world, id, x, y, params, elite)` spawns an enemy
+- `__npoDev.generateStage(seed, i)` returns a stage plan
 
 ## Controls
 
@@ -90,9 +100,52 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 | **Bruno Hagen** — Ironhound | Wide flak airbursts (area dmg) · heavy siege shells | Brace (absorbs one lethal hit) | Flak Barrage (targeted airbursts) | Carpet-Bomb Run: 5-bomber V formation drops delayed bomb lines | chin turret → wing gun pods → armour skirts + missile racks; 2–4 pods |
 | **Tess Kuro** — Wireghost | Short-range piercing blades · melee slash that cuts bullets | Cloak (enemy aim locks to a decoy, double graze charge) | Thousand Cuts (screen-wide slash lines) | Shadow Clones: 4 clones mirror her attacks and erase bullets they touch | wingtip blades → canards → long blades + tail spikes |
 
+### Enemies, patterns, stages (M3)
+
+- **[Pattern library](src/patterns/index.js).** Emitters: `shoot`, `ring`, `fan`, `aimed`, `stack` (speed-layered streams), `spiral`, `curtain` (wall with a gap), `rain`, `burst`, and `laser`.
+  - Specs are static data, so firing allocates nothing.
+  - Specs support acceleration/curving, **homing** (`homing`, `homingTime`) and **split bullets**: a child spec bursts when the bullet reaches `splitAt`, which is how mines and mortars work.
+  - Counts scale with `world.diff.density`, speeds with `world.diff.speed`.
+- **Danger colour code:**
+
+  | Colour | Meaning |
+  |---|---|
+  | red | aimed |
+  | pink / violet | spiral, homing |
+  | orange | heavy |
+  | yellow | splitting / rain |
+  | cyan / blue | curtains, drops |
+  | green | slow fields |
+  | white | sniper / revenge |
+
+- **Enemy lasers** (`world.enemyLaser`): a thin flickering warning line, then a lethal beam. They can track the player during the warning and sweep while firing. Sniper pods use the warning only, followed by a fast needle line.
+- **[Enemy roster](src/entities/enemies/index.js): 21 types.** Each has its own procedural art ([art.js](src/entities/enemies/art.js)), a movement script ([movers.js](src/entities/enemies/movers.js)) and a pattern.
+  - drone, dart interceptor, hover car, suicide bike (homing kamikaze)
+  - gun turret\*, flak battery\*, armored truck\* (splitting mortars), hover tank\*, shield walker\* (half damage)
+  - carrier (launches darts, curtains, spirals), mine layer (split mines), heli gunship (sweeping streams), sniper pod (telegraphed line shot), laser drone (sweeping beam), spinner mine, swarm bug, bomber (bomb rain), shield orbiter, splitter pod, seeker launcher (homing missiles), sentinel frigate
+
+  \* Ground units scroll with the terrain and render under foreground structures. Turret barrels track the player.
+
+  Big units break apart and cancel nearby bullets.
+- **Elites** have ×1.8 HP, fire faster, gain an extra pattern layer, show a red pulsing aura, and drop bonus items.
+- **Mid-boss / boss slots** use placeholders until M4: the **Gatekeeper Platform** (2 phases, twin sweeping lasers) and the **Syndicate Core Prototype** (3 phases). They use the segmented boss HP bar, WARNING sequence and name card.
+- **[7 biomes](src/stages/biomes.js)** — Skyway Highway, Corporate Spire, Orbital Elevator, Acid Harbor, Magma Foundry, Data-Core Void, Storm Ring.
+  - Each drives a [background shader mode](src/fx/Background.js): city / harbor water + container piers / magma rivers / data grid / planet limb + elevator cable / cloud deck + lightning + ring arc.
+  - Each also sets the [parallax style](src/fx/Parallax.js) (structures, rain/embers/data/debris), whether ground units can appear, and enemy weighting.
+- **[Stage generator](src/stages/StageGen.js)** is seeded by `(seed, stageIndex)`:
+  - flow: intro → 3–5 wave sets → mid-boss → 2–3 wave sets → boss → tally
+  - wave sets combine 22 [wave templates](src/stages/waves.js) under a difficulty budget, weighted by biome
+- **Loops** are 5 stages each, with a seeded biome order per loop; loop 1 opens on the Skyway.
+  - Each loop raises density, speed, HP and boss HP, increases elite chance, and enables **revenge bullets** (small kills spit aimed shots).
+  - A **LOOP X** banner appears at each loop start, and the HUD shows `LOOP · STAGE · BIOME`.
+- **[StageDirector](src/stages/StageDirector.js)** runs the plan step by step. A wave set ends when it's cleared or times out, and a mid-boss retreats after 50 s. The tally scores destroy rate, graze, max chain, no-miss (100k × loop) and no-bomb (50k × loop).
+- Scenes were refactored onto a shared [PlayScene](src/scenes/PlayScene.js) (pause, continue, banners, render order); [StageScene](src/scenes/StageScene.js) and [TestRangeScene](src/scenes/TestRangeScene.js) build on it.
+
 ## Known issues / notes
 
-- The test range uses placeholder enemies ([testEnemies.js](src/scenes/testEnemies.js)). Real enemies, patterns and stages come in M3.
+- Bosses are placeholders until M4 (real Ground Tank / Aerial / Mecha bosses with breakable parts, multi-stage deaths and Mk. II/III variants).
+- Stage-to-stage biome change is an instant swap behind the tally overlay (no crossfade yet).
+- Readability check per biome done visually (harbor water and foundry lava were toned down). It still needs a real-GPU playtest for pacing and difficulty.
 - Balance is first-pass only: DPS per pilot, ultimate charge rates, and item drop rates. Tune in M7.
 - Score is basic: kills × chain bonus, graze, cancels and medals. The full multiplier system, the no-bomb boss bonus, extends at score thresholds, and the high-score table (with pilot + seed) arrive in M7. Right now a single local hi-score is saved.
 - Key remap UI and the options menu are M7. Bindings are already remappable in [Settings](src/core/Settings.js).
@@ -101,12 +154,21 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 - Verified in headless Chrome (software GL), with no runtime errors:
   - each pilot: select, shot, focus, special, ultimate + cut-in, bomb, pause → pilot select
   - game-over → continue flow
+  - M3: all 7 biomes and all 21 enemy types render
+  - a full stage, intro → waves → mid-boss → boss → tally → stage 2, completes (auto-kill fast-forward)
+  - the same seed produces identical stages, and a different seed differs
 
   Real-GPU FPS hasn't been measured in this environment.
 
-## Next steps (M3)
+## Next steps (M4)
 
-1. `src/patterns/`: a bullet-pattern library (rings, spirals, aimed fans, curtains, rain, lasers, homing) as composable emitters.
-2. `src/entities/enemies/` data files: 20+ enemy types, each with a movement script, pattern, HP, drops and elite variant.
-3. A procedural stage generator: seeded biome chunks (Skyway, Spire, Orbital Elevator, Acid Harbor, Magma Foundry, Data-Core Void, Storm Ring); intro → 3–5 wave sets → mid-boss slot → waves → boss slot → tally. Loop scaling and the LOOP X indicator.
-4. Drive the background shader palette per biome, and add a StageScene to replace the test range.
+1. A boss framework in `src/bosses/`. Bosses are multi-part entities with:
+   - parts with their own HP that drop medals when destroyed
+   - a phase timeline (3–5 phases with distinct patterns)
+   - an intro card, segmented HP bar, desperation phase and multi-stage death
+2. One boss of each archetype, replacing the `syndicateCore` placeholder in the boss slot:
+   - Ground Tank (e.g. *Colossus Crawler*: destructible turrets, track charges, artillery that marks floor zones before impact)
+   - Aerial (e.g. *Skywarden Carrier*: drone swarms, sweeping beam curtains, mirrored formations)
+   - Mecha (e.g. *Titan Enforcer*: transforming phases, melee swipes, spiral danmaku)
+3. Mk. II / Mk. III variants for later loops, with new attack phases. Boss selection per stage comes from the seed.
+4. A no-bomb boss bonus, plus a practice entry point per boss (full practice menu in M7).

@@ -1,0 +1,77 @@
+/* Stage flow UI: stage label, boss HP bar, WARNING sequence, tally. */
+
+.hud-stage {
+  position: absolute; top: calc(46 * var(--u)); left: calc(8 * var(--u));
+  font-size: calc(6.5 * var(--u)); letter-spacing: 0.18em; opacity: 0.6;
+}
+
+/* Boss HP bar ------------------------------------------------------------ */
+
+.hud-boss {
+  position: absolute; top: calc(58 * var(--u)); left: calc(40 * var(--u)); right: calc(40 * var(--u));
+  opacity: 0; transform: translateY(calc(-6 * var(--u))); transition: opacity 0.4s, transform 0.4s;
+}
+.hud-boss.on { opacity: 1; transform: none; }
+.hud-boss-name {
+  font-family: 'Orbitron', sans-serif; font-size: calc(7.5 * var(--u)); letter-spacing: 0.2em;
+  color: #ff5a8a; text-shadow: 0 0 calc(6 * var(--u)) #ff2060; margin-bottom: calc(2 * var(--u));
+}
+.hud-boss-bar {
+  position: relative; height: calc(6 * var(--u));
+  background: rgba(40, 0, 10, 0.7); border: 1px solid rgba(255, 60, 110, 0.7);
+  box-shadow: 0 0 calc(8 * var(--u)) rgba(255, 30, 80, 0.5);
+}
+.hud-boss-bar i {
+  display: block; height: 100%; width: 100%;
+  background: linear-gradient(90deg, #ff2060, #ff8a3a);
+  box-shadow: 0 0 calc(8 * var(--u)) #ff3060; transition: width 0.1s linear;
+}
+.hud-boss-bar .segs { position: absolute; inset: 0; }
+.hud-boss-bar .segs span { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #fff; box-shadow: 0 0 4px #fff; }
+
+/* Banner variants ---------------------------------------------------------- */
+
+.hud-banner.boss { color: #ffd0dc; text-shadow: 0 0 calc(10 * var(--u)) #ff2060, 0 0 calc(24 * var(--u)) #ff2060; font-size: calc(20 * var(--u)); }
+.hud-banner.boss small { color: #ff8aa8; }
+.hud-banner.loop { font-size: calc(40 * var(--u)); text-shadow: 0 0 calc(14 * var(--u)) #ff2060, 0 0 calc(30 * var(--u)) #ff9a1a; }
+.hud-banner.loop small { color: #ffb070; }
+
+/* WARNING ------------------------------------------------------------------ */
+
+#fxlayer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.warning {
+  position: absolute; left: 0; right: 0; top: 34%;
+  display: flex; flex-direction: column; align-items: center; gap: calc(4 * var(--u));
+  animation: warnIn 0.25s ease-out;
+}
+.warning b {
+  font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: calc(40 * var(--u)); letter-spacing: 0.3em;
+  color: #ff2a50; text-shadow: 0 0 calc(12 * var(--u)) #ff0030, 0 0 calc(30 * var(--u)) #ff0030;
+  animation: blink 0.35s steps(2) infinite;
+}
+.warning small { font-size: calc(8 * var(--u)); letter-spacing: 0.35em; color: #ffb0bc; }
+.warning .stripe {
+  width: 120%; height: calc(10 * var(--u));
+  background: repeating-linear-gradient(-45deg, #ff1a40 0 calc(8 * var(--u)), rgba(0, 0, 0, 0.6) calc(8 * var(--u)) calc(16 * var(--u)));
+  opacity: 0.85; animation: stripes 0.6s linear infinite;
+}
+@keyframes stripes { from { background-position: 0 0; } to { background-position: calc(45 * var(--u)) 0; } }
+@keyframes warnIn { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* Tally -------------------------------------------------------------------- */
+
+.menu.tally { min-width: calc(300 * var(--u)); }
+.tally-row {
+  display: grid; grid-template-columns: 1.4fr 0.8fr 1fr; gap: calc(6 * var(--u));
+  font-size: calc(9.5 * var(--u)); letter-spacing: 0.12em; padding: calc(3 * var(--u)) calc(8 * var(--u));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08); transition: opacity 0.2s;
+}
+.tally-row span { text-align: left; opacity: 0.8; }
+.tally-row i { font-style: normal; color: var(--neon-a); }
+.tally-row b { text-align: right; font-family: 'Orbitron', sans-serif; }
+.tally-row.total { border-bottom: none; border-top: 1px solid var(--neon-a); margin-top: calc(4 * var(--u)); font-size: calc(11 * var(--u)); }
+.tally-row.total b { color: #ffe066; text-shadow: 0 0 calc(8 * var(--u)) #ff9a1a; }
+.tally-next { margin-top: calc(12 * var(--u)); font-size: calc(9 * var(--u)); letter-spacing: 0.25em; animation: blink 0.8s steps(2) infinite; }
+.tally-next b { color: var(--neon-a); }
+.tally-seed { margin-top: calc(6 * var(--u)); font-size: calc(7 * var(--u)); letter-spacing: 0.3em; opacity: 0.5; }
+.menu-sub .seed { font-size: 1em; color: var(--neon-a); letter-spacing: 0.2em; }

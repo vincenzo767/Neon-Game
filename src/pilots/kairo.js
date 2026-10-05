@@ -1,5 +1,5 @@
 import { WORLD_W, WORLD_H } from '../core/constants.js';
-import { mirrorPath, chrome, neonLines, outline, canopy, glowDot, drawBolt } from './art.js';
+import { mirrorPath, chrome, neonLines, outline, canopy, glowDot, drawBolt } from '../fx/art.js';
 import { FADE_OUT } from '../fx/Particles.js';
 
 // KAIRO VANCE — STORMLANCE (interceptor)

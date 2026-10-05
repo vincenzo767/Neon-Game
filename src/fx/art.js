@@ -1,4 +1,4 @@
-// Shared Canvas2D helpers for procedural vehicle art.
+// Shared Canvas2D helpers for procedural vehicle art (pilots and enemies).
 // Vehicles face UP; most are left/right symmetric, so shapes are described
 // as the RIGHT half (offsets from the centre line) and mirrored.
 

@@ -1,5 +1,5 @@
 import { WORLD_W, WORLD_H } from '../core/constants.js';
-import { mirrorPath, outline, neonLines } from './art.js';
+import { mirrorPath, outline, neonLines } from '../fx/art.js';
 
 // TESS KURO — WIREGHOST (stealth fighter)
 // Short-range piercing blades · Focus: close-quarters slash that cuts bullets
