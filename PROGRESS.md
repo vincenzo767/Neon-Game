@@ -7,10 +7,59 @@
 | **M1** | Engine core: loop, input, rendering, pooling, collision, camera, post-FX | ✅ Done |
 | **M2** | Player system + 4 pilots fully playable | ✅ Done |
 | **M3** | Enemy AI, bullet-pattern library, procedural stage generator | ✅ Done |
-| M4 | Boss framework + one boss of each archetype | ⏳ Next |
-| M5 | Remaining 12 pilots, ultimates, cut-ins | — |
-| M6 | Audio engine and adaptive music | — |
+| **M4a** | Difficulty config + difficulty select screen, hooked into M3 | ✅ Done |
+| M4b | Boss framework: arena mode, per-phase arena transitions, damage flags, safe defeat routing | ⏳ Next |
+| M4c | One complete boss for each of the 6 archetypes (5 authored phases + unique arenas each) | — |
+| M5 | Remaining 12 standard pilots + **Vincenzo (Legendary)**, ultimates, cut-ins | — |
+| M6 | Audio engine and adaptive music (per-phase layers, archetype themes) | — |
 | M7 | UI, scoring, polish, performance tuning | — |
+
+> **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v2) and [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md). Where they disagree, UPDATE_01 wins.
+
+## Update 01 applied (before M4)
+
+- **Specs saved** to `docs/`. The milestone plan is revised as follows:
+  - M4 split into 4a/4b/4c
+  - 6 boss archetypes, each phase with its own arena
+  - Vincenzo the Conqueror (Legendary) added for M5
+  - difficulty select added
+- **Ground rules followed.** No M1–M3 system was rewritten. The only changes to existing files are small additive hooks:
+
+  | File | Hook |
+  |---|---|
+  | `stages/StageGen.js` | `difficulty()` / `generateStage()` take a difficulty id and multiply the base values and the per-loop growth rate. Defaults to `medium` (= M3 numbers). |
+  | `entities/enemies/index.js` | Revenge bullets follow the table (off / on / dense) instead of "loop ≥ 2". |
+  | `entities/Player.js` | Optional `bombStock` start option (death refills to it). Continues restore the starting reserve. |
+  | `entities/World.js` | `scoreMul` applied to every positive score gain via a getter/setter, with no call-site changes. Adds `setScoreRaw()` for continues. |
+  | `ui/Hud.js` | Optional difficulty badge. Hi-score kept per difficulty. |
+  | `scenes/PlayScene.js`, `StageScene.js`, `TestRangeScene.js`, `PilotSelectScene.js`, `main.js` | Read `game.difficultyId`; boot into difficulty select. |
+- **M3 verified after the update** (headless, Standard difficulty):
+  - stages generate
+  - waves spawn
+  - the mid-boss placeholder appears
+  - boss → tally → stage 2 completes with no errors
+  - Medium reproduces the M3 numbers exactly (e.g. stage 8: density 1.44, speed 1.18, HP 1.35)
+  - the same seed gives the same waves on every difficulty (only the numbers scale)
+
+## M4a — Difficulty
+
+- **[core/difficulty.js](src/core/difficulty.js)** is the single source of truth for the table in UPDATE_01 §3.2:
+  - bullet speed, density, enemy HP
+  - boss phases (+ desperation)
+  - lives, bombs, loop scaling rate, revenge, score multiplier
+
+  Interpretation notes:
+  - **Lives** = total ships. The Player stores spare ships, so it starts with lives − 1 in reserve.
+  - **Bombs** are applied Medium-relative, so pilots keep their bomb identity: `pilotBombStock + (bombs − 3)`, minimum 1.
+  - **Loop scaling** multiplies the per-loop growth terms; the within-loop stage ramp is unchanged.
+  - `bossPhases` / `desperation` are already exposed on `world.diff` for the M4b boss framework.
+- **Flow:** Difficulty Select → Pilot Select → Stage. The title screen and attract demo come in M7. Esc on pilot select returns to difficulty select. The last choice is remembered in settings.
+- **[DifficultySelectScene](src/scenes/DifficultySelectScene.js)** shows five cards with colour identities: Standard cyan, Medium green, Hard amber, Extreme red, Hell black/crimson.
+  - Each card has a description, key numbers, a density meter and the score multiplier.
+  - A **live bullet preview** fires through the real pattern library at the highlighted difficulty's density and speed.
+  - **Hell** has animated CSS flames and card shake. Highlighting it plays a distorted synth warning ([audio/sting.js](src/audio/sting.js), a minimal Web Audio module that M6 will fold into the full engine) with a red flash and screen shake.
+- **The difficulty is shown** as a HUD badge, on pilot select, in the tally and in the pause seed line. High scores are saved per difficulty (the full table with pilot + seed + difficulty comes in M7).
+- The test range uses the chosen difficulty's lives, bombs and score rate but never saves a hi-score.
 
 ## Run
 
@@ -160,15 +209,26 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 
   Real-GPU FPS hasn't been measured in this environment.
 
-## Next steps (M4)
+## Next steps (M4b — boss framework)
 
-1. A boss framework in `src/bosses/`. Bosses are multi-part entities with:
-   - parts with their own HP that drop medals when destroyed
-   - a phase timeline (3–5 phases with distinct patterns)
-   - an intro card, segmented HP bar, desperation phase and multi-stage death
-2. One boss of each archetype, replacing the `syndicateCore` placeholder in the boss slot:
-   - Ground Tank (e.g. *Colossus Crawler*: destructible turrets, track charges, artillery that marks floor zones before impact)
-   - Aerial (e.g. *Skywarden Carrier*: drone swarms, sweeping beam curtains, mirrored formations)
-   - Mecha (e.g. *Titan Enforcer*: transforming phases, melee swipes, spiral danmaku)
-3. Mk. II / Mk. III variants for later loops, with new attack phases. Boss selection per stage comes from the seed.
-4. A no-bomb boss bonus, plus a practice entry point per boss (full practice menu in M7).
+Per UPDATE_01 §1 and §2.6:
+
+1. A boss framework in `src/bosses/`, data-driven to the §1.4 shape. Each boss has:
+   - 5 authored phases, each with its own HP, arena, transition FX, patterns and music-layer id
+   - breakable parts with their own HP that drop medals
+   - a death sequence
+
+   The runtime phase count comes from `world.diff.bossPhases`, plus a desperation phase on Hell.
+2. **Arena mode:** when the main boss spawns, StageDirector hands the background/parallax to the boss arena, and gets it back on defeat. This is an additive switch; the stage generator otherwise runs exactly as in M3.
+3. **Phase transition sequence** (~2–3 s):
+   1. bullets are converted to score items
+   2. the boss is invulnerable and plays its transition animation
+   3. the arena crossfades with a themed effect
+   4. a "PHASE N — NAME" card appears
+   5. a music-layer event fires (consumed in M6)
+   6. the boss becomes vulnerable again
+
+   The HP bar gets one segment per phase.
+4. **Damage flags** on the existing damage path: `ignoresShields`, `instantKill`, `instantPhaseClear`. Every instant defeat goes through the normal defeat path (death animation, score/medals, arena hand-back, tally). A defeat during a transition finishes or safely cancels the transition first.
+5. **Archetype rotation:** no repeats back-to-back, and all six appear in each loop before any repeats (seeded).
+6. **Mk. II / Mk. III** variants by loop.

@@ -3,6 +3,7 @@ import { Parallax } from '../fx/Parallax.js';
 import { Hud, saveHiScore } from '../ui/Hud.js';
 import { showCutIn, CUTIN_STEPS } from '../ui/CutIn.js';
 import { handleDevKeys } from './devKeys.js';
+import { getDifficulty, startingReserve, startingBombs } from '../core/difficulty.js';
 
 // Base class for in-game scenes: owns the World, parallax, HUD, banners,
 // pause menu and game-over / continue flow, plus the common render order.
@@ -17,7 +18,10 @@ export class PlayScene {
   enter(g) {
     this.g = g;
     this.world = new World(g);
-    this.world.setPlayer(this.def);
+    // Difficulty (chosen on the difficulty select screen) sets lives, bombs and score rate.
+    const cfg = (this.diffCfg = getDifficulty(g.difficultyId));
+    this.world.scoreMul = cfg.scoreMul;
+    this.world.setPlayer(this.def, { lives: startingReserve(cfg), bombStock: startingBombs(cfg, this.def) });
     this.world.onEvent = (type, data) => this.onEvent(type, data);
     this.parallax = new Parallax(g, null);
     this.paused = false;
@@ -33,18 +37,21 @@ export class PlayScene {
     this.bannerEl = g.hud.querySelector('#banner');
     this.overlayEl = g.hud.querySelector('#overlay');
     this.fxLayer = g.hud.querySelector('#fxlayer');
-    this.hud = new Hud(g.hud, this.world);
+    this.hud = new Hud(g.hud, this.world, cfg);
     this.bannerT = 0;
     this.setup();
   }
 
   exit() {
-    saveHiScore(this.world.score);
+    this._saveHi();
     const p = this.world.player;
     if (p && p.def.reset) p.def.reset(p, this.world);
     this.g.renderer.background.onLightning = null;
     this.g.hud.innerHTML = '';
   }
+
+  /** Hi-scores are kept per difficulty; unranked scenes (test range) don't save. */
+  _saveHi() { if (this.ranked !== false) saveHiScore(this.world.score, this.diffCfg.id); }
 
   // ------------------------------------------------------------- overlays
 
@@ -105,7 +112,7 @@ export class PlayScene {
         this.continueT = CONTINUE_SECONDS * 60;
         this.menuIndex = 0;
         this.menuItems = ['CONTINUE', 'PILOT SELECT'];
-        saveHiScore(this.world.score);
+        this._saveHi();
         break;
       default:
         if (this.onSceneEvent) this.onSceneEvent(type, data);
@@ -127,7 +134,7 @@ export class PlayScene {
         if (this.menuIndex === 0) {
           this.gameOver = false;
           this.continues++;
-          w.score = this.continues; // arcade convention: score resets, last digit counts continues
+          w.setScoreRaw(this.continues); // arcade convention: score resets, last digit counts continues
           w.player.continueGame();
           this._hideOverlay();
         } else this.pilotSelect();

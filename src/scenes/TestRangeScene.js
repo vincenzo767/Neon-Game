@@ -6,6 +6,7 @@ import { TestSpawner, DENSITY } from './testEnemies.js';
 
 export class TestRangeScene extends PlayScene {
   setup() {
+    this.ranked = false; // sandbox: no hi-score
     this.world.density = 1;
     this.spawner = new TestSpawner(this.world);
     this.menuHint = '<div class="menu-sub">TEST RANGE · 1-4 bullet density</div>';

@@ -1,0 +1,101 @@
+/* Difficulty select (UPDATE_01 §3.3) + difficulty badges. */
+
+.diff { position: absolute; inset: 0; --dc: var(--neon-a); }
+.diff-title {
+  position: absolute; top: calc(12 * var(--u)); left: 0; right: 0; text-align: center;
+  font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: calc(20 * var(--u)); letter-spacing: 0.22em;
+  text-shadow: 0 0 calc(10 * var(--u)) var(--dc);
+  transition: text-shadow 0.2s;
+}
+.diff-title span {
+  display: block; font-family: 'JetBrains Mono', monospace; font-weight: 400; font-size: calc(6.5 * var(--u));
+  letter-spacing: 0.4em; color: var(--dc); margin-top: calc(3 * var(--u));
+}
+.diff-list {
+  position: absolute; top: calc(58 * var(--u)); left: calc(18 * var(--u)); right: calc(18 * var(--u));
+  display: flex; flex-direction: column; gap: calc(6 * var(--u));
+}
+
+.diff-card {
+  position: relative; overflow: hidden;
+  padding: calc(6 * var(--u)) calc(10 * var(--u)) calc(6 * var(--u)) calc(14 * var(--u));
+  background: linear-gradient(90deg, rgba(4, 6, 14, 0.82), rgba(4, 6, 14, 0.6));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  opacity: 0.6; transform: scale(0.97);
+  transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.diff-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: calc(4 * var(--u));
+  background: var(--dc); box-shadow: 0 0 calc(10 * var(--u)) var(--dc);
+}
+.diff-card.sel {
+  opacity: 1; transform: scale(1.02); border-color: var(--dc);
+  box-shadow: 0 0 calc(16 * var(--u)) color-mix(in srgb, var(--dc) 55%, transparent), inset 0 0 calc(20 * var(--u)) color-mix(in srgb, var(--dc) 18%, transparent);
+}
+.dc-head { display: flex; justify-content: space-between; align-items: baseline; position: relative; }
+.dc-head b {
+  font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: calc(15 * var(--u)); letter-spacing: 0.16em;
+  color: var(--dc); text-shadow: 0 0 calc(8 * var(--u)) var(--dc);
+}
+.dc-head span { font-size: calc(8 * var(--u)); letter-spacing: 0.15em; color: #ffe066; }
+.dc-desc { position: relative; font-size: calc(7.6 * var(--u)); line-height: 1.45; margin: calc(2 * var(--u)) 0; opacity: 0.92; }
+.dc-stats { position: relative; font-size: calc(6.6 * var(--u)); letter-spacing: 0.1em; opacity: 0.7; }
+.dc-density { position: relative; display: flex; align-items: center; gap: calc(2 * var(--u)); margin-top: calc(3 * var(--u)); }
+.dc-density label { font-size: calc(6 * var(--u)); letter-spacing: 0.2em; opacity: 0.6; margin-right: calc(4 * var(--u)); }
+.dc-density i { width: calc(12 * var(--u)); height: calc(4 * var(--u)); background: rgba(255, 255, 255, 0.1); transform: skewX(-20deg); }
+.dc-density i.on { background: var(--dc); box-shadow: 0 0 calc(4 * var(--u)) var(--dc); }
+
+/* HELL: black/crimson card with flickering flames. */
+.diff-card.hell { background: linear-gradient(90deg, #070003, #160005); }
+.diff-card.hell .dc-head b { color: #ff2a40; text-shadow: 0 0 calc(6 * var(--u)) #ff0020, 0 0 calc(18 * var(--u)) #ff4000; }
+.dc-flames {
+  position: absolute; left: 0; right: 0; bottom: calc(-10 * var(--u)); height: 120%;
+  background:
+    radial-gradient(ellipse 12% 55% at 10% 100%, rgba(255, 70, 0, 0.55), transparent 70%),
+    radial-gradient(ellipse 10% 70% at 27% 100%, rgba(255, 20, 40, 0.5), transparent 70%),
+    radial-gradient(ellipse 14% 50% at 45% 100%, rgba(255, 110, 0, 0.45), transparent 70%),
+    radial-gradient(ellipse 9% 75% at 63% 100%, rgba(255, 30, 30, 0.5), transparent 70%),
+    radial-gradient(ellipse 13% 60% at 80% 100%, rgba(255, 80, 0, 0.5), transparent 70%),
+    radial-gradient(ellipse 10% 65% at 95% 100%, rgba(255, 20, 50, 0.45), transparent 70%);
+  filter: blur(calc(2 * var(--u)));
+  mix-blend-mode: screen;
+  animation: flames 0.9s ease-in-out infinite alternate, flicker 0.13s steps(2) infinite;
+  pointer-events: none;
+}
+.diff-card.hell:not(.sel) .dc-flames { opacity: 0.35; }
+@keyframes flames {
+  0% { transform: scaleY(0.85) translateX(0); }
+  50% { transform: scaleY(1.1) translateX(calc(-2 * var(--u))); }
+  100% { transform: scaleY(0.95) translateX(calc(2 * var(--u))); }
+}
+@keyframes flicker { 50% { opacity: 0.8; } }
+.diff-card.hell.sel { animation: hellShake 0.25s steps(3) infinite; }
+@keyframes hellShake {
+  0% { transform: scale(1.02) translate(0, 0); }
+  33% { transform: scale(1.02) translate(calc(-0.6 * var(--u)), calc(0.4 * var(--u))); }
+  66% { transform: scale(1.02) translate(calc(0.6 * var(--u)), calc(-0.4 * var(--u))); }
+}
+
+.diff-preview {
+  position: absolute; top: calc(448 * var(--u)); left: 0; right: 0; text-align: center;
+  font-size: calc(6.5 * var(--u)); letter-spacing: 0.4em; color: var(--dc); opacity: 0.7;
+}
+.diff-hint {
+  position: absolute; bottom: calc(8 * var(--u)); left: 0; right: 0; text-align: center;
+  font-size: calc(8 * var(--u)); letter-spacing: 0.1em; opacity: 0.85;
+}
+.diff-hint b { color: var(--neon-a); }
+
+/* Difficulty badges on pilot select and in the HUD. */
+.sel-diff {
+  position: absolute; top: calc(558 * var(--u)); right: calc(12 * var(--u));
+  font-size: calc(6.5 * var(--u)); letter-spacing: 0.2em; color: var(--dc);
+  border: 1px solid var(--dc); padding: calc(1 * var(--u)) calc(5 * var(--u));
+  text-shadow: 0 0 calc(5 * var(--u)) var(--dc);
+}
+.hud-diff {
+  position: absolute; top: calc(36 * var(--u)); right: calc(8 * var(--u));
+  font-size: calc(6.5 * var(--u)); letter-spacing: 0.2em; color: var(--dc);
+  border: 1px solid var(--dc); padding: 0 calc(4 * var(--u));
+  text-shadow: 0 0 calc(4 * var(--u)) var(--dc); opacity: 0.85;
+}

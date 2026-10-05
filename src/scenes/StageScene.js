@@ -31,7 +31,7 @@ export class StageScene extends PlayScene {
   beginStage(index) {
     const g = this.g, w = this.world;
     this.stageIndex = index;
-    this.plan = generateStage(g.seed, index);
+    this.plan = generateStage(g.seed, index, this.diffCfg.id);
     g.renderer.background.setBiome(this.plan.biome.bg);
     this.parallax.setStyle(this.plan.biome);
     w.bullets.clearAll();
@@ -99,9 +99,9 @@ export class StageScene extends PlayScene {
         <h2>STAGE CLEAR</h2>
         <div class="menu-sub">STAGE ${p.loop}-${p.stageInLoop + 1} · ${p.biome.name}</div>
         ${rows}
-        <div class="tally-row total"><span>STAGE BONUS</span><i></i><b>${total}</b></div>
+        <div class="tally-row total"><span>STAGE BONUS</span><i>${this.diffCfg.scoreMul > 1 ? `×${this.diffCfg.scoreMul} ${this.diffCfg.name}` : ''}</i><b>${total}</b></div>
         <div class="tally-next">${k >= 1 ? 'PRESS <b>Z</b> TO CONTINUE' : '&nbsp;'}</div>
-        <div class="tally-seed">SEED ${this.g.seed}</div>
+        <div class="tally-seed">SEED ${this.g.seed} · ${this.diffCfg.name}</div>
       </div>`;
     this.overlayEl.classList.add('show');
   }

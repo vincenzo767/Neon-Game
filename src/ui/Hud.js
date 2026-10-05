@@ -2,18 +2,20 @@
 // cache so the DOM is only touched when something actually changes.
 
 const HI_KEY = 'npo.hiscore.v1';
+const hiKey = (diffId) => (diffId ? `${HI_KEY}.${diffId}` : HI_KEY);
 
-export function loadHiScore() {
-  try { return Number(localStorage.getItem(HI_KEY)) || 0; } catch { return 0; }
+export function loadHiScore(diffId) {
+  try { return Number(localStorage.getItem(hiKey(diffId))) || 0; } catch { return 0; }
 }
-export function saveHiScore(v) {
-  try { if (v > loadHiScore()) localStorage.setItem(HI_KEY, String(v)); } catch { /* ignore */ }
+export function saveHiScore(v, diffId) {
+  try { if (v > loadHiScore(diffId)) localStorage.setItem(hiKey(diffId), String(v)); } catch { /* ignore */ }
 }
 
 export class Hud {
-  constructor(root, world) {
+  /** @param diff difficulty config (core/difficulty.js) — shown as a badge, keys the hi-score */
+  constructor(root, world, diff = null) {
     this.world = world;
-    this.hi = loadHiScore();
+    this.hi = loadHiScore(diff && diff.id);
     const p = world.player, def = p.def;
     root.insertAdjacentHTML('beforeend', `
       <div class="hud" style="--pc:${def.css}">
@@ -24,6 +26,7 @@ export class Hud {
         </div>
         <div class="hud-pilot">${def.name} · ${def.vehicle}</div>
         <div class="hud-stage" data-k="stage"></div>
+        ${diff ? `<div class="hud-diff" style="--dc:${diff.color}">${diff.name}</div>` : ''}
         <div class="hud-boss" data-k="boss"><div class="hud-boss-name" data-k="bossName"></div><div class="hud-boss-bar"><i data-k="bossHp"></i><div class="segs" data-k="bossSegs"></div></div></div>
         <div class="hud-left">
           <div class="hud-row"><span>LIFE</span><i data-k="lives"></i></div>

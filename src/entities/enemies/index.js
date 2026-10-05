@@ -58,6 +58,7 @@ const S = {
   frigateRing: { shape: 'bigorb', color: 'red', n: 12, speed: 1.6 },
   frigateSpiral: { shape: 'orb', color: 'pink', n: 4, speed: 2.6, turn: 0.17 },
   revenge: { shape: 'orb', color: 'white', n: 2, spread: 0.35, speed: 2.2 },
+  revengeDense: { shape: 'orb', color: 'white', n: 5, spread: 0.9, speed: 2.4 },
   // Mid-boss / boss placeholders.
   gateSpiral: { shape: 'orb', color: 'pink', n: 6, speed: 2.4, turn: 0.13 },
   gateAim: { shape: 'bigorb', color: 'orange', n: 5, spread: 0.7, speed: 2.2 },
@@ -324,8 +325,8 @@ function onDeath(e, w) {
     w.explosions.breakApart(e.x, e.y, e.r * 0.8, Math.round(3 + e.r / 10));
     w.cancelCircle(e.x, e.y, 100 + e.r * 2);
   } else if (w.diff.revenge && !e.ground) {
-    // Later loops: every small kill spits a few "revenge" bullets.
-    P.aimed(w, e.x, e.y, S.revenge);
+    // Extreme/Hell difficulty: every small kill spits a few "revenge" bullets.
+    P.aimed(w, e.x, e.y, w.diff.revenge === 'dense' ? S.revengeDense : S.revenge);
   }
   if (def.onDeath) def.onDeath(e, w);
 }

@@ -1,27 +1,36 @@
 import { RNG } from '../core/RNG.js';
 import { BIOMES } from './biomes.js';
 import { TEMPLATES } from './waves.js';
+import { getDifficulty } from '../core/difficulty.js';
 
 // Procedural stage generator. Everything derives from (runSeed, stageIndex)
 // so a seed reproduces the exact same infinite sequence of stages.
 //
 // Stage flow: intro → 3–5 wave sets → mid-boss → 2–3 wave sets → boss → tally
 // A loop is STAGES_PER_LOOP stages; each loop raises bullet density/speed,
-// enemy HP, elite frequency and enables revenge bullets.
+// enemy HP and elite frequency (rate set by the difficulty's loopScaling).
 
 export const STAGES_PER_LOOP = 5;
 
-/** Difficulty knobs consumed by World.diff, the pattern library and enemy factory. */
-export function difficulty(loop, stageInLoop) {
-  const L = loop - 1, s = stageInLoop;
+/**
+ * Difficulty knobs consumed by World.diff, the pattern library and enemy factory.
+ * `cfg` is a difficulty from core/difficulty.js: it multiplies the base values
+ * and the per-loop growth rate (L terms). Medium (all ×1) = the M3 tuning.
+ */
+export function difficulty(loop, stageInLoop, cfg = getDifficulty('medium')) {
+  const L = (loop - 1) * cfg.loopScaling, s = stageInLoop;
   return {
-    density: Math.min(2.6, 1 + 0.07 * s + 0.3 * L),
-    speed: Math.min(1.6, 1 + 0.03 * s + 0.12 * L),
+    density: Math.min(2.6, 1 + 0.07 * s + 0.3 * L) * cfg.density,
+    speed: Math.min(1.6, 1 + 0.03 * s + 0.12 * L) * cfg.bulletSpeed,
     fireRate: 1 / (1 + 0.05 * s + 0.2 * L),
-    hp: 1 + 0.05 * s + 0.25 * L,
-    bossHp: 1 + 0.1 * s + 0.4 * L,
-    revenge: loop >= 2,
+    hp: (1 + 0.05 * s + 0.25 * L) * cfg.enemyHp,
+    bossHp: (1 + 0.1 * s + 0.4 * L) * cfg.enemyHp,
+    revenge: cfg.revenge,
     eliteChance: loop === 1 ? (s >= 3 ? 0.08 : 0) : Math.min(0.5, 0.15 * L + 0.04 * s),
+    // Consumed by the M4 boss framework.
+    bossPhases: cfg.bossPhases,
+    desperation: cfg.desperation,
+    difficultyId: cfg.id,
   };
 }
 
@@ -81,17 +90,18 @@ function buildSets(R, count, biome, index, diff, budget) {
 /**
  * @param seed run seed string
  * @param index global stage index (0-based)
+ * @param difficultyId core/difficulty.js id (default 'medium' = M3 tuning)
  */
-export function generateStage(seed, index) {
+export function generateStage(seed, index, difficultyId = 'medium') {
   const loop = Math.floor(index / STAGES_PER_LOOP) + 1;
   const stageInLoop = index % STAGES_PER_LOOP;
   const order = biomeOrder(seed, loop);
   const biome = order[stageInLoop % order.length];
-  const diff = difficulty(loop, stageInLoop);
+  const diff = difficulty(loop, stageInLoop, getDifficulty(difficultyId));
   const R = new RNG(`${seed}:stage:${index}`);
   const budget = 5 + stageInLoop * 1.2 + (loop - 1) * 2.5;
   return {
-    seed, index, loop, stageInLoop, number: index + 1, biome, diff,
+    seed, index, loop, stageInLoop, number: index + 1, biome, diff, difficultyId,
     sections: [
       { type: 'intro' },
       { type: 'waves', sets: buildSets(R, R.int(3, 5), biome, index, diff, budget) },

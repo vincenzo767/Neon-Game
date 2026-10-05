@@ -7,6 +7,8 @@ import { drawPortrait } from '../ui/portraits.js';
 import { handleDevKeys } from './devKeys.js';
 import { TestRangeScene } from './TestRangeScene.js';
 import { StageScene } from './StageScene.js';
+import { DifficultySelectScene } from './DifficultySelectScene.js';
+import { getDifficulty } from '../core/difficulty.js';
 
 // Pilot select: 16-slot roster grid, animated portrait, stat bars, bio,
 // ability list, and a live WebGL vehicle preview that cycles through all
@@ -39,6 +41,7 @@ export class PilotSelectScene {
   }
 
   _buildDom() {
+    const diff = getDifficulty(this.g.difficultyId);
     const tiles = ROSTER.map((p, i) => `
       <div class="sel-tile ${p.locked ? 'locked' : ''}" data-i="${i}" style="--pc:${p.css || '#555'}">
         <canvas width="60" height="75"></canvas>
@@ -46,6 +49,7 @@ export class PilotSelectScene {
     this.g.hud.innerHTML = `
       <div class="select">
         <div class="sel-title">SELECT PILOT<span>NEON PRECINCT · RAPID RESPONSE DIVISION</span></div>
+        <div class="sel-diff" style="--dc:${diff.color}">${diff.name} · SCORE ×${diff.scoreMul.toFixed(1)}</div>
         <div class="sel-grid">${tiles}</div>
         <div class="sel-main">
           <div class="sel-portrait"><canvas width="240" height="300"></canvas></div>
@@ -58,7 +62,7 @@ export class PilotSelectScene {
         <div class="sel-bio"></div>
         <div class="sel-abilities"></div>
         <div class="sel-tier"></div>
-        <div class="sel-hint"><b>←→↑↓</b> choose · <b>Z / ENTER</b> launch · <b>C</b> test range<br>SEED <b>${this.g.seed}</b></div>
+        <div class="sel-hint"><b>←→↑↓</b> choose · <b>Z / ENTER</b> launch · <b>C</b> test range · <b>ESC</b> difficulty<br>SEED <b>${this.g.seed}</b></div>
       </div>`;
     const root = this.g.hud;
     this.el = {
@@ -135,6 +139,7 @@ export class PilotSelectScene {
     if (inp.pressed('down')) i = (i + COLS) % n;
     if (i !== this.index) this._select(i);
 
+    if (inp.pressed('back')) { g.setScene(new DifficultySelectScene()); return; }
     const launch = inp.pressed('confirm'), test = inp.pressed('special');
     if (launch || test) {
       const p = ROSTER[this.index];

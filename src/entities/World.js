@@ -53,7 +53,8 @@ export class World {
     this._beamPool = [];
 
     this.player = null;
-    this.score = 0;
+    this._score = 0;
+    this.scoreMul = 1;      // difficulty score multiplier (applied to every gain)
     this.graze = 0;
     this.kills = 0;
     this.chain = 0;
@@ -68,6 +69,15 @@ export class World {
   }
 
   event(type, data) { if (this.onEvent) this.onEvent(type, data); }
+
+  // Score: every `score += n` gain is scaled by the difficulty multiplier.
+  get score() { return this._score; }
+  set score(v) {
+    const d = v - this._score;
+    this._score = d > 0 ? this._score + Math.round(d * this.scoreMul) : v;
+  }
+  /** Set the score without the multiplier (continues). */
+  setScoreRaw(v) { this._score = v; }
 
   setPlayer(def, opts) {
     this.player = new Player(this, def, opts);

@@ -23,8 +23,10 @@ export class Player {
     const r = world.r;
     this.x = this.px = WORLD_W / 2;
     this.y = this.py = WORLD_H - 70;
-    this.lives = opts.lives ?? 3;
-    this.bombs = def.bombStock;
+    this.lives = opts.lives ?? 3;      // spare ships in reserve
+    this.startLives = this.lives;
+    this.bombStock = opts.bombStock ?? def.bombStock; // per-life bomb refill (difficulty-adjusted)
+    this.bombs = this.bombStock;
     this.power = opts.power ?? 0;
     this.speedLevel = 0;
     this.state = 'alive';
@@ -253,7 +255,7 @@ export class Player {
     const lost = Math.min(this.power, 50);
     this.power -= lost;
     for (let k = 0; k < Math.ceil(lost / 25) + 1; k++) w.spawnItem('P', this.x, this.y - 20, 2);
-    this.bombs = Math.max(this.bombs, this.def.bombStock);
+    this.bombs = Math.max(this.bombs, this.bombStock);
     this.specialCd = 0;
     this.specialT = 0;
     this.ps.moveLock = false;
@@ -271,10 +273,10 @@ export class Player {
 
   /** Continue after game over. */
   continueGame() {
-    this.lives = 2;
+    this.lives = this.startLives;
     this.state = 'dead';
     this.stateT = 10;
-    this.bombs = this.def.bombStock;
+    this.bombs = this.bombStock;
   }
 
   _updateOptions() {
