@@ -1,6 +1,10 @@
-# NEON PRECINCT: OVERDRIVE — Build Prompt (v2)
+# NEON PRECINCT: OVERDRIVE — Build Prompt (v3)
 
-> **v2 changes:** six boss archetypes with per-phase arenas, Legendary pilot Vincenzo the Conqueror, and difficulty select. Full details are in `UPDATE_01_BEFORE_M4.md`, which takes priority if anything here conflicts.
+> **v2 changes:** six boss archetypes with per-phase arenas, Legendary pilot Vincenzo the Conqueror, and difficulty select. Full details are in `UPDATE_01_BEFORE_M4.md`.
+>
+> **v3 changes:** world and lore (New Meridian, the Breach), six syndicate factions under the Undercrown, art direction bible, animation standards, and new milestone M4d. Full details are in `UPDATE_02_WORLD_LORE_ART.md`.
+>
+> **Priority if anything conflicts:** UPDATE_02 > UPDATE_01 > this file.
 
 ## Role
 
@@ -24,7 +28,14 @@ Build **"NEON PRECINCT: OVERDRIVE,"** an original futuristic vertically scrollin
 
 ---
 
+## 0. World & Lore
+
+New Meridian, a layered megacity in 2189, is torn open by **the Breach**, a failed Helix Dynamics experiment that lets an alien hive in from above and abyssal entities in from below. Six syndicates unite as **the Undercrown**: the Ironclad Brotherhood (ground), the Stratos Cartel (aerial), the Black Tide (sea), Helix Dynamics (mecha), the Choir of the Outer Star (extraterrestrial), and the Drowned Covenant (abyssal). Overdrive Precinct's 16 pilots, joined by the legendary Vincenzo, fight back one night per loop. Full lore, factions, biomes, and data formats: `UPDATE_02_WORLD_LORE_ART.md` Sections 1–3.
+
 ## 1. Visual Direction (must look premium and futuristic)
+
+See `UPDATE_02_WORLD_LORE_ART.md` Sections 4–5 for the full art direction bible (top-down detailed mechanical style, greeble generator, boss scale, bullet language, player firing concepts, HUD, and animation states).
+
 
 - **Aesthetic:** neon-noir megacity with wet chrome, holographic billboards, volumetric light shafts, rain, and heat haze.
 - **Parallax:** multiple layers (deep skyline, mid-level traffic lanes, foreground structures). Mix 2.5D perspective tilt with flat sprite layers.
@@ -136,7 +147,7 @@ Work in milestones. After each milestone, make sure the game runs without errors
 | **M1** ✅ | Engine core: loop, input, rendering, pooling, collision, camera, post-FX |
 | **M2** ✅ | Player system + 4 pilots fully playable |
 | **M3** ✅ | Enemy AI, bullet-pattern library, procedural stage generator |
-| **M4** | 4a: difficulty system + select screen. 4b: boss framework with per-phase arenas, damage flags, safe defeat routing. 4c: one boss per each of the 6 archetypes |
+| **M4** | 4a ✅ difficulty system. 4b ✅ boss framework. 4c (in progress): one boss per each of the 6 archetypes. 4d: world and faction pass |
 | **M5** | Remaining 12 standard pilots + Vincenzo (Legendary), ultimates, cut-ins |
 | **M6** | Audio engine and adaptive music |
 | **M7** | UI, scoring, polish, performance tuning |
@@ -149,4 +160,4 @@ Work in milestones. After each milestone, make sure the game runs without errors
 - Keep a `PROGRESS.md` file updated with completed milestones, known issues, and next steps, so work can resume cleanly in a new session.
 - Stop at a clean checkpoint after each milestone and wait for my confirmation before continuing.
 
-**M1–M3 are complete. Apply `UPDATE_01_BEFORE_M4.md`, verify M3 still works, then start M4a.**
+**Current state: M4c in progress. Apply `UPDATE_02_WORLD_LORE_ART.md`, finish M4c, then start M4d.**

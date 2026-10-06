@@ -10,11 +10,29 @@
 | **M4a** | Difficulty config + difficulty select screen, hooked into M3 | ✅ Done |
 | **M4b** | Boss framework: arena mode, per-phase arena transitions, damage flags, safe defeat routing | ✅ Done |
 | **M4c** | One complete boss for each of the 6 archetypes (5 authored phases + unique arenas each) | ✅ Done |
-| M5 | Remaining 12 standard pilots + **Vincenzo (Legendary)**, ultimates, cut-ins | ⏳ Next |
-| M6 | Audio engine and adaptive music (per-phase layers, archetype themes) | — |
+| **M4d** | World & faction pass: lore/faction data, greeble generator, faction enemy variants, 2 new biomes, intro cards + loop lines, boss visual retrofit | ⏳ In progress |
+| M5 | Remaining 12 standard pilots + **Vincenzo (Legendary)** with the §4.6 firing concepts, ultimates, cut-ins | — |
+| M6 | Audio engine and adaptive music (per-phase layers, archetype themes, a musical identity per faction) | — |
 | M7 | UI, scoring, polish, performance tuning | — |
 
-> **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v2) and [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md). Where they disagree, UPDATE_01 wins.
+> **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
+
+## Update 02 applied (after M4c)
+
+- **Specs saved:** `docs/UPDATE_02_WORLD_LORE_ART.md`; the build prompt in `docs/` is now v3.
+- **Adds:** the world of New Meridian and the Breach, six Undercrown factions, the art direction bible (§4), animation standards (§5) and the new **M4d** milestone.
+- **M4c steps skipped.** All six bosses were finished before this update, so the "finish the current boss" steps in §0/§6 don't apply. Following §0.5, their visual retrofit happens in M4d.
+- **Ground rules carried into M4d:**
+  - No renames of bosses, enemies, patterns, files or IDs.
+  - No changes to boss HP, phase logic, patterns, transitions or damage flags.
+  - Lore and faction content lives in new data files that existing systems read through small additive hooks.
+- **Verified right after applying the update**, before any M4d code (headless Chrome, software GL, no console errors):
+  - The M3 regression suite passes unchanged:
+    - difficulty select → pilot → stage;
+    - Medium reproduces the M3 numbers;
+    - the same seed gives the same waves on every difficulty;
+    - waves → mid-boss → boss → tally → stage 2.
+  - All six M4c bosses run every phase on Extreme (5 phases) through the death sequence to the tally.
 
 ## Update 01 applied (before M4)
 
