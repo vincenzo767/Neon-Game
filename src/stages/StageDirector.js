@@ -1,11 +1,15 @@
 import { WORLD_W } from '../core/constants.js';
 import { spawnEnemy } from '../entities/enemies/index.js';
+import { spawnArenaBoss } from '../bosses/index.js';
 
 // Runs a generated stage plan on a World, step by step:
 //   intro (banner) → wave sets (timed spawns; a set ends when it is
 //   cleared or times out) → mid-boss → waves → boss → tally.
 // Communicates with the scene purely through world events:
 //   stageIntro, warning, bossIntro, bossDown, bossEscape, tally
+// Boss arena mode (M4b): a boss section with an `arena` spec spawns a
+// data-driven boss (bosses/) and brackets it with arenaEnter / arenaExit,
+// so the scene hands the background layers to the boss arena and back.
 
 const INTRO_STEPS = 160;
 const SET_GAP = 70;
@@ -102,8 +106,10 @@ export class StageDirector {
     const w = this.w;
     if (!this.bossE) {
       if (this.t >= WARNING_STEPS[s.type]) {
-        this.bossE = spawnEnemy(w, s.id, WORLD_W / 2, -90);
+        this.bossE = s.arena ? spawnArenaBoss(w, s.arena) : spawnEnemy(w, s.id, WORLD_W / 2, -90);
         this.bossT = 0;
+        this.bossCtrl = s.arena ? this.bossE.ctrl : null;
+        if (s.arena) w.event('arenaEnter', this.bossCtrl);
         w.event('bossIntro', this.bossE);
       }
       return;
@@ -116,6 +122,7 @@ export class StageDirector {
         this.bossDownT = killed ? 150 : 40;
         if (w.boss === e) w.boss = null;
         w.event(killed ? 'bossDown' : 'bossEscape', { e, type: s.type });
+        if (s.arena) w.event('arenaExit', this.bossCtrl);
       } else if (s.type === 'midboss' && this.bossT > MIDBOSS_TIMEOUT && e.data.ph === 1) {
         e.data.ph = 2; // retreat (hover mover exit phase)
         e.untargetable = true;

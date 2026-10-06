@@ -6,6 +6,7 @@ import { Particles, FADE_OUT } from '../fx/Particles.js';
 import { Explosions } from '../fx/Explosions.js';
 import { Player } from './Player.js';
 import { KIND_SPLIT, splitBullet } from '../patterns/index.js';
+import { DMG_IGNORES_SHIELDS, DMG_INSTANT } from '../core/damage.js';
 
 // The gameplay world: every live object of a play session plus the API that
 // pilots, enemies and scenes use to interact (damage, cancel, beams, items).
@@ -112,10 +113,10 @@ export class World {
   }
 
   /** Register a damaging beam for this step only (re-declare every step). */
-  beam(x0, y0, x1, y1, width, damage, rgb, add = 1) {
+  beam(x0, y0, x1, y1, width, damage, rgb, add = 1, flags = 0) {
     const b = this._beamPool.pop() || {};
     b.x0 = x0; b.y0 = y0; b.x1 = x1; b.y1 = y1;
-    b.w = width; b.dmg = damage; b.rgb = rgb; b.add = add;
+    b.w = width; b.dmg = damage; b.rgb = rgb; b.add = add; b.flags = flags;
     this.beams.push(b);
     return b;
   }
@@ -126,7 +127,7 @@ export class World {
     e.score = 100; e.ult = 1.5; e.blast = 0.7; e.drops = null; e.ai = null; e.f = null;
     e.untargetable = false; e.glow = null; e.lastBomb = -1; e.onDeath = null; e.data = {};
     e.ground = false; e.f2 = null; e.rot2 = 0; e.elite = false; e.armor = 1; e.entered = false;
-    e.boss = false; e.def = null; e.name = '';
+    e.boss = false; e.def = null; e.name = ''; e.onDamage = null; e.ctrl = null;
     Object.assign(e, props);
     e.maxHp = e.hp;
     this.spawned++;
@@ -145,9 +146,19 @@ export class World {
 
   // ------------------------------------------------------------ damage API
 
-  damage(e, dmg) {
+  /** `flags`: core/damage.js bitmask. Main bosses resolve them in e.onDamage (bosses/BossController). */
+  damage(e, dmg, flags = 0) {
     if (!e.alive || e.untargetable) return;
-    e.hp -= dmg * e.armor;
+    let armor = e.armor;
+    if (e.onDamage) {
+      dmg = e.onDamage(e, dmg, flags, this);
+      if (!(dmg > 0)) return;
+      armor = 1;
+    } else if (flags & DMG_INSTANT) {
+      dmg = Math.max(dmg, e.hp);
+      armor = 1;
+    } else if (flags & DMG_IGNORES_SHIELDS && armor < 1) armor = 1;
+    e.hp -= dmg * armor;
     e.flash = 2;
     this.score += Math.ceil(dmg * 2);
     if (e.hp <= 0) this.killEnemy(e);
@@ -169,22 +180,22 @@ export class World {
     this.event('kill', e);
   }
 
-  damageCircle(x, y, r, dmg) {
+  damageCircle(x, y, r, dmg, flags = 0) {
     for (const e of this.enemies.active) {
       if (!e.alive || e.untargetable) continue;
       const dx = e.x - x, dy = e.y - y, rr = r + e.r;
-      if (dx * dx + dy * dy < rr * rr) this.damage(e, dmg);
+      if (dx * dx + dy * dy < rr * rr) this.damage(e, dmg, flags);
     }
   }
 
   /** Damage enemies near a segment. `once` (a bomb id) prevents repeat hits. */
-  damageLine(x0, y0, x1, y1, width, dmg, once = -1) {
+  damageLine(x0, y0, x1, y1, width, dmg, once = -1, flags = 0) {
     for (const e of this.enemies.active) {
       if (!e.alive || e.untargetable || e.y < -20) continue;
       if (once >= 0 && e.lastBomb === once) continue;
       if (segDist2(e.x, e.y, x0, y0, x1, y1) < (width + e.r) ** 2) {
         if (once >= 0) e.lastBomb = once;
-        this.damage(e, dmg);
+        this.damage(e, dmg, flags);
       }
     }
   }
@@ -313,7 +324,7 @@ export class World {
 
   _flakBurst(i) {
     const S = this.shots, x = S.x[i], y = S.y[i], r = S.aux[i] || 24;
-    this.damageCircle(x, y, r, S.damage[i]);
+    this.damageCircle(x, y, r, S.damage[i], S.dflags[i]);
     const H = this.fxHigh, R = this.fxRng;
     let k = H.spawn(this.F.glow, x, y, 0, 0, 8);
     if (k >= 0) { H.size(k, r * 1.6, r * 2.2); H.color(k, 2, 1.1, 0.4, 1.2, 0.3, 0.05); H.look(k, 0.7, 1); }
@@ -382,7 +393,7 @@ export class World {
         const dx = en.x - sx, dy = en.y - sy, rr = en.r + sr;
         if (dx * dx + dy * dy >= rr * rr) continue;
         if (S.kind[i] === SHOT_FLAK) { this._flakBurst(i); consumed = true; break; }
-        this.damage(en, S.damage[i]);
+        this.damage(en, S.damage[i], S.dflags[i]);
         if (!S.pierce[i]) {
           this.explosions.hitSpark(sx, sy - 4, Math.PI / 2, [0.6, 0.9, 1]);
           consumed = true;
@@ -400,7 +411,7 @@ export class World {
       for (const e of E) {
         if (!e.alive || e.untargetable || e.y < -10) continue;
         if (segDist2(e.x, e.y, b.x0, b.y0, b.x1, b.y1) < (b.w * 0.5 + e.r) ** 2) {
-          this.damage(e, b.dmg);
+          this.damage(e, b.dmg, b.flags);
           if ((this.t & 3) === 0) this.explosions.hitSpark(e.x + this.fxRng.range(-6, 6), e.y + e.r * 0.6, Math.PI / 2, b.rgb);
         }
       }

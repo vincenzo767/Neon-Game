@@ -193,7 +193,9 @@ export class PlayScene {
     this.parallax.renderBack(b, alpha, t);
     w.renderGround(b, alpha);
     this.parallax.renderFore(b, alpha, t);
+    if (this.renderUnderlay) this.renderUnderlay(b, alpha, t); // boss arena layers (StageScene)
     w.renderMid(b, alpha);
+    if (this.renderOverlay) this.renderOverlay(b, alpha, t);
     this.parallax.renderStreaks(b, alpha);
     w.renderTop(b, alpha);
   }

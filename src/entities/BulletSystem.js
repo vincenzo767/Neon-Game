@@ -36,6 +36,7 @@ export class BulletSystem {
     this.aux = new F(capacity);        // kind-specific (e.g. flak burst radius)
     this.pierce = new Uint8Array(capacity);
     this.kind = new Uint8Array(capacity);
+    this.dflags = new Uint8Array(capacity); // damage flags (core/damage.js)
     this.ref = new Array(capacity).fill(null); // kind-specific spec (e.g. split child pattern)
     this.spawnedTotal = 0;
     /** Optional callback(i) when a bullet reaches maxAge (before removal). */
@@ -71,6 +72,7 @@ export class BulletSystem {
     this.aux[i] = 0;
     this.pierce[i] = 0;
     this.kind[i] = 0;
+    this.dflags[i] = 0;
     this.ref[i] = null;
     this.spawnedTotal++;
     return i;
@@ -150,6 +152,7 @@ export class BulletSystem {
     this.grazed[i] = this.grazed[j]; this.dyn[i] = this.dyn[j];
     this.maxAge[i] = this.maxAge[j]; this.homing[i] = this.homing[j];
     this.aux[i] = this.aux[j]; this.pierce[i] = this.pierce[j]; this.kind[i] = this.kind[j];
+    this.dflags[i] = this.dflags[j];
     this.ref[i] = this.ref[j];
   }
 

@@ -1,0 +1,38 @@
+/* Boss arena mode (M4b): "PHASE N — NAME" card shown at each phase change. */
+
+.phase-card {
+  position: absolute; left: 0; right: 0; top: 30%;
+  display: flex; flex-direction: column; align-items: center; gap: calc(3 * var(--u));
+  pointer-events: none;
+  animation: pcIn 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2), pcOut 0.4s ease-in 2s forwards;
+}
+.phase-card::before {
+  content: ''; position: absolute; left: -5%; right: -5%; top: calc(-6 * var(--u)); bottom: calc(-6 * var(--u));
+  background: linear-gradient(90deg, transparent, rgba(4, 2, 12, 0.78) 18%, rgba(4, 2, 12, 0.78) 82%, transparent);
+  border-top: 1px solid rgba(255, 90, 140, 0.6); border-bottom: 1px solid rgba(255, 90, 140, 0.6);
+  z-index: -1;
+}
+.phase-card small {
+  font-size: calc(6.5 * var(--u)); letter-spacing: 0.4em; color: #ff8aa8; opacity: 0.85;
+}
+.phase-card b {
+  font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: calc(17 * var(--u)); letter-spacing: 0.18em;
+  color: #ffe2ea; text-shadow: 0 0 calc(8 * var(--u)) #ff2060, 0 0 calc(22 * var(--u)) #ff2060;
+  white-space: nowrap;
+}
+.pc-pips { display: flex; gap: calc(3 * var(--u)); margin-top: calc(1 * var(--u)); }
+.pc-pips i {
+  width: calc(16 * var(--u)); height: calc(3 * var(--u)); transform: skewX(-20deg);
+  background: rgba(255, 255, 255, 0.15);
+}
+.pc-pips i.done { background: rgba(255, 90, 140, 0.35); }
+.pc-pips i.on { background: #ff3a70; box-shadow: 0 0 calc(6 * var(--u)) #ff3a70; animation: blink 0.3s steps(2) 4; }
+
+.phase-card.desperation b {
+  color: #fff0f0; text-shadow: 0 0 calc(6 * var(--u)) #ff0000, 0 0 calc(26 * var(--u)) #ff2000;
+  animation: hellShake 0.25s steps(3) infinite;
+}
+.phase-card.desperation::before { border-color: #ff2020; background: linear-gradient(90deg, transparent, rgba(30, 0, 0, 0.85) 18%, rgba(30, 0, 0, 0.85) 82%, transparent); }
+
+@keyframes pcIn { from { opacity: 0; transform: scaleX(1.6) scaleY(0.2); } to { opacity: 1; transform: none; } }
+@keyframes pcOut { to { opacity: 0; transform: translateY(calc(-8 * var(--u))); } }

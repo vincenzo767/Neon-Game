@@ -2,6 +2,7 @@ import { RNG } from '../core/RNG.js';
 import { BIOMES } from './biomes.js';
 import { TEMPLATES } from './waves.js';
 import { getDifficulty } from '../core/difficulty.js';
+import { bossForStage } from '../bosses/index.js';
 
 // Procedural stage generator. Everything derives from (runSeed, stageIndex)
 // so a seed reproduces the exact same infinite sequence of stages.
@@ -107,7 +108,8 @@ export function generateStage(seed, index, difficultyId = 'medium') {
       { type: 'waves', sets: buildSets(R, R.int(3, 5), biome, index, diff, budget) },
       { type: 'midboss', id: 'gatekeeper' },
       { type: 'waves', sets: buildSets(R, R.int(2, 3), biome, index, diff, budget * 1.1) },
-      { type: 'boss', id: 'syndicateCore' },
+      // `arena`: main boss from the archetype rotation (M4b boss arena mode).
+      { type: 'boss', id: 'syndicateCore', arena: bossForStage(seed, index) },
       { type: 'tally' },
     ],
   };

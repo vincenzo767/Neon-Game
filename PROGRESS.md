@@ -8,8 +8,8 @@
 | **M2** | Player system + 4 pilots fully playable | ✅ Done |
 | **M3** | Enemy AI, bullet-pattern library, procedural stage generator | ✅ Done |
 | **M4a** | Difficulty config + difficulty select screen, hooked into M3 | ✅ Done |
-| M4b | Boss framework: arena mode, per-phase arena transitions, damage flags, safe defeat routing | ⏳ Next |
-| M4c | One complete boss for each of the 6 archetypes (5 authored phases + unique arenas each) | — |
+| **M4b** | Boss framework: arena mode, per-phase arena transitions, damage flags, safe defeat routing | ✅ Done |
+| M4c | One complete boss for each of the 6 archetypes (5 authored phases + unique arenas each) | ⏳ Next |
 | M5 | Remaining 12 standard pilots + **Vincenzo (Legendary)**, ultimates, cut-ins | — |
 | M6 | Audio engine and adaptive music (per-phase layers, archetype themes) | — |
 | M7 | UI, scoring, polish, performance tuning | — |
@@ -61,6 +61,69 @@
 - **The difficulty is shown** as a HUD badge, on pilot select, in the tally and in the pause seed line. High scores are saved per difficulty (the full table with pilot + seed + difficulty comes in M7).
 - The test range uses the chosen difficulty's lives, bombs and score rate but never saves a hi-score.
 
+## M4b — Boss framework
+
+**Existing files touched (all additive hooks, as UPDATE_01 §0 allows):**
+
+| File | Change | Why |
+|---|---|---|
+| [entities/World.js](src/entities/World.js) | `damage(e, dmg, flags)`, plus an optional `flags` on `damageCircle`, `damageLine` and `beam`. Shot, beam and flak collisions pass their flags. The `e.onDamage` intercept hook is added, and the pool now resets `onDamage`/`ctrl`. | §2.6 damage flags |
+| [entities/BulletSystem.js](src/entities/BulletSystem.js) | `dflags` per shot (set to 0 on spawn, swapped on remove) | lets player shots carry flags (Vincenzo, M5) |
+| [stages/StageGen.js](src/stages/StageGen.js) | boss section gets `arena: bossForStage(seed, index)` | rotation; no extra RNG draws, so waves are unchanged |
+| [stages/StageDirector.js](src/stages/StageDirector.js) | spawns the arena boss, emits `arenaEnter` / `arenaExit` | §1.3 arena-mode switch |
+| [scenes/PlayScene.js](src/scenes/PlayScene.js) | optional `renderUnderlay` / `renderOverlay` render hooks | arena layers go under entities |
+| [scenes/StageScene.js](src/scenes/StageScene.js) | owns the Arena; handles boss events, the phase card, the intro subtitle and dev keys | presentation |
+| [main.js](src/main.js) | `boss.css` import, dev exports | — |
+
+**New modules in [src/bosses/](src/bosses/):**
+- **[BossController](src/bosses/BossController.js)** is the runtime for a data-driven boss (shape from UPDATE_01 §1.4). States: `enter → fight ⇄ transition → dying`.
+  - The boss is one World enemy whose HP is the sum of its phases. Phase boundaries are HP floors, and damage never crosses one: the overflow is dropped and the phase ends. The HUD bar shows one segment per phase.
+  - **Phase filtering by difficulty:** 3 phases keep authored phases 1, 3, 5; 4 keep 1, 2, 4, 5; 5 keep all. A boss can override this with `phaseSets`. Hell appends a **desperation** phase (`def.desperation`, or one derived from the last phase).
+  - **Transition (~2.4 s):** bullets become score stars, the boss turns invulnerable and plays its transform shudder, the arena crossfades (step 18), the `PHASE N — NAME` card appears (step 88), the music layer switches (step 104), and the boss is vulnerable again (step 144).
+  - Phase-break bonus is 5,000 × phase × Mk. A phase that lasts 75 s ends without its bonus, so there are no softlocks.
+  - **Multi-stage death:** a chain of hull blasts, then a core breach, then `World.killEnemy`, which awards score and medals and lets the director advance as in M3. `deathSequence` can be `chain_explode` (default), `sink_and_explode` or `spin_out`.
+  - **Movement** styles: hover, sweep, figure8, center.
+  - **Patterns:** `phase.patterns` names call into the boss's own `attacks` table with `(ctrl, world, phaseStep)`.
+- **[Damage flags](src/core/damage.js):** a bitmask, built with `dmgFlags({...})`.
+  - `ignoresShields`: hits through armour < 1 and boss shields (e.g. a submerged dive). It does not hit during a phase transition, because no phase is active then.
+  - `instantKill`: destroys any enemy. A main boss is defeated through the normal defeat path, even during its fly-in or a transition; the scene is told to snap the arena (`bossTransitionCancel`) first.
+  - `instantPhaseClear`: ends a main boss's current phase, so the transition still plays. Any other enemy, mid-bosses included, is destroyed.
+- **[Arena](src/bosses/Arena.js)** runs arena mode and owns the background layers while a main boss is up.
+  - Colours and scroll speed blend smoothly. The shader mode and parallax set swap at the transition midpoint, when the screen is fully covered.
+  - Arena-only layers: a tint wash, a darkness veil (bullets stay lit), and ambient searchlights, aurora, snow, bubbles, ash and glyphs.
+  - On defeat it fades back to the stage biome, and the stage continues to the tally as in M3.
+- **[Arena themes](src/bosses/arenas.js)** are built from the same procedural pieces as biomes. A phase's `arena: { theme, palette, weather, particles, scrollSpeed, tint, darkness }` overrides its theme. 9 themes so far: `highway_burning`, `harbor_night`, `storm_front`, `underwater_trench`, `data_core`, `molten_floor`, `orbit_edge`, `arctic_sea`, `void_black`.
+- **[Transitions](src/bosses/transitions.js):** `flash`, `fade`, `screen_tear`, `water_flood`, `warp_tunnel`, `darkness_swallow`, `armor_break`.
+- **[ScoreStars](src/bosses/ScoreStars.js)** converts every bullet into up to 320 gold stars that home onto the player and pay 20 points per bullet.
+- **[Rotation](src/bosses/index.js)** deals bosses from seeded **decks of all 6 archetypes**, one deck per 6 stages.
+  - Every archetype appears once per deck before any repeat.
+  - A deck never opens with the archetype that closed the previous one.
+  - Deck *k* fields **Mk. (k+1)**, capped at III. Mk raises HP (+35% per Mk), score, medals, pattern rate, and adds a 1UP drop from Mk. II.
+  - Interpretation: loops are 5 stages and there are 6 archetypes, so "all six per loop" is implemented as all six per 6-stage deck.
+- **Framework test boss:** [SYNDICATE CORE PROTOTYPE](src/bosses/test/prototype.js), 5 authored phases:
+
+  | Phase | Arena | Transition | Notes |
+  |---|---|---|---|
+  | Core Ignition | burning highway | flash | |
+  | Storm Wall | storm front | screen tear | |
+  | Deep Current | sonar trench | water flood | shielded dive cycle |
+  | Data Lattice | data core | warp tunnel | |
+  | Event Horizon | black void | darkness swallow | |
+
+  Hell adds the **Last Light** desperation phase. Until M4c, the prototype fills every archetype slot. The intro card shows which slot ("… · EXTRATERRESTRIAL SLOT · 3 PHASES").
+- Music layers are recorded by an [audio/music.js](src/audio/music.js) stub (`setLayer`) that M6 replaces.
+
+**Verified** (headless Chrome, software GL, no console errors):
+- Standard runs 3 phases (1 → 3 → 5) with correct cards; Hell runs 6 (5 + desperation).
+- Bullets are converted to stars at each phase break (e.g. 174 bullets → 177 stars, including bullets from late split shots).
+- The arena hands back after defeat: mode, palette and scroll speed are restored. The tally and stage 2 follow.
+- Instant kill during the fly-in, instant kill mid-transition (transition cancelled, card removed) and a chain of phase clears all end in the death sequence and the tally.
+- A shield blocks plain damage (0) but not `ignoresShields` (full).
+- `instantPhaseClear`/`instantKill` destroy regular enemies, including through a flagged player shot. `ignoresShields` bypasses armour.
+- Rotation: no back-to-back repeats over 8 seeds × 60 stages, and every deck holds all 6.
+- M3 regression on Standard is identical: same numbers and waves, and waves → mid-boss → boss → tally → stage 2.
+- Each transition effect was captured frame-frozen at its peak.
+
 ## Run
 
 ```
@@ -80,6 +143,8 @@ Flow right now:
 - `__npo.turbo = n` runs n extra simulation steps per frame (fast-forward)
 - `__npoDev.spawnEnemy(world, id, x, y, params, elite)` spawns an enemy
 - `__npoDev.generateStage(seed, i)` returns a stage plan
+- `__npoDev.bossForStage(seed, i)` / `archetypeDeck(seed, k)` show the boss rotation; `__npoDev.dmgFlags({...})` builds a flags mask
+- In-game, dev server only: **B** skips to the main boss, **N** lands a phase-clear hit, **M** lands an instant-kill hit
 
 ## Controls
 
@@ -192,7 +257,8 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 
 ## Known issues / notes
 
-- Bosses are placeholders until M4 (real Ground Tank / Aerial / Mecha bosses with breakable parts, multi-stage deaths and Mk. II/III variants).
+- Main bosses run on the M4b framework, but only the framework prototype exists. The six archetype bosses (and breakable parts) come in M4c. The mid-boss is still the M3 Gatekeeper.
+- Arena themes reuse the six biome shader modes. M4c themes that these can't express (desert, cathedral, mothership interior, crystal planet, nebula, inside the creature) will need arena-specific shader modes. They would go in a new background module under `src/bosses/` so the M1 Background stays untouched.
 - Stage-to-stage biome change is an instant swap behind the tally overlay (no crossfade yet).
 - Readability check per biome done visually (harbor water and foundry lava were toned down). It still needs a real-GPU playtest for pacing and difficulty.
 - Balance is first-pass only: DPS per pilot, ultimate charge rates, and item drop rates. Tune in M7.
@@ -209,26 +275,20 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 
   Real-GPU FPS hasn't been measured in this environment.
 
-## Next steps (M4b — boss framework)
 
-Per UPDATE_01 §1 and §2.6:
+## Next steps (M4c — six archetype bosses)
 
-1. A boss framework in `src/bosses/`, data-driven to the §1.4 shape. Each boss has:
-   - 5 authored phases, each with its own HP, arena, transition FX, patterns and music-layer id
-   - breakable parts with their own HP that drop medals
-   - a death sequence
+Per UPDATE_01 §1.1, §1.2 and §1.5, all built on the M4b framework:
 
-   The runtime phase count comes from `world.diff.bossPhases`, plus a desperation phase on Hell.
-2. **Arena mode:** when the main boss spawns, StageDirector hands the background/parallax to the boss arena, and gets it back on defeat. This is an additive switch; the stage generator otherwise runs exactly as in M3.
-3. **Phase transition sequence** (~2–3 s):
-   1. bullets are converted to score items
-   2. the boss is invulnerable and plays its transition animation
-   3. the arena crossfades with a themed effect
-   4. a "PHASE N — NAME" card appears
-   5. a music-layer event fires (consumed in M6)
-   6. the boss becomes vulnerable again
+1. One boss per archetype, each with **5 authored phases**, a **unique arena per phase**, and a themed transition into each:
+   - Ground Tank: Colossus Crawler
+   - Aerial: Skywarden Carrier
+   - Sea: Leviathan Dreadnought
+   - Mecha: Titan Enforcer
+   - Extraterrestrial: Hive Sovereign
+   - Abyssal: Maw of the Deep Below
 
-   The HP bar gets one segment per phase.
-4. **Damage flags** on the existing damage path: `ignoresShields`, `instantKill`, `instantPhaseClear`. Every instant defeat goes through the normal defeat path (death animation, score/medals, arena hand-back, tally). A defeat during a transition finishes or safely cancels the transition first.
-5. **Archetype rotation:** no repeats back-to-back, and all six appear in each loop before any repeats (seeded).
-6. **Mk. II / Mk. III** variants by loop.
+   Each boss gets its signature mechanics from §1.1 and procedural art.
+2. **Breakable parts** (turrets, cannons, eyes) with their own HP and hitboxes that drop medals, attached to the controller.
+3. Archetype-specific **death sequences** and **Mk. II / III** pattern variants (extra layers keyed on `ctrl.mk`).
+4. New arena themes, plus an arena background module for the scenes the six biome shaders can't express.

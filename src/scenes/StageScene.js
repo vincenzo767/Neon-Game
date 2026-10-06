@@ -1,6 +1,10 @@
 import { PlayScene } from './PlayScene.js';
 import { StageDirector } from '../stages/StageDirector.js';
 import { generateStage } from '../stages/StageGen.js';
+import { Arena } from '../bosses/Arena.js';
+import { ARCHETYPE_LABEL } from '../bosses/index.js';
+import { music } from '../audio/music.js';
+import { DMG_IGNORES_SHIELDS, DMG_INSTANT_KILL, DMG_INSTANT_PHASE_CLEAR } from '../core/damage.js';
 
 // The main game: an endless sequence of procedurally generated stages.
 // The run is fully determined by the seed (game.seed) plus player input.
@@ -23,7 +27,15 @@ export class StageScene extends PlayScene {
       g.camera.addTrauma(0.05);
     };
     this.tallyState = null;
+    // Boss arena mode: owns the background layers while a main boss is up.
+    this.arena = new Arena(g, this.world, this.parallax);
     this.beginStage(this.startStage);
+  }
+
+  exit() {
+    this.arena.reset();
+    music.setLayer(null);
+    super.exit();
   }
 
   restartScene() { this.g.setScene(new StageScene(this.def)); }
@@ -31,6 +43,8 @@ export class StageScene extends PlayScene {
   beginStage(index) {
     const g = this.g, w = this.world;
     this.stageIndex = index;
+    this.arena.reset();
+    music.setLayer(null);
     this.plan = generateStage(g.seed, index, this.diffCfg.id);
     g.renderer.background.setBiome(this.plan.biome.bg);
     this.parallax.setStyle(this.plan.biome);
@@ -55,7 +69,14 @@ export class StageScene extends PlayScene {
       }
       case 'warning': this._warning(data.boss); break;
       case 'bossIntro': {
-        const e = data;
+        const e = data, c = e.ctrl;
+        if (c) {
+          // Named intro card: archetype class (or the slot a prototype stands in for) + phase count.
+          const label = ARCHETYPE_LABEL[c.archetype] || '';
+          const cls = c.def.archetype === c.archetype ? `${label} CLASS` : `${c.def.title || 'PROTOTYPE'} · ${label} SLOT`;
+          this.banner(e.name, `${cls} · ${c.total} PHASES`, 130, 'boss');
+          break;
+        }
         this.banner(e.name, data.def.boss && this.director.section.type === 'boss' ? 'SYNDICATE COMMAND UNIT' : 'MID-BOSS', 120, 'boss');
         break;
       }
@@ -66,6 +87,26 @@ export class StageScene extends PlayScene {
         this.world.autoCollect = 180;
         break;
       case 'bossEscape': this.banner('TARGET ESCAPED', 'NO BONUS', 90); break;
+      // ---- boss arena mode (bosses/BossController + bosses/Arena)
+      case 'arenaEnter':
+        this.arena.enter(this.plan.biome);
+        data.stars = this.arena.stars; // phase breaks convert bullets into score stars
+        break;
+      case 'bossArena': this.arena.transitionTo(data.arena, data.fx, data.dur); break;
+      case 'bossPhaseCard': this._phaseCard(data); break;
+      case 'bossMusic': music.setLayer(data.layer); break;
+      case 'bossPhaseClear':
+        if (data.bonus) this.hud.toast(`PHASE BREAK +${Math.round(data.bonus * this.diffCfg.scoreMul).toLocaleString('en-US')}`, 'gold');
+        else if (data.reason === 'timeout') this.hud.toast('PHASE TIMED OUT', 'red');
+        break;
+      case 'bossTransitionCancel':
+        this.arena.finish();
+        this._removePhaseCard();
+        break;
+      case 'arenaExit':
+        this.arena.exit();
+        music.setLayer(null);
+        break;
       case 'tally': this._showTally(data); break;
     }
   }
@@ -121,10 +162,59 @@ export class StageScene extends PlayScene {
     }
   }
 
+  // ------------------------------------------------------------ boss arena
+
+  _phaseCard(d) {
+    this._removePhaseCard();
+    const el = document.createElement('div');
+    el.className = `phase-card${d.desperation ? ' desperation' : ''}`;
+    const pips = Array.from({ length: d.total }, (_, i) => `<i class="${i < d.number - 1 ? 'done' : i === d.number - 1 ? 'on' : ''}"></i>`).join('');
+    el.innerHTML = `<small>${d.boss}</small><b>${d.desperation ? 'FINAL' : `PHASE ${d.number}`} — ${d.name}</b><div class="pc-pips">${pips}</div>`;
+    this.fxLayer.appendChild(el);
+    this.phaseCardEl = el;
+    el.timer = setTimeout(() => el.remove(), 2400);
+  }
+
+  _removePhaseCard() {
+    const el = this.phaseCardEl;
+    if (!el) return;
+    clearTimeout(el.timer);
+    el.remove();
+    this.phaseCardEl = null;
+  }
+
+  renderUnderlay(b, alpha, t) { this.arena.renderUnder(b, alpha, t); }
+  renderOverlay(b, alpha) { this.arena.renderOver(b, alpha); }
+
+  /** Dev (vite dev server only): B = skip to the boss, N = phase-clear hit, M = instant-kill hit. */
+  _devBossKeys() {
+    if (!import.meta.env.DEV) return;
+    const inp = this.g.input, w = this.world, d = this.director;
+    if (inp.keyPressed('KeyB') && !this.tallyState) {
+      const idx = this.plan.sections.findIndex((s) => s.type === 'boss');
+      if (d.si < idx) {
+        for (const e of w.enemies.active) e.alive = false;
+        w.cancelAll();
+        w.clearLasers();
+        d.si = idx - 1;
+        d._next();
+        this.banner('DEV: BOSS', 'SKIPPED TO MAIN BOSS', 60);
+      }
+    }
+    if (w.boss && inp.keyPressed('KeyN')) w.damage(w.boss, 1, DMG_IGNORES_SHIELDS | DMG_INSTANT_PHASE_CLEAR);
+    if (w.boss && inp.keyPressed('KeyM')) w.damage(w.boss, 1, DMG_IGNORES_SHIELDS | DMG_INSTANT_KILL);
+  }
+
   tick() {
+    this._devBossKeys();
+    this.arena.update();
     if (this.tallyState) this._tickTally();
     else this.director.update();
     const dbg = this.g.debug, p = this.plan, d = this.director;
+    const c = d.bossCtrl;
+    dbg.set('boss', c && c.e.ctrl === c && (c.e.alive || this.arena.active)
+      ? `${c.def.id} [${c.archetype} mk${c.mk}] ${c.state} ${c.number}/${c.total} · arena ${this.arena.cur ? this.arena.cur.theme : '-'}${this.arena.transitioning ? ' (fx)' : ''} · music ${music.layer || '-'}`
+      : '-');
     dbg.set('stage', `${p.number} (loop ${p.loop}) ${p.biome.id} · ${d.section ? d.section.type : '-'}${d.section && d.section.type === 'waves' ? ` set ${d.setIdx + 1}/${d.section.sets.length}` : ''}`);
     dbg.set('diff', `dens ${p.diff.density.toFixed(2)} spd ${p.diff.speed.toFixed(2)} elite ${(p.diff.eliteChance * 100) | 0}%`);
   }
