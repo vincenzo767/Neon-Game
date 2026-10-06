@@ -1,0 +1,30 @@
+// Helix Dynamics — mecha faction, the mastermind (UPDATE_02 §2.4).
+export default {
+  id: 'helix',
+  name: 'Helix Dynamics',
+  short: 'HELIX',
+  archetype: 'mecha',
+  leader: 'CEO Aurelia Voss-Kane',
+  who: 'The megacorp that caused the Breach and secretly funds the Undercrown to keep it hidden.',
+  palette: { primary: '#3a3e48', secondary: '#e8ecf2', accent: '#ff2a9a', glow: '#3a9aff' },
+  greeble: {
+    plate: ['#101218', '#4a5060', '#e2e6ee'], seam: 'rgba(6,8,12,0.8)', hi: 'rgba(255,255,255,0.45)',
+    rivet: '#9aa2b2', hazard: ['#ff2a9a', '#14161c'], pipe: ['#0c0e14', '#3a4050', '#a8b4c8'],
+    cable: ['#0a0c12', '#ff2a9a'], light: '#ff4ab0', core: '#3a9aff', vent: '#60b0ff',
+  },
+  biomes: ['spire', 'datacore', 'elevator'],
+  territory: 'The Crown, the Data-Core and the Spindle',
+  bosses: ['titan_enforcer', 'seraph_unit'],
+  enemyVariants: { walker: 'SECURITY WALKER', turret: 'LASER TURRET', laserpod: 'SHIELD DRONE', drone: 'ANDROID TROOPER', sniper: 'MARKSMAN UNIT', orbiter: 'HEX SHIELD DRONE' },
+  bulletStyle: 'laser',
+  animationTraits: ['transform_lock', 'piston_joints', 'visor_glow', 'steam_vent'],
+  hitFx: 'arc',
+  emblem: 'helix',
+  warning: 'HELIX ENFORCEMENT UNIT DEPLOYED',
+  introLine: 'DISPATCH: Helix security has locked down the Spire. Officially, nothing is happening.',
+  dispatch: [
+    'DISPATCH: Helix security has locked down {territory}. Officially, nothing is happening.',
+    'DISPATCH: Corporate enforcers are wiping records in {territory}. Get there before the evidence burns.',
+    'DISPATCH: Voss-Kane denies everything. Her mechs are already in {territory}.',
+  ],
+};

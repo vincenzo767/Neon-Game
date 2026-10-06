@@ -26,7 +26,9 @@ export class Renderer {
     this.gl = gl;
 
     const hdr = !!gl.getExtension('EXT_color_buffer_float');
-    this.atlas = new Atlas(2048);
+    // Update 02: 4096² when the GPU allows it (screen-dominating boss art and
+    // faction enemy variants); content builders scale down on a 2048 atlas.
+    this.atlas = new Atlas(gl.getParameter(gl.MAX_TEXTURE_SIZE) >= 4096 ? 4096 : 2048);
     const { bulletFrames } = buildSprites(this.atlas);
     this.bulletFrames = bulletFrames;
     for (const build of spriteBuilders) build(this.atlas);

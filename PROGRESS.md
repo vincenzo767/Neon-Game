@@ -10,8 +10,8 @@
 | **M4a** | Difficulty config + difficulty select screen, hooked into M3 | ✅ Done |
 | **M4b** | Boss framework: arena mode, per-phase arena transitions, damage flags, safe defeat routing | ✅ Done |
 | **M4c** | One complete boss for each of the 6 archetypes (5 authored phases + unique arenas each) | ✅ Done |
-| **M4d** | World & faction pass: lore/faction data, greeble generator, faction enemy variants, 2 new biomes, intro cards + loop lines, boss visual retrofit | ⏳ In progress |
-| M5 | Remaining 12 standard pilots + **Vincenzo (Legendary)** with the §4.6 firing concepts, ultimates, cut-ins | — |
+| **M4d** | World & faction pass: lore/faction data, greeble generator, faction enemy variants, 2 new biomes, intro cards + loop lines, boss visual retrofit | ✅ Done |
+| M5 | Remaining 12 standard pilots + **Vincenzo (Legendary)** with the §4.6 firing concepts, ultimates, cut-ins | ⏳ Next |
 | M6 | Audio engine and adaptive music (per-phase layers, archetype themes, a musical identity per faction) | — |
 | M7 | UI, scoring, polish, performance tuning | — |
 
@@ -196,6 +196,96 @@ On Hell each boss appends a themed desperation phase: Scorched Earth, Freefall, 
   - shield rule and phase-clear chain
   - rotation, and arena hand-back
 
+## M4d — World & faction pass (UPDATE_02)
+
+**Existing files touched** (small additive hooks only; listed before the work began):
+
+| File | Change | Why |
+|---|---|---|
+| [core/gl/Renderer.js](src/core/gl/Renderer.js) | Atlas is 4096² when `MAX_TEXTURE_SIZE` allows it, else 2048 | Boss hulls at 50–80% field width plus faction variants don't fit in 2048² |
+| [core/Game.js](src/core/Game.js) | Adds `buildFactionSkins` to the sprite-builder list | Faction-tinted enemy variants |
+| [entities/enemies/index.js](src/entities/enemies/index.js) | One `skinEnemy()` call after spawn | Swaps frames only; behaviour and patterns unchanged |
+| [entities/World.js](src/entities/World.js) | Hit-flash strength is now `e.flashA` (default 0.8, reset in the pool) | Big bosses use 0.15 so constant fire doesn't bloom them white |
+| [stages/StageGen.js](src/stages/StageGen.js) | `biomeOrder` deals one new biome into each loop from its own RNG stream | §2.7; the M3 shuffle draws are unchanged |
+| [scenes/StageScene.js](src/scenes/StageScene.js) | Faction state per stage, intro card, faction WARNING and intro text, air-unit drop shadows, boss surface layer drawn before the vision veil | §2.8, §1.5, §4.3 |
+| [scenes/PilotSelectScene.js](src/scenes/PilotSelectScene.js) | Personnel-file line under the bio | Pilot lore data |
+| [bosses/BossController.js](src/bosses/BossController.js), [kit.js](src/bosses/kit.js), [art.js](src/bosses/art.js), [ArenaBackground.js](src/bosses/ArenaBackground.js) | Visual-only boss retrofit: look layer, faction-tinted parts, new hull art, crater shader mode | §4.4 / §5 retrofit; **no HP, phase, pattern, transition or damage-flag changes** |
+
+**New data** (UPDATE_02 §3, under `src/data/`):
+- [lore/world.js](src/data/lore/world.js):
+  - New Meridian's six layers, the Breach and Project HALCYON, the Precinct, Vincenzo;
+  - 12 loop story lines plus a night-one line. They cycle after loop 13, and the card always shows the real loop number.
+- [lore/pilots.js](src/data/lore/pilots.js): origin, rival faction and a personnel-file line for all 17 pilots, keyed by pilot id. It adds to the pilot data and doesn't replace it.
+- [factions/*.js](src/data/factions/): the six syndicates, in the shape from §3. Each file also carries:
+  - a greeble palette;
+  - faction display names for tinted M3 enemies;
+  - hit effect, emblem, WARNING line and dispatch lines.
+
+  [factions/index.js](src/data/factions/index.js) holds:
+  - archetype → faction;
+  - biome ownership (§2.7);
+  - each M3 enemy's home `faction`, applied to the roster defs;
+  - `stageFactions(plan)`, which picks the owner and a seeded dispatch line and resolves split territories:
+    - Corporate Spire: Helix on the ground, Stratos in the air;
+    - Orbital Elevator: Helix before the mid-boss, the Choir after it.
+
+**New systems:**
+- **[Greeble generator](src/fx/greeble.js)** (§4.2/4.3):
+  - BSP panel seams with lit edges and rivet rows; hazard stripes, vents with hot glow, pipe runs with clamps, cable bundles, turbine discs, energy cores, lamp sockets;
+  - mirrored layout, seeded per machine, palettes taken from the faction data;
+  - a top-left `keyLight` and an embossed `bevel` for every plate;
+  - returns its idle lights so the runtime can blink them.
+- **[Faction skins](src/fx/factionSkins.js):** every M3 enemy sprite (and turret overlay) gets one recoloured copy per faction, `<sprite>@<faction>`:
+  - paint and emissive colours take the faction hue, and metal keeps its shading tinted toward the faction plate;
+  - big hulls also get a masked greeble pass.
+
+  In stages enemies wear the territory owner's colours; in the test range they wear their home faction's. Boss parts that reuse enemy art take their boss's faction. Start-up reads the atlas back once for the whole roster band, which took the build from 28 s to 0.35 s under software GL.
+- **New biomes** ([stages/biomesExtra.js](src/stages/biomesExtra.js), registry entries only):
+
+  | Biome | Owner | Background |
+  |---|---|---|
+  | Sunken Undercity | Drowned Covenant | flooded-city arena shader, sickly green and crimson |
+  | Fallen Star Crater | Choir of the Outer Star | new arena mode 24 `CRATER`: impact bowls, glowing fissures, crystal clusters |
+
+  Exactly one of the two appears in each loop, never as the opener.
+- **[Faction intro card](src/ui/factionCard.js):** code-generated [emblem](src/ui/emblems.js), faction name, leader, stage and territory, a typed-out dispatch line, and a second-faction line on split territories. At a loop start it also carries `LOOP N` and that loop's story line.
+- **Faction text:** WARNING lines are now per faction (e.g. "BLACK TIDE FLAGSHIP ON THE MOVE"), and the boss intro shows the faction tag.
+- **Drop shadows** (§4.3): every airborne enemy, and the airborne bosses, casts a shadow offset down-right onto the ground layer.
+
+**Boss visual retrofit** ([hulls.js](src/bosses/hulls.js), [look.js](src/bosses/look.js), [looks.js](src/bosses/looks.js)). Visuals only:
+- same sprite names;
+- each hull designed around the existing anchor points (part offsets, gun ports, muzzles, wing guns), so bullets still leave visible weapons;
+- collision radii unchanged.
+
+| Boss | Width | Construction | Idle animation | Weak point |
+|---|---|---|---|---|
+| Colossus Crawler | 300 (62%) | four treads on outrigger sponsons, engine deck + smokestacks, welded scrap patches, dozer ram | treads roll with movement, exhaust puffs | reactor (engine deck) |
+| Skywarden Carrier | 344 (72%) | swept flying wing, flight deck with runway markings, lift fans, segmented tail, open hangar bays | spinning lift fans, afterburner flicker, drop shadow | lift core |
+| Leviathan Dreadnought | 236 (49%) | trimaran: main hull + barnacled outriggers on brass gantries, verdigris deck, brass gun ports, sonar dome | wake foam, funnel smoke, bubbles while submerged | reactor hatch |
+| Titan Enforcer | 304 (63%) | M4c mech ×1.25, ceramic armour over machinery, Helix mark, folded binders (form A) → open energy wings (B) → blown-off armour (C) | thruster plumes, drop shadow | chest core |
+| Hive Sovereign | 300 (63%) | layered iridescent carapace, crystal crown, crystal-tipped tendril fins, fused crystal clusters | pulsing veins, two counter-rotating glyph rings | eye-core |
+| Maw of the Deep | 344 (72%) | flesh ring with bone ribs, coral-crusted cathedral arches, suckered tentacles, eye sockets for the eye parts | swaying tentacles, blinking bioluminescence | gullet |
+
+Every boss also gets:
+- **Weak-point glow:** brightens and pulses faster as the phase's HP drops.
+- **Damage states at 66% and 33% of each phase:**
+  - machines: dents, then exposed machinery, smoke plumes, sparks, and plates breaking off;
+  - organic bosses: glowing wounds and ichor drips.
+- **Faction hit effects:** sparks, flak, water splash, electric arcs, crystal chips, ink.
+- **Blinking idle lights** from the greeble pass.
+- **Death extras (§4.7):** chain blasts across the hull's damage sites, debris rain, then lingering ground fire, crystal shards or ink pools by faction.
+
+**Verified** (headless Chrome, software GL, no console errors):
+- Update 02 verification before any code (see above).
+- All six bosses with the retrofit:
+  - fly-in, phase 1, damage stage 1 at 50% and stage 2 at 20% phase HP, the death sequence, and the tally;
+  - screenshots reviewed. The Titan's ceramic and the Hive's shell highlights were darkened, and the boss hit flash reduced, after bloom washed them out.
+- **Factions in stages:**
+  - stage 1 is Ironclad, with the intro card, a seeded dispatch line and tinted waves (`e_flak@ironclad`, `e_turret@ironclad`, `e_bike@ironclad`);
+  - the Undercity and the Crater both render with their owners' colours;
+  - first 10 stages on `TESTSEED`: skyway, datacore, **undercity**, elevator, spire, storm, elevator, datacore, skyway, **undercity**.
+- **Regression on the final build:** the M3 suite, the M4b framework suite and all six bosses on Extreme (see the M4d changelog).
+
 ## Run
 
 ```
@@ -331,7 +421,14 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 
 - The mid-boss is still the M3 Gatekeeper (UPDATE_01 only redesigns main bosses).
 - Boss balance is first-pass: phase HP, pattern rates and Hell/Mk. III density were tuned only in headless runs (peaks: ~1,040 bullets in the Maw's Hell Mk. III desperation phase). Needs a real-GPU playtest.
-- The boss-intro WARNING text still reads "SYNDICATE COMMAND UNIT APPROACHING" for every archetype (M7 UI pass).
+- **Boss hitboxes are unchanged by the M4d retrofit** (visuals only, as UPDATE_02 required). The hulls are now 50–72% of the field width, but the collision circles are the M4c radii (44–58), so shots pass over the outer wings, treads and tentacles. Widening them is a balance change, left for an explicit decision.
+- **Enemy bullet language (§4.5) isn't applied yet:**
+  - slugs, needles, torpedoes, crystal shards and void orbs per faction;
+  - M4d only recoloured enemies, and bullet sprites still come from the M3 shape × colour set;
+  - natural home: M7 polish, or a bullet-skin pass keyed on the shooter's `e.faction`.
+- Bloom on the Titan's ceramic armour is the brightest of the six. Check it on a real GPU.
+- Start-up under software GL is ~7 s, because the 4096 atlas is rasterised by the CPU. Real-GPU start-up isn't measured yet. On GPUs without 4096 textures the atlas falls back to 2048: hulls are drawn at lower resolution and enemies keep their base colours.
+- Faction animation traits (§5) on regular enemies, such as banking, wake trails and visor glows, are only covered by the recolour and drop shadow. Per-enemy animation states are M7 polish.
 - Stage-to-stage biome change is an instant swap behind the tally overlay (no crossfade yet).
 - Readability check per biome done visually (harbor water and foundry lava were toned down). It still needs a real-GPU playtest for pacing and difficulty.
 - Balance is first-pass only: DPS per pilot, ultimate charge rates, and item drop rates. Tune in M7.
@@ -352,7 +449,7 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 
 ## Next steps (M5 — pilots)
 
-Per the prompt and UPDATE_01 §2:
+Per the prompt, UPDATE_01 §2 and UPDATE_02 §4.6 (player firing concepts: cool/translucent layered shots with muzzle flashes, focused beams that lock on, tier-visible option pods, impact sparks, per-pilot bombs; Vincenzo in gold, white and void black only). Pilot lore is already in `src/data/lore/pilots.js`.
 
 1. **The 12 remaining standard pilots** (roster slots already reserved in `src/pilots/index.js`), each with:
    - a unique vehicle, shot and focus shot

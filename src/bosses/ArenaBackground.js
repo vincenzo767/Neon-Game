@@ -20,6 +20,8 @@ import { compileProgram, drawFullscreen, FULLSCREEN_VS } from '../core/gl/glUtil
 //   21 FLOODED     drowned ruined city under rippling water
 //   22 CATHEDRAL   sunken nave: columns, stained-glass light pools
 //   23 FLESH       inside the creature: pulsing folds and veins
+//   24 CRATER      fallen-star impact field: scorched rock, glowing fissures,
+//                  alien crystal clusters (Fallen Star Crater biome, Update 02)
 //
 // Installed by the Arena as a render delegate on the stage Background
 // instance (see Arena.js); the Background module itself is unchanged.
@@ -27,7 +29,7 @@ import { compileProgram, drawFullscreen, FULLSCREEN_VS } from '../core/gl/glUtil
 export const ARENA_MODE_BASE = 10;
 export const AM = {
   TUNNEL: 10, DESERT: 11, CLOUDS: 12, OCEAN: 13, UNDERWATER: 14, ICE: 15, ROOFTOP: 16,
-  CIRCUIT: 17, HIVE: 18, CRYSTAL: 19, NEBULA: 20, FLOODED: 21, CATHEDRAL: 22, FLESH: 23,
+  CIRCUIT: 17, HIVE: 18, CRYSTAL: 19, NEBULA: 20, FLOODED: 21, CATHEDRAL: 22, FLESH: 23, CRATER: 24,
 };
 
 const FS = `#version 300 es
@@ -327,6 +329,29 @@ vec3 flesh(vec2 g, float aa) {
   return col;
 }
 
+vec3 crater(vec2 g, float aa) {
+  float n = fbm(g * 0.7);
+  vec3 col = mix(u_base * 0.35, u_base * 1.1, n);
+  // Impact bowls: ridged rings around a dark centre, one per 6-block cell.
+  vec2 cc = floor(g / 6.0);
+  vec2 cp = (cc + 0.5 + (vec2(hash(cc), hash(cc + 3.1)) - 0.5) * 0.8) * 6.0;
+  float d = length(g - cp) * (0.7 + hash(cc + 9.0) * 0.6);
+  col *= 0.82 + 0.18 * sin(d * 5.0 - n * 3.0) * smoothstep(3.2, 0.6, d);
+  col *= 0.45 + 0.55 * smoothstep(0.3, 1.5, d);
+  // Fissures glowing with fallen-star energy.
+  vec3 v = voronoi(g * 0.9 + n);
+  float e = v.y - v.x;
+  float pulse = 0.6 + 0.4 * sin(u_time * 1.7 + v.z * 30.0);
+  col = mix(col, u_neonA * 1.15, line(e, 0.022, aa) * 0.85 * pulse);
+  col += u_neonA * pow(max(0.0, 1.0 - e * 9.0), 3.0) * 0.16 * pulse;
+  // Crystal clusters growing out of the rock.
+  vec3 c = voronoi(g * 2.6 + 5.0);
+  float shard = smoothstep(0.3, 0.1, c.x) * step(0.84, c.z);
+  vec3 cry = mix(u_neonB * 0.5, u_neonB * 1.5 + 0.15, smoothstep(0.22, 0.0, c.x));
+  col = mix(col, cry, shard);
+  return col;
+}
+
 void main() {
   vec2 uv = v_uv + u_shake;
   float depth;
@@ -347,6 +372,7 @@ void main() {
   else if (u_mode == 20) { col = nebula(uv); plane = false; }
   else if (u_mode == 21) col = flooded(g, aa);
   else if (u_mode == 22) col = cathedral(g, aa);
+  else if (u_mode == 24) col = crater(g, aa);
   else col = flesh(g, aa);
   if (plane) {
     col = mix(col, u_fog, clamp((depth - 1.0) * 0.55, 0.0, 1.0));

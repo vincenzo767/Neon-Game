@@ -9,6 +9,7 @@ import { TestRangeScene } from './TestRangeScene.js';
 import { StageScene } from './StageScene.js';
 import { DifficultySelectScene } from './DifficultySelectScene.js';
 import { getDifficulty } from '../core/difficulty.js';
+import { pilotLore } from '../data/lore/pilots.js';
 
 // Pilot select: 16-slot roster grid, animated portrait, stat bars, bio,
 // ability list, and a live WebGL vehicle preview that cycles through all
@@ -105,6 +106,9 @@ export class PilotSelectScene {
         .map((n) => `<i class="${n <= v ? 'on' : ''}" style="animation-delay:${n * 40}ms"></i>`).join('')}</div></div>`;
     }).join('');
     el.bio.textContent = p.locked ? 'Personnel file sealed by order of the Commissioner.' : p.bio;
+    // Update 02: precinct personnel file from the lore data (adds to the bio).
+    const lore = !p.locked && pilotLore(p.id);
+    if (lore) el.bio.insertAdjacentHTML('beforeend', `<span class="sel-lore">FILE · ${lore.origin.toUpperCase()} — ${lore.file}</span>`);
     el.abil.innerHTML = p.locked ? '' : `
       <div><b>SHOT</b> ${p.weapons.main}</div>
       <div><b>FOCUS</b> ${p.weapons.focus}</div>

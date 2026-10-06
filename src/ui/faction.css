@@ -1,0 +1,56 @@
+/* Stage intro faction card (Update 02 §2.8) + loop story line (§1.5). */
+
+.faction-card {
+  position: absolute; left: 50%; top: 24%; width: calc(372 * var(--u));
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: calc(6 * var(--u));
+  animation: fcIn 0.45s cubic-bezier(.2, .9, .3, 1.2), fcOut 0.5s ease-in 3.1s forwards;
+}
+.fc-loop {
+  text-align: center; display: flex; flex-direction: column; gap: calc(3 * var(--u));
+  margin-bottom: calc(6 * var(--u));
+}
+.fc-loop b {
+  font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: calc(30 * var(--u)); letter-spacing: 0.25em;
+  color: #fff; text-shadow: 0 0 calc(12 * var(--u)) #ff2060, 0 0 calc(26 * var(--u)) #ff9a1a;
+}
+.fc-loop span { font-size: calc(9 * var(--u)); letter-spacing: 0.08em; color: #ffd8b0; font-style: italic; }
+.fc-loop i { font-style: normal; font-size: calc(7 * var(--u)); letter-spacing: 0.3em; color: #ffb070; }
+.fc-main {
+  display: flex; align-items: center; gap: calc(10 * var(--u));
+  padding: calc(8 * var(--u)) calc(10 * var(--u));
+  background: linear-gradient(90deg, rgba(4, 6, 12, 0.88), rgba(4, 6, 12, 0.55));
+  border-left: calc(3 * var(--u)) solid var(--fc);
+  box-shadow: 0 0 calc(16 * var(--u)) rgba(0, 0, 0, 0.6), inset 0 0 calc(30 * var(--u)) rgba(0, 0, 0, 0.4);
+}
+.fc-emblem { width: calc(64 * var(--u)); height: calc(64 * var(--u)); flex: none; filter: drop-shadow(0 0 calc(6 * var(--u)) var(--fc)); }
+.fc-text { display: flex; flex-direction: column; gap: calc(2 * var(--u)); min-width: 0; }
+.fc-text small { font-size: calc(7 * var(--u)); letter-spacing: 0.28em; opacity: 0.75; }
+.fc-text b {
+  font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: calc(14 * var(--u)); letter-spacing: 0.12em;
+  color: #fff; text-shadow: 0 0 calc(8 * var(--u)) var(--fc);
+}
+.fc-text em { font-style: normal; font-size: calc(7 * var(--u)); letter-spacing: 0.2em; color: var(--fa); }
+.fc-second {
+  display: flex; align-items: center; gap: calc(5 * var(--u));
+  font-size: calc(6.5 * var(--u)); letter-spacing: 0.22em; opacity: 0.85; padding-left: calc(6 * var(--u));
+}
+.fc-second img { width: calc(18 * var(--u)); height: calc(18 * var(--u)); }
+.fc-dispatch {
+  font-size: calc(8 * var(--u)); letter-spacing: 0.06em; line-height: 1.5; color: #c8f6ff;
+  padding: calc(5 * var(--u)) calc(8 * var(--u));
+  background: rgba(0, 20, 30, 0.6); border: 1px solid rgba(90, 230, 255, 0.35);
+}
+.fc-dispatch span {
+  display: inline-block; overflow: hidden; white-space: normal;
+  animation: fcType 1.4s steps(40) 0.3s both;
+}
+/* Pilot select: precinct personnel file line under the bio (data/lore/pilots.js). */
+.sel-lore {
+  display: block; margin-top: calc(2 * var(--u));
+  font-size: calc(6.4 * var(--u)); line-height: 1.45; letter-spacing: 0.04em; color: #9adfff; opacity: 0.85;
+}
+
+@keyframes fcIn { from { opacity: 0; transform: translateX(-50%) translateY(calc(-12 * var(--u))) scale(0.96); } to { opacity: 1; transform: translateX(-50%); } }
+@keyframes fcOut { to { opacity: 0; transform: translateX(-50%) translateY(calc(-8 * var(--u))); } }
+@keyframes fcType { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }

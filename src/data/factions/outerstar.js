@@ -1,0 +1,30 @@
+// The Choir of the Outer Star — extraterrestrial faction (UPDATE_02 §2.5).
+export default {
+  id: 'outerstar',
+  name: 'The Choir of the Outer Star',
+  short: 'OUTER STAR',
+  archetype: 'extraterrestrial',
+  leader: 'The Hive Sovereign and its prophet, Sister Ilune',
+  who: 'A cult that worships the alien hive from the Upper Breach, and the alien forces themselves.',
+  palette: { primary: '#7a2ad8', secondary: '#ff7ad8', accent: '#5affb0', glow: '#f4f0ff' },
+  greeble: {
+    plate: ['#12061e', '#4a1c78', '#c89aff'], seam: 'rgba(8,2,16,0.8)', hi: 'rgba(255,220,255,0.4)',
+    rivet: '#ff9ae0', hazard: ['#ff7ad8', '#1a0828'], pipe: ['#10061a', '#5a2a8a', '#e0b8ff'],
+    cable: ['#0e0418', '#5affb0'], light: '#5affb0', core: '#ff7ad8', vent: '#b06aff',
+  },
+  biomes: ['elevator', 'crater'],
+  territory: 'The upper Spindle and the crash zones',
+  bosses: ['hive_sovereign', 'star_eater_prism'],
+  enemyVariants: { bug: 'HIVE SWARMER', orbiter: 'PRISM NODE', splitter: 'SPORE POD', spinner: 'CRYSTAL DRONE', gunship: 'CULTIST GUNSHIP', laserpod: 'GLYPH LANTERN' },
+  bulletStyle: 'crystal_shard',
+  animationTraits: ['pulse_breathe', 'crystal_growth', 'teleport_shimmer', 'glyph_light'],
+  hitFx: 'crystal',
+  emblem: 'star',
+  warning: 'THE CHOIR DESCENDS',
+  introLine: 'DISPATCH: The Choir is singing over the Spindle. Do not listen.',
+  dispatch: [
+    'DISPATCH: The Choir is singing over {territory}. Do not listen.',
+    'DISPATCH: Crystal growths spreading across {territory}. Sister Ilune is preaching to the hive.',
+    'DISPATCH: Glyph lights in the sky above {territory}. Something answers from the Upper Breach.',
+  ],
+};

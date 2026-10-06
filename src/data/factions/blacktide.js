@@ -1,0 +1,30 @@
+// The Black Tide — sea faction (UPDATE_02 §2.3).
+export default {
+  id: 'blacktide',
+  name: 'The Black Tide',
+  short: 'BLACK TIDE',
+  archetype: 'sea',
+  leader: 'Admiral Marrow Quell',
+  who: 'Pirate admirals who control the harbor, the shipyards and every smuggling route by sea.',
+  palette: { primary: '#0e1c36', secondary: '#3f8a72', accent: '#3affd2', glow: '#d8a640' },
+  greeble: {
+    plate: ['#060c18', '#24385a', '#7a98b0'], seam: 'rgba(2,6,14,0.85)', hi: 'rgba(200,240,230,0.3)',
+    rivet: '#d8a640', hazard: ['#d8a640', '#0a1424'], pipe: ['#0a0e10', '#7a5a24', '#f0c870'],
+    cable: ['#08100e', '#3affd2'], light: '#ffd27a', core: '#3affd2', vent: '#40ffc8',
+  },
+  biomes: ['harbor'],
+  territory: 'The Docks',
+  bosses: ['leviathan_dreadnought', 'abyss_stalker_sub'],
+  enemyVariants: { car: 'HOVERCRAFT RAIDER', gunship: 'GUNBOAT', minelayer: 'MINE BUOY TENDER', frigate: 'DECK-TURRET BARGE', seeker: 'TORPEDO SKIFF', tank: 'SURFACE RAIDER' },
+  bulletStyle: 'torpedo',
+  animationTraits: ['wake_trail', 'wave_bob', 'dive_surface', 'water_spray'],
+  hitFx: 'splash',
+  emblem: 'anchor',
+  warning: 'BLACK TIDE FLAGSHIP ON THE MOVE',
+  introLine: 'DISPATCH: Black Tide gunboats spotted in Acid Harbor. Admiral Quell\'s flagship is on the move.',
+  dispatch: [
+    'DISPATCH: Black Tide gunboats spotted in {territory}. Admiral Quell\'s flagship is on the move.',
+    'DISPATCH: Mine buoys drifting through {territory}. Every hull out there is hostile.',
+    'DISPATCH: Sonar contact under {territory}. The Tide is bringing something big.',
+  ],
+};

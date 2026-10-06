@@ -1,5 +1,6 @@
 import { RNG } from '../core/RNG.js';
 import { BIOMES } from './biomes.js';
+import { EXTRA_BIOMES } from './biomesExtra.js';
 import { TEMPLATES } from './waves.js';
 import { getDifficulty } from '../core/difficulty.js';
 import { bossForStage } from '../bosses/index.js';
@@ -47,6 +48,10 @@ function biomeOrder(seed, loop) {
     const k = list.findIndex((b) => b.id === 'skyway');
     [list[0], list[k]] = [list[k], list[0]];
   }
+  // Update 02: deal one of the new biomes into the loop (own RNG stream, so
+  // the M3 shuffle above is drawn exactly as before). Never the opener.
+  const X = new RNG(`${seed}:biomes+:${loop}`);
+  list.splice(X.int(1, STAGES_PER_LOOP - 1), 0, EXTRA_BIOMES[(loop + X.int(0, 1)) % EXTRA_BIOMES.length]);
   return list;
 }
 

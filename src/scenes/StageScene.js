@@ -5,6 +5,8 @@ import { Arena } from '../bosses/Arena.js';
 import { ARCHETYPE_LABEL } from '../bosses/index.js';
 import { music } from '../audio/music.js';
 import { DMG_IGNORES_SHIELDS, DMG_INSTANT_KILL, DMG_INSTANT_PHASE_CLEAR } from '../core/damage.js';
+import { stageFactions, factionForArchetype } from '../data/factions/index.js';
+import { showFactionCard } from '../ui/factionCard.js';
 
 // The main game: an endless sequence of procedurally generated stages.
 // The run is fully determined by the seed (game.seed) plus player input.
@@ -46,6 +48,11 @@ export class StageScene extends PlayScene {
     this.arena.reset();
     music.setLayer(null);
     this.plan = generateStage(g.seed, index, this.diffCfg.id);
+    // Update 02: who owns this territory, and whose colours each enemy wears
+    // (split territories change hands by unit type or after the mid-boss).
+    this.factions = stageFactions(this.plan);
+    this.upperLevels = false;
+    w.factionOf = (def) => this.factions.resolve(def, this.upperLevels);
     g.renderer.background.setBiome(this.plan.biome.bg);
     this.parallax.setStyle(this.plan.biome);
     w.bullets.clearAll();
@@ -58,13 +65,10 @@ export class StageScene extends PlayScene {
   onSceneEvent(type, data) {
     switch (type) {
       case 'stageIntro': {
+        // Faction intro card (+ the loop story line at the start of a loop).
         const p = data;
-        if (p.stageInLoop === 0 && p.loop > 1) {
-          this.banner(`LOOP ${p.loop}`, 'THE SYNDICATE ADAPTS · DENSITY UP · ELITES DEPLOYED', 150, 'loop');
-          this.g.renderer.post.flash(1, 0.2, 0.4, 0.4, 0.02);
-        } else {
-          this.banner(`STAGE ${p.loop}-${p.stageInLoop + 1}`, p.biome.name, 150);
-        }
+        if (p.stageInLoop === 0 && p.loop > 1) this.g.renderer.post.flash(1, 0.2, 0.4, 0.4, 0.02);
+        showFactionCard(this.fxLayer, p, this.factions);
         break;
       }
       case 'warning': this._warning(data.boss); break;
@@ -74,7 +78,8 @@ export class StageScene extends PlayScene {
           // Named intro card: archetype class (or the slot a prototype stands in for) + phase count.
           const label = ARCHETYPE_LABEL[c.archetype] || '';
           const cls = c.def.archetype === c.archetype ? `${label} CLASS` : `${c.def.title || 'PROTOTYPE'} · ${label} SLOT`;
-          this.banner(e.name, `${cls} · ${c.total} PHASES`, 130, 'boss');
+          const fac = factionForArchetype(c.archetype);
+          this.banner(e.name, `${fac ? `${fac.short} · ` : ''}${cls} · ${c.total} PHASES`, 130, 'boss');
           break;
         }
         this.banner(e.name, data.def.boss && this.director.section.type === 'boss' ? 'SYNDICATE COMMAND UNIT' : 'MID-BOSS', 120, 'boss');
@@ -82,6 +87,7 @@ export class StageScene extends PlayScene {
       }
       case 'bossDown':
         this.banner(data.type === 'boss' ? 'TARGET DESTROYED' : 'MID-BOSS DOWN', '', 110);
+        if (data.type === 'midboss') this.upperLevels = true; // the climb continues (split territories)
         this.world.cancelAll();
         this.world.clearLasers();
         this.world.autoCollect = 180;
@@ -115,7 +121,11 @@ export class StageScene extends PlayScene {
   _warning(isBoss) {
     const el = document.createElement('div');
     el.className = 'warning';
-    el.innerHTML = `<div class="stripe"></div><b>WARNING</b><small>${isBoss ? 'SYNDICATE COMMAND UNIT APPROACHING' : 'HEAVY UNIT INBOUND'}</small><div class="stripe"></div>`;
+    // The main boss's faction names the threat (Update 02).
+    const sec = isBoss && this.plan.sections.find((s) => s.type === 'boss');
+    const fac = sec && sec.arena && factionForArchetype(sec.arena.archetype);
+    const text = isBoss ? (fac ? fac.warning : 'SYNDICATE COMMAND UNIT APPROACHING') : 'HEAVY UNIT INBOUND';
+    el.innerHTML = `<div class="stripe"></div><b>WARNING</b><small>${text}</small><div class="stripe"></div>`;
     this.fxLayer.appendChild(el);
     setTimeout(() => el.remove(), isBoss ? 3300 : 1900);
     this.g.renderer.post.flash(1, 0, 0.1, 0.18, 0.01);
@@ -192,13 +202,25 @@ export class StageScene extends PlayScene {
 
   renderUnderlay(b, alpha, t) {
     this.arena.renderUnder(b, alpha, t);
+    this._renderShadows(b, alpha);
     const c = this.bossCtrl;
     if (c) c.renderUnder(b, alpha);
   }
 
+  /** Update 02 §4.3: airborne units cast a drop shadow down-right onto the ground layer. */
+  _renderShadows(b, alpha) {
+    for (const e of this.world.enemies.active) {
+      if (!e.alive || e.ground || !e.f || e.ctrl || e.kind === 'bosspart') continue;
+      const x = e.px + (e.x - e.px) * alpha, y = e.py + (e.y - e.py) * alpha;
+      const w = e.f.w * e.scale, h = e.f.h * e.scale, off = 6 + w * 0.12;
+      b.draw(e.f, x + off, y + off * 1.5, w * 0.92, h * 0.92, e.rot, 0, 0, 0, 0.3, 0);
+    }
+  }
+
   renderOverlay(b, alpha) {
-    this.arena.renderOver(b, alpha);
     const c = this.bossCtrl;
+    if (c) c.renderSurface(b, alpha); // hull animation + damage: under the vision veil
+    this.arena.renderOver(b, alpha);
     if (c) c.renderOver(b, alpha);
   }
 

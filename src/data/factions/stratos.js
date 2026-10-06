@@ -1,0 +1,30 @@
+// The Stratos Cartel — aerial faction (UPDATE_02 §2.2).
+export default {
+  id: 'stratos',
+  name: 'The Stratos Cartel',
+  short: 'STRATOS',
+  archetype: 'aerial',
+  leader: 'Madame Corvina Hale',
+  who: 'Smugglers who control every sky-lane above the Crown.',
+  palette: { primary: '#1f4fbf', secondary: '#c8d4e4', accent: '#8a96a8', glow: '#3ae0ff' },
+  greeble: {
+    plate: ['#0a1426', '#3a5a8a', '#d6e2f2'], seam: 'rgba(4,10,24,0.8)', hi: 'rgba(230,245,255,0.4)',
+    rivet: '#b8c8de', hazard: ['#f2f6fa', '#1f4fbf'], pipe: ['#0c1420', '#4a6080', '#c0d4ee'],
+    cable: ['#0a1018', '#3ae0ff'], light: '#7ae8ff', core: '#3ae0ff', vent: '#40c8ff',
+  },
+  biomes: ['storm', 'spire'],
+  territory: 'The Crown sky-lanes',
+  bosses: ['skywarden_carrier', 'mantis_gunship'],
+  enemyVariants: { gunship: 'VTOL GUNSHIP', drone: 'KITE DRONE', dart: 'CARTEL INTERCEPTOR', bomber: 'BOMBER BLIMP', carrier: 'CARGO CARRIER', sniper: 'SPOTTER POD' },
+  bulletStyle: 'needle',
+  animationTraits: ['bank_turn', 'afterburner', 'formation_flight', 'vapor_trail'],
+  hitFx: 'flak',
+  emblem: 'wings',
+  warning: 'STRATOS CAPITAL SHIP INBOUND',
+  introLine: 'DISPATCH: Cartel sky-lanes are closed over the Crown.',
+  dispatch: [
+    'DISPATCH: Stratos interceptors own the air over {territory}. Madame Hale is watching.',
+    'DISPATCH: Cartel cargo jets are running contraband through {territory}. Force them down.',
+    'DISPATCH: Beam curtains reported over {territory}. Fly low, fly fast.',
+  ],
+};

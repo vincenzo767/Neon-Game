@@ -3,6 +3,8 @@ import { DMG_IGNORES_SHIELDS } from '../core/damage.js';
 import { segDist2 } from '../entities/World.js';
 import * as P from '../patterns/index.js';
 import { GHOST_LEVELS } from './art.js';
+import { factionFrame } from '../fx/factionSkins.js';
+import { ARCHETYPE_FACTION } from '../data/factions/index.js';
 
 // Boss mechanics toolkit (M4c), owned by a BossController as `ctrl.kit`.
 // Everything here belongs to the current phase: parts, minions, hazards and
@@ -96,7 +98,9 @@ export class BossKit {
       const pe = w.spawnEnemy({
         kind: 'bosspart', name: d.label || name, x: c.e.x + (d.ox || 0), y: c.e.y + (d.oy || 0), r: d.r || 14,
         hp: Math.max(1, Math.round((d.hp || 60) * c.hpScale)),
-        f: r.frame(d.sprite), f2: d.sprite2 ? r.frame(d.sprite2) : null, scale: d.scale || 1,
+        // Parts reusing enemy art wear the owning faction's colours (M4d, cosmetic).
+        f: factionFrame(r, d.sprite, ARCHETYPE_FACTION[c.archetype]),
+        f2: d.sprite2 ? factionFrame(r, d.sprite2, ARCHETYPE_FACTION[c.archetype]) : null, scale: d.scale || 1,
         score: (d.score || 5000) * c.mk, blast: d.blast ?? 0.9, glow: d.glow || null,
         drops: Array(d.medals ?? 3).fill('M'), ult: 6,
         onDeath: () => this._partDown(part),

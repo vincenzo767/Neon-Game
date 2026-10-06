@@ -1,0 +1,30 @@
+// The Drowned Covenant — abyssal faction (UPDATE_02 §2.6).
+export default {
+  id: 'drowned',
+  name: 'The Drowned Covenant',
+  short: 'COVENANT',
+  archetype: 'abyssal',
+  leader: 'The Hollow Bishop',
+  who: 'An ancient cult in the sealed Undercity that serves the abyssal entities from the Lower Breach.',
+  palette: { primary: '#06070a', secondary: '#e8e0cc', accent: '#5aa888', glow: '#c0142a' },
+  greeble: {
+    plate: ['#050608', '#2a2620', '#cfc6b0'], seam: 'rgba(0,0,0,0.85)', hi: 'rgba(240,230,210,0.3)',
+    rivet: '#cfc6b0', hazard: ['#c0142a', '#08090a'], pipe: ['#08080a', '#2a3a32', '#8ac0a8'],
+    cable: ['#060708', '#5aa888'], light: '#7affc0', core: '#ff2040', vent: '#c0142a',
+  },
+  biomes: ['undercity'],
+  territory: 'The Undercity',
+  bosses: ['maw_of_the_deep', 'drowned_choir'],
+  enemyVariants: { spinner: 'TENDRIL MINE', orbiter: 'EYED FLOATER', car: 'CULTIST SKIFF', walker: 'BONE-SHELL CRAWLER', bug: 'SHADOW WRAITH', minelayer: 'INK LAYER' },
+  bulletStyle: 'void_orb',
+  animationTraits: ['slow_drift', 'eye_blink', 'tendril_whip', 'ripple'],
+  hitFx: 'ink',
+  emblem: 'eye',
+  warning: 'SOMETHING RISES FROM BELOW',
+  introLine: 'DISPATCH: The Undercity seals have failed. The Hollow Bishop is preaching to the deep.',
+  dispatch: [
+    'DISPATCH: The seals over {territory} have failed. The Hollow Bishop is preaching to the deep.',
+    'DISPATCH: Drowned cultists surfacing in {territory}. Keep your lights on.',
+    'DISPATCH: Contact lost with the last patrol in {territory}. Their beacon still blinks.',
+  ],
+};

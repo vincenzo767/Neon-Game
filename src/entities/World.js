@@ -127,7 +127,7 @@ export class World {
     e.score = 100; e.ult = 1.5; e.blast = 0.7; e.drops = null; e.ai = null; e.f = null;
     e.untargetable = false; e.glow = null; e.lastBomb = -1; e.onDeath = null; e.data = {};
     e.ground = false; e.f2 = null; e.rot2 = 0; e.elite = false; e.armor = 1; e.entered = false;
-    e.boss = false; e.def = null; e.name = ''; e.onDamage = null; e.ctrl = null;
+    e.boss = false; e.def = null; e.name = ''; e.onDamage = null; e.ctrl = null; e.flashA = 0.8;
     Object.assign(e, props);
     e.maxHp = e.hp;
     this.spawned++;
@@ -488,7 +488,7 @@ export class World {
     } else if (e.glow) b.draw(F.glow, x, y, w * 2, h * 2, 0, e.glow[0], e.glow[1], e.glow[2], 0.35, 1);
     b.draw(e.f, x, y, w, h, e.rot, 1, 1, 1, 1, 0);
     if (e.f2) b.draw(e.f2, x, y, e.f2.w * e.scale, e.f2.h * e.scale, e.rot2, 1, 1, 1, 1, 0);
-    if (e.flash > 0) b.draw(e.f, x, y, w, h, e.rot, 1.5, 1.5, 1.5, 0.8, 1);
+    if (e.flash > 0) b.draw(e.f, x, y, w, h, e.rot, 1.5, 1.5, 1.5, e.flashA, 1);
   }
 
   /** Ground units: drawn under foreground structures and air units. */

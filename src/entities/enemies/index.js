@@ -2,6 +2,7 @@ import { WORLD_W, WORLD_H } from '../../core/constants.js';
 import * as P from '../../patterns/index.js';
 import { MOVERS } from './movers.js';
 import { buildEnemySprites } from './art.js';
+import { skinEnemy } from '../../fx/factionSkins.js';
 
 // Syndicate enemy roster — data definitions + factory.
 //
@@ -351,6 +352,7 @@ export function spawnEnemy(w, id, x, y, params = null, elite = false) {
     elite, glow: def.glow || null, boss: !!def.boss, ai: def._ai, onDeath,
   });
   e.p = params ? { ...def.mp, ...params } : def.mp;
+  skinEnemy(w, e, def); // Update 02: faction colours (cosmetic only)
   if (def.boss) w.boss = e;
   return e;
 }

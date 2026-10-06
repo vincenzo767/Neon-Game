@@ -2,6 +2,8 @@ import { WORLD_W } from '../core/constants.js';
 import { DMG_IGNORES_SHIELDS, DMG_INSTANT_KILL, DMG_INSTANT_PHASE_CLEAR } from '../core/damage.js';
 import { FADE_OUT } from '../fx/Particles.js';
 import { BossKit } from './kit.js';
+import { BossLook } from './look.js';
+import { LOOKS } from './looks.js';
 
 // Runtime for a data-driven main boss (UPDATE_01 §1.3–1.5, §2.6).
 //
@@ -88,16 +90,23 @@ export class BossController {
 
     const r = w.r;
     const medals = Array(6 + 2 * this.mk).fill('M');
+    // M4d: retrofitted bosses draw their own weak-point glow (bosses/look.js)
+    // instead of the full-body halo, and use a softer hit flash.
+    const retro = !!LOOKS[def.id];
     this.e = w.spawnEnemy({
       kind: `boss:${def.id}`, name: this.name, x: WORLD_W / 2, y: -110, r: def.r || 40, hp: total,
       f: r.frame(def.sprite), f2: def.sprite2 ? r.frame(def.sprite2) : null, scale: def.scale || 1,
-      glow: def.glow || null, boss: true, blast: 0, armor: 1,
+      glow: retro ? null : def.glow || null, ...(retro ? { flashA: 0.15 } : {}), boss: true, blast: 0, armor: 1,
       score: (def.score || 100000) * this.mk, ult: 40,
       drops: ['P', 'P', 'P', 'B', ...medals, ...(this.mk > 1 ? ['L'] : [])],
       // Hud boss bar: phase floors as HP fractions = one segment per phase.
       def: { boss: true, phases: this.floors.slice(0, -1).map((f) => f / total) },
       ai: () => this.update(),
-      onDamage: (e, dmg, flags) => this.onDamage(dmg, flags),
+      onDamage: (e, dmg, flags) => {
+        const d = this.onDamage(dmg, flags);
+        if (d > 0) this.look.hit(); // faction hit effect (cosmetic)
+        return d;
+      },
       ctrl: this,
     });
     w.boss = this.e;
@@ -120,6 +129,8 @@ export class BossController {
     this.my = HOME_Y;
     this.ease = EASE;       // movement easing; attacks may raise it for one step (charges)
     this.kit = new BossKit(this);
+    this.look = new BossLook(this);  // M4d visual layer (no gameplay effect)
+    this.visR = this.look.visR;      // visual hull radius for death blasts
   }
 
   get number() { return this.index + 1; }
@@ -193,6 +204,7 @@ export class BossController {
     }
     if (this.shield > 0) this.shield--;
     this.kit.update();
+    this.look.update();
     if (this.def.update) this.def.update(this, w);
     // Ease toward the movement target.
     e.x += (this.mx - e.x) * this.ease;
@@ -248,8 +260,10 @@ export class BossController {
     e.y = e.py = this.my = y;
   }
 
-  renderUnder(b, alpha) { this.kit.renderUnder(b, alpha); }
-  renderOver(b, alpha) { this.kit.renderOver(b, alpha); }
+  renderUnder(b, alpha) { this.look.renderUnder(b, alpha); this.kit.renderUnder(b, alpha); }
+  /** Hull overlays (animation, damage decals): before the arena's vision veil. */
+  renderSurface(b, alpha) { this.look.renderSurface(b, alpha); }
+  renderOver(b, alpha) { this.look.renderOver(b, alpha); this.kit.renderOver(b, alpha); }
 
   _updateFight() {
     const c = this, w = this.w, ph = this.phase;
@@ -371,7 +385,8 @@ export class BossController {
 function chainBlasts(c, st, e, w, R, tint = c.def.glow, spread = 1.1) {
   const every = Math.max(3, 10 - Math.floor(st / 16));
   if (st % every === 0) {
-    w.explosions.blast(e.x + R.range(-e.r, e.r) * spread, e.y + R.range(-e.r, e.r) * 0.8, R.range(0.6, 1.2), tint);
+    const r = c.visR || e.r; // across the whole (visual) hull
+    w.explosions.blast(e.x + R.range(-r, r) * spread, e.y + R.range(-r, r) * 0.8, R.range(0.6, 1.2), tint);
     w.g.camera.addTrauma(0.08);
   }
 }
