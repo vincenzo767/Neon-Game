@@ -2,6 +2,7 @@ import { WORLD_W as W, WORLD_H as H } from '../core/constants.js';
 import { biomeArena, resolveArena } from './arenas.js';
 import { transitionFor } from './transitions.js';
 import { ScoreStars } from './ScoreStars.js';
+import { installArenaBackground } from './ArenaBackground.js';
 
 // Boss arena mode (UPDATE_01 §1.3). While a main boss is up, the Arena owns
 // the background layers: shader mode + palette, parallax set, weather and
@@ -76,6 +77,77 @@ const AMBIENT = {
     },
   },
 };
+Object.assign(AMBIENT, {
+  dust: {
+    init: (R) => Array.from({ length: 30 }, () => ({ x: R.range(0, W), y: R.range(0, H), s: R.range(40, 110), v: R.range(0.2, 0.6), ph: R.range(0, 6.28) })),
+    update(s) { for (const f of s) { f.y += f.v; if (f.y > H + 60) f.y = -60; } },
+    draw(b, F, s, t) { for (const f of s) b.draw(F.smoke, f.x + Math.sin(t * 0.3 + f.ph) * 20, f.y, f.s, f.s, f.ph, 0.4, 0.33, 0.26, 0.12, 0); },
+  },
+  sandstorm: {
+    init: (R) => Array.from({ length: 70 }, () => ({ x: R.range(0, W), y: R.range(0, H), v: R.range(4, 9), l: R.range(30, 90) })),
+    update(s) { for (const f of s) { f.x += f.v; f.y += f.v * 0.15; if (f.x > W + 60) { f.x = -60; f.y = Math.random() * H; } } },
+    draw(b, F, s) { for (const f of s) b.draw(F.laser, f.x, f.y, f.l, 3, 0.15, 1, 0.75, 0.45, 0.22, 0); },
+  },
+  heat: {
+    init: () => null,
+    update(s, arena) { arena.g.renderer.post.heat(0.03); },
+    draw() {},
+  },
+  lightning: {
+    init: () => ({ t: 0 }),
+    update(s, arena) {
+      // Cosmetic only (Math.random): never touches the gameplay RNG.
+      if (Math.random() < 0.006) {
+        arena.bg.flash = 1;
+        arena.g.renderer.post.flash(0.75, 0.8, 1, 0.12, 0.05);
+        arena.g.camera.addTrauma(0.05);
+      }
+    },
+    draw() {},
+  },
+  marine_snow: {
+    init: (R) => Array.from({ length: 80 }, () => ({ x: R.range(0, W), y: R.range(0, H), v: R.range(0.2, 0.6), ph: R.range(0, 6.28) })),
+    update(s) { for (const f of s) { f.y += f.v; f.x += Math.sin(f.y * 0.02 + f.ph) * 0.2; if (f.y > H + 4) f.y = -4; } },
+    draw(b, F, s) { for (const f of s) b.draw(F.white, f.x, f.y, 1.6, 1.6, 0, 0.7, 0.85, 0.9, 0.5, 1); },
+  },
+  alarm: {
+    init: () => null,
+    draw(b, F, s, t) {
+      const a = 0.12 * Math.max(0, Math.sin(t * 5));
+      b.draw(F.white, W / 2, H / 2, W + 20, H + 20, 0, 0.8, 0, 0, a, 1);
+      for (const x of [8, W - 8]) b.draw(F.laser, x, H / 2, H, 10, Math.PI / 2, 2, 0.2, 0.1, a * 4, 1);
+    },
+  },
+  tractor_beams: {
+    init: (R) => [0, 1, 2].map(() => ({ x: R.range(60, W - 60), ph: R.range(0, 6.28), sp: R.range(0.2, 0.5) })),
+    draw(b, F, s, t) {
+      for (const l of s) {
+        const x = l.x + Math.sin(t * l.sp + l.ph) * 60;
+        b.draw(F.beam, x, H * 0.5, 110, H * 1.2, 0, 0.4, 1.2, 0.5, 0.08 + 0.03 * Math.sin(t * 4 + l.ph), 1);
+        for (let k = 0; k < 4; k++) b.draw(F.ring, x, ((t * 60 + k * 160 + l.ph * 50) % (H + 80)) - 40, 70, 22, 0, 0.4, 1.2, 0.5, 0.18, 1);
+      }
+    },
+  },
+  spores: {
+    init: (R) => Array.from({ length: 40 }, () => ({ x: R.range(0, W), y: R.range(0, H), v: R.range(0.2, 0.7), ph: R.range(0, 6.28), s: R.range(3, 8) })),
+    update(s) { for (const f of s) { f.y -= f.v; f.x += Math.sin(f.y * 0.03 + f.ph) * 0.5; if (f.y < -10) f.y = H + 10; } },
+    draw(b, F, s, t) { for (const f of s) b.draw(F.glow, f.x, f.y, f.s * 3, f.s * 3, 0, 0.5, 1.4, 0.4, 0.3 + 0.2 * Math.sin(t * 3 + f.ph), 1); },
+  },
+  sanity: {
+    // Abyssal "sanity" distortion: breathing heat-haze, aberration spikes.
+    init: () => ({ t: 0 }),
+    update(s, arena) {
+      s.t++;
+      const post = arena.g.renderer.post;
+      post.heat(0.02 + 0.02 * Math.sin(s.t * 0.05));
+      if (s.t % 150 === 0) { post.aberrate(0.012); post.shockwave(W / 2, H / 2, 0.01, 0.01, 0.8); }
+    },
+    draw(b, F, s, t) {
+      const a = 0.1 + 0.06 * Math.sin(t * 0.8);
+      b.draw(F.ring, W / 2, H / 2, W * 1.8, H * 1.5, 0, 0.3, 0, 0.25, a, 0);
+    },
+  },
+});
 // Names from boss data that map onto the layers above.
 const AMBIENT_ALIAS = { searchlight_beams: 'searchlights', aurora_bands: 'aurora', snowfall: 'snow', ash_fall: 'ash' };
 
@@ -88,8 +160,12 @@ export class Arena {
     this.F = {
       white: r.frame('white'), glow: r.frame('glow'), ring: r.frame('ring'), laser: r.frame('laser'),
       beam: r.frame('beam'), spark: r.frame('spark'), shard: r.frame('shard0'),
+      darkhole: r.frame('fx_darkhole'), smoke: r.frame('smoke'),
     };
     this.R = game.fxRng;
+    this.world = world;
+    // Arena-only shader scenes (modes >= 10) render through the stage Background.
+    installArenaBackground(this.bg, r.gl);
     this.stars = new ScoreStars(world);
     this.reset();
   }
@@ -180,7 +256,7 @@ export class Arena {
       if (tr.t >= tr.dur) this.finish();
     }
     if (this.cur && this.cur.noStructs) this.parallax.structs.length = 0;
-    for (const a of this.amb) if (a.A.update) a.A.update(a.s);
+    for (const a of this.amb) if (a.A.update) a.A.update(a.s, this);
   }
 
   /** Arena layers + transition effect: over the parallax, under all entities. */
@@ -197,5 +273,25 @@ export class Arena {
   }
 
   /** Score stars: over the world, under enemy bullets. */
-  renderOver(b, alpha) { this.stars.render(b, alpha); }
+  renderOver(b, alpha) {
+    if (this.active && this.cur && this.cur.light > 0) this._renderVision(b);
+    this.stars.render(b, alpha);
+  }
+
+  /**
+   * Abyssal darkness: a veil over enemies and the background with a pool of
+   * light around the player. Bullets render after this, so they stay visible.
+   */
+  _renderVision(b) {
+    const p = this.world.player, F = this.F, cur = this.cur;
+    const x = p ? p.x : W / 2, y = p ? p.y : H * 0.8;
+    const a = Math.min(0.92, cur.darkness + 0.1); // faint silhouettes survive
+    const s = cur.light * 2.6, h = s / 2;
+    b.draw(F.darkhole, x, y, s, s, 0, 1, 1, 1, a, 0);
+    const k = (x0, y0, x1, y1) => { if (x1 > x0 && y1 > y0) b.draw(F.white, (x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0, 0, 0, 0, 0, a, 0); };
+    k(-20, -20, W + 20, y - h);
+    k(-20, y + h, W + 20, H + 20);
+    k(-20, y - h, x - h, y + h);
+    k(x + h, y - h, W + 20, y + h);
+  }
 }

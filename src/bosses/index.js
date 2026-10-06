@@ -1,6 +1,12 @@
 import { RNG } from '../core/RNG.js';
 import { BossController } from './BossController.js';
 import prototype from './test/prototype.js';
+import colossusCrawler from './ground/colossusCrawler.js';
+import skywardenCarrier from './aerial/skywardenCarrier.js';
+import leviathanDreadnought from './sea/leviathanDreadnought.js';
+import titanEnforcer from './mecha/titanEnforcer.js';
+import hiveSovereign from './extraterrestrial/hiveSovereign.js';
+import mawOfTheDeep from './abyssal/mawOfTheDeep.js';
 
 // Boss registry + endless-mode rotation (UPDATE_01 §1.6).
 //
@@ -17,12 +23,13 @@ export const ARCHETYPE_LABEL = {
   extraterrestrial: 'EXTRATERRESTRIAL', abyssal: 'ABYSSAL', prototype: 'PROTOTYPE',
 };
 
-/** All boss definitions by id. M4c adds one per archetype. */
+/** All boss definitions by id: one per archetype (M4c) + the framework prototype. */
 export const BOSSES = {
+  ...Object.fromEntries([colossusCrawler, skywardenCarrier, leviathanDreadnought, titanEnforcer, hiveSovereign, mawOfTheDeep].map((b) => [b.id, b])),
   [prototype.id]: prototype,
 };
 
-/** Stand-in for archetypes that have no authored boss yet. */
+/** Stand-in for an archetype with no authored boss (none since M4c; kept for safety). */
 export const FALLBACK_BOSS = prototype.id;
 
 const byArchetype = (a) => Object.values(BOSSES).filter((b) => b.archetype === a).map((b) => b.id);

@@ -95,6 +95,7 @@ export class StageScene extends PlayScene {
       case 'bossArena': this.arena.transitionTo(data.arena, data.fx, data.dur); break;
       case 'bossPhaseCard': this._phaseCard(data); break;
       case 'bossMusic': music.setLayer(data.layer); break;
+      case 'bossPartDown': this.hud.toast(`${data.name} DESTROYED · +${data.medals} MEDALS`, 'gold'); break;
       case 'bossPhaseClear':
         if (data.bonus) this.hud.toast(`PHASE BREAK +${Math.round(data.bonus * this.diffCfg.scoreMul).toLocaleString('en-US')}`, 'gold');
         else if (data.reason === 'timeout') this.hud.toast('PHASE TIMED OUT', 'red');
@@ -183,8 +184,23 @@ export class StageScene extends PlayScene {
     this.phaseCardEl = null;
   }
 
-  renderUnderlay(b, alpha, t) { this.arena.renderUnder(b, alpha, t); }
-  renderOverlay(b, alpha) { this.arena.renderOver(b, alpha); }
+  /** Live boss controller (for its hazard / well layers), or null. */
+  get bossCtrl() {
+    const c = this.director.bossCtrl;
+    return c && c.e.ctrl === c && c.e.alive ? c : null;
+  }
+
+  renderUnderlay(b, alpha, t) {
+    this.arena.renderUnder(b, alpha, t);
+    const c = this.bossCtrl;
+    if (c) c.renderUnder(b, alpha);
+  }
+
+  renderOverlay(b, alpha) {
+    this.arena.renderOver(b, alpha);
+    const c = this.bossCtrl;
+    if (c) c.renderOver(b, alpha);
+  }
 
   /** Dev (vite dev server only): B = skip to the boss, N = phase-clear hit, M = instant-kill hit. */
   _devBossKeys() {

@@ -9,8 +9,8 @@
 | **M3** | Enemy AI, bullet-pattern library, procedural stage generator | ✅ Done |
 | **M4a** | Difficulty config + difficulty select screen, hooked into M3 | ✅ Done |
 | **M4b** | Boss framework: arena mode, per-phase arena transitions, damage flags, safe defeat routing | ✅ Done |
-| M4c | One complete boss for each of the 6 archetypes (5 authored phases + unique arenas each) | ⏳ Next |
-| M5 | Remaining 12 standard pilots + **Vincenzo (Legendary)**, ultimates, cut-ins | — |
+| **M4c** | One complete boss for each of the 6 archetypes (5 authored phases + unique arenas each) | ✅ Done |
+| M5 | Remaining 12 standard pilots + **Vincenzo (Legendary)**, ultimates, cut-ins | ⏳ Next |
 | M6 | Audio engine and adaptive music (per-phase layers, archetype themes) | — |
 | M7 | UI, scoring, polish, performance tuning | — |
 
@@ -123,6 +123,60 @@
 - Rotation: no back-to-back repeats over 8 seeds × 60 stages, and every deck holds all 6.
 - M3 regression on Standard is identical: same numbers and waves, and waves → mid-boss → boss → tally → stage 2.
 - Each transition effect was captured frame-frozen at its peak.
+
+## M4c — Six archetype bosses
+
+**Existing files touched:**
+
+| File | Change | Why |
+|---|---|---|
+| [core/Game.js](src/core/Game.js) | One line: registers `buildBossSprites` with the renderer | Boss art has to live in the single sprite atlas. |
+| [scenes/StageScene.js](src/scenes/StageScene.js) | Draws the boss controller's wells and telegraph layers; adds a "part destroyed" toast | M4b presentation code, extended |
+
+The M1 Background is untouched. Arena-only scenes render through a delegate that [ArenaBackground](src/bosses/ArenaBackground.js) installs on the Background instance.
+
+**The bosses** (each in `src/bosses/<archetype>/`, 5 authored phases, every phase with its own arena + themed transition):
+
+| Archetype | Boss | Phases → arenas | Signature mechanics | Death |
+|---|---|---|---|---|
+| Ground | [Colossus Crawler](src/bosses/ground/colossusCrawler.js) | Overpass Siege (burning highway) → Tunnel Collapse (underground tunnel) → Scrapyard Sunset (desert scrapyard) → Molten Floor (foundry) → Siege Core (ash field) | Turrets and mortar pods are breakable parts. Track-crushing charges run down a telegraphed lane. Artillery marks floor zones that then detonate. | `tank_cookoff` |
+| Aerial | [Skywarden Carrier](src/bosses/aerial/skywardenCarrier.js) | Dawn Patrol (cloud sea at dawn) → Storm Cell (lightning storm) → Aurora Ceiling (stratosphere) → Edge of Orbit → Re-Entry (plasma fire) | Drone swarms launch from the hangar bays. Beam curtains sweep across. Escorts fly mirrored formations. Wing pods are breakable. | `spin_out` |
+| Sea | [Leviathan Dreadnought](src/bosses/sea/leviathanDreadnought.js) | Harbor Siege (harbor at night) → Storm Surge (open ocean storm) → Trench Dive (underwater) → Ice Breaker (arctic floes) → Maelstrom (whirlpool) | Broadsides fire from the gun ports and curve down. Torpedo lanes surface under the player. During the dive cycle the boss is shielded and drawn as a submerged silhouette. Deck guns are breakable. | `sink_and_explode` |
+| Mecha | [Titan Enforcer](src/bosses/mecha/titanEnforcer.js) | Plaza Enforcement (corporate plaza) → Helipad Downpour (rooftop in rain) → Data-Core Override (circuitry) → Orbital Ascent (elevator) → Desperation Protocol (red alert) | Three forms: armoured, wings deployed, burning core. Melee swipes lunge and sweep a telegraphed arc. Spiral danmaku. A low-HP desperation phase. Shoulder cannons are breakable. | `meltdown` |
+| Extraterrestrial | [Hive Sovereign](src/bosses/extraterrestrial/hiveSovereign.js) | Invasion Day (city under invasion) → Mothership Hold → Crystal World → Nebula Throne → Singularity | Gravity wells bend bullet paths. Crystalline shards split. The boss and its weak-point cores teleport. Glyph patterns fly out as expanding sigils. | `implode` |
+| Abyssal | [Maw of the Deep Below](src/bosses/abyssal/mawOfTheDeep.js) | Drowned City → Sunken Cathedral → Lightless (only the player's light pool) → The Gullet (inside the creature) → Heart of the Deep | Darkness limits visibility; bullets stay lit. Tendrils grab from the screen edges. Eyes open as weak points that pass ×2 damage through the veil. Sanity distortion. Ghost bullets fade in and out. | `dissolve` |
+
+On Hell each boss appends a themed desperation phase: Scorched Earth, Freefall, All Hands Lost, Overload, Event Horizon, The Endless Dark.
+
+**Framework additions:**
+- **[kit.js](src/bosses/kit.js):**
+  - **Breakable parts** have their own HP and drop medals. Breaking one costs the boss a chunk of phase HP. Some parts are `free` (they teleport), and `eye` parts open and close and pass damage on to the boss.
+  - **Minions.**
+  - **Telegraphed hazards:** `circle` artillery, `lane`, `arc` swipe and `tendril`.
+  - **Gravity wells.**
+  - **Ghost bullets:** a per-step frame swap, so bombs and cancels still clear them normally.
+  - **Glyph volleys.**
+  - Everything is cleared on phase end and on defeat. Remaining parts detonate without medals.
+- **Controller:**
+  - Per-phase `sprite` forms swap at the arena midpoint with a burst.
+  - `onStart` hooks, a `snap` teleport, and `ease` for charges and lunges.
+  - Six archetype death styles share one timeline, so every death still ends in `killEnemy`.
+- **[ArenaBackground](src/bosses/ArenaBackground.js)** adds 14 new procedural scenes (modes 10–23): tunnel, desert, clouds, ocean (plus maelstrom), underwater, ice, rooftop, circuit, hive, crystal, nebula (plus singularity), flooded city, cathedral, flesh.
+  - **31 arena themes** in [arenas.js](src/bosses/arenas.js): 30 boss phases plus the prototype's.
+  - **New ambient layers:** dust, sandstorm, heat haze, lightning, marine snow, alarm strobe, tractor beams, spores, sanity distortion, and a **vision veil** (`light` radius).
+  - **New transitions:** `rockfall`, `sandstorm`, `lava_flood`, `ice_crack`, `membrane`, `cloud_burst`.
+- **Mk. II / III:** each boss gates extra pattern layers on `ctrl.mk`, on top of the M4b HP, rate and drop scaling. The name gets a "MK. II" or "MK. III" suffix.
+- The prototype boss stays registered for testing but is no longer in the rotation.
+
+**Verified** (headless Chrome, software GL, no console errors):
+- Every boss runs its full flow **on Extreme (5 phases)**: each phase's arena, parts, hazards, minions and wells are present, its form is correct, and it reaches the transition, the death and the tally.
+- Every boss runs its full flow **on Hell at Mk. III (6 phases, desperation included)**, the heaviest configuration.
+- M3 regression on Standard is unchanged.
+- The M4b framework suite still passes on the real bosses:
+  - instant kill during entry
+  - instant kill mid-transition, with the transition cancelled cleanly
+  - shield rule and phase-clear chain
+  - rotation, and arena hand-back
 
 ## Run
 
@@ -257,8 +311,9 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 
 ## Known issues / notes
 
-- Main bosses run on the M4b framework, but only the framework prototype exists. The six archetype bosses (and breakable parts) come in M4c. The mid-boss is still the M3 Gatekeeper.
-- Arena themes reuse the six biome shader modes. M4c themes that these can't express (desert, cathedral, mothership interior, crystal planet, nebula, inside the creature) will need arena-specific shader modes. They would go in a new background module under `src/bosses/` so the M1 Background stays untouched.
+- The mid-boss is still the M3 Gatekeeper (UPDATE_01 only redesigns main bosses).
+- Boss balance is first-pass: phase HP, pattern rates and Hell/Mk. III density were tuned only in headless runs (peaks: ~1,040 bullets in the Maw's Hell Mk. III desperation phase). Needs a real-GPU playtest.
+- The boss-intro WARNING text still reads "SYNDICATE COMMAND UNIT APPROACHING" for every archetype (M7 UI pass).
 - Stage-to-stage biome change is an instant swap behind the tally overlay (no crossfade yet).
 - Readability check per biome done visually (harbor water and foundry lava were toned down). It still needs a real-GPU playtest for pacing and difficulty.
 - Balance is first-pass only: DPS per pilot, ultimate charge rates, and item drop rates. Tune in M7.
@@ -276,19 +331,18 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
   Real-GPU FPS hasn't been measured in this environment.
 
 
-## Next steps (M4c — six archetype bosses)
 
-Per UPDATE_01 §1.1, §1.2 and §1.5, all built on the M4b framework:
+## Next steps (M5 — pilots)
 
-1. One boss per archetype, each with **5 authored phases**, a **unique arena per phase**, and a themed transition into each:
-   - Ground Tank: Colossus Crawler
-   - Aerial: Skywarden Carrier
-   - Sea: Leviathan Dreadnought
-   - Mecha: Titan Enforcer
-   - Extraterrestrial: Hive Sovereign
-   - Abyssal: Maw of the Deep Below
+Per the prompt and UPDATE_01 §2:
 
-   Each boss gets its signature mechanics from §1.1 and procedural art.
-2. **Breakable parts** (turrets, cannons, eyes) with their own HP and hitboxes that drop medals, attached to the controller.
-3. Archetype-specific **death sequences** and **Mk. II / III** pattern variants (extra layers keyed on `ctrl.mk`).
-4. New arena themes, plus an arena background module for the scenes the six biome shaders can't express.
+1. **The 12 remaining standard pilots** (roster slots already reserved in `src/pilots/index.js`), each with:
+   - a unique vehicle, shot and focus shot
+   - a special, a bomb and an ultimate with a cut-in
+   - tier visuals
+2. **Vincenzo the Conqueror (Legendary, slot #17):**
+   - **Holy Bullets:** piercing, `ignoresShields`, and a 60% `instantPhaseClear`/destroy proc. Uses the M4b flags via `BulletSystem.dflags`.
+   - **Permanent intangibility.**
+   - **Bomb:** Dimensional Rifts → Void Mecha form (`VOID_FORM_DURATION`). Grabbed bosses are defeated through the normal defeat path.
+   - **Ultimate:** The God's Trumpet → Divine Owl form (`DIVINE_FORM_DURATION`), with one-hit `instantKill` waves.
+   - **Legendary presentation** on pilot select.

@@ -38,6 +38,7 @@ export default {
   archetype: 'prototype',
   sprite: 'emitter', scale: 1.4, r: 34, glow: [1, 0.2, 0.7], score: 100000,
   deathSequence: 'chain_explode',
+  transitionSpin: true,
 
   phases: [
     {

@@ -1,5 +1,7 @@
 import { WORLD_W } from '../core/constants.js';
 import { DMG_IGNORES_SHIELDS, DMG_INSTANT_KILL, DMG_INSTANT_PHASE_CLEAR } from '../core/damage.js';
+import { FADE_OUT } from '../fx/Particles.js';
+import { BossKit } from './kit.js';
 
 // Runtime for a data-driven main boss (UPDATE_01 §1.3–1.5, §2.6).
 //
@@ -34,6 +36,7 @@ const DEATH = { chain: 110, final: 112, kill: 150 };
 const PHASE_TIME = 60 * 75;   // a phase that outlasts this ends without its bonus
 const HOME_Y = 150;
 const EPS = 0.001;
+const EASE = 0.08;
 
 /** Which authored phases (0-4) are kept for a given phase count. */
 const DEFAULT_PHASE_SETS = { 1: [4], 2: [0, 4], 3: [0, 2, 4], 4: [0, 1, 3, 4], 5: [0, 1, 2, 3, 4] };
@@ -75,7 +78,7 @@ export class BossController {
     this.stars = null;        // ScoreStars, attached by the scene's arena (else plain cancel)
     const diff = w.diff;
     this.phases = selectPhases(def, diff.bossPhases ?? 5, !!diff.desperation);
-    const hpScale = (diff.bossHp || 1) * (1 + 0.35 * (this.mk - 1));
+    const hpScale = (this.hpScale = (diff.bossHp || 1) * (1 + 0.35 * (this.mk - 1)));
     for (const p of this.phases) p.hp = Math.max(1, Math.round(p.hp * hpScale));
     const total = this.phases.reduce((a, p) => a + p.hp, 0);
     // floors[i]: HP left when phase i is cleared.
@@ -115,6 +118,8 @@ export class BossController {
     this.log = [];          // state history (tests / debug)
     this.mx = WORLD_W / 2;
     this.my = HOME_Y;
+    this.ease = EASE;       // movement easing; attacks may raise it for one step (charges)
+    this.kit = new BossKit(this);
   }
 
   get number() { return this.index + 1; }
@@ -187,10 +192,12 @@ export class BossController {
       case 'dying': this._updateDeath(); break;
     }
     if (this.shield > 0) this.shield--;
+    this.kit.update();
     if (this.def.update) this.def.update(this, w);
     // Ease toward the movement target.
-    e.x += (this.mx - e.x) * 0.08;
-    e.y += (this.my - e.y) * 0.08;
+    e.x += (this.mx - e.x) * this.ease;
+    e.y += (this.my - e.y) * this.ease;
+    this.ease = EASE;
   }
 
   _updateEnter() {
@@ -219,8 +226,30 @@ export class BossController {
     this.intensity = this.phase.intensity || 1;
     this.pendingPhaseEnd = false;
     this.e.hp = this.floor + this.phase.hp; // exact, whatever happened before
+    this._setForm(this.phase.sprite);
+    if (!this.def.transitionSpin) this.e.rot = 0;
     this._setState('fight');
+    this.kit.spawnParts(this.phase.parts);
+    if (this.phase.onStart) this.phase.onStart(this, this.w);
   }
+
+  /** Swap the boss sprite (transforming phases); null = the default sprite. */
+  _setForm(sprite) {
+    const f = this.w.r.frame(sprite || this.def.sprite);
+    if (this.e.f === f) return false;
+    this.e.f = f;
+    return true;
+  }
+
+  /** Teleport: move instantly (no interpolation smear). */
+  snap(x, y) {
+    const e = this.e;
+    e.x = e.px = this.mx = x;
+    e.y = e.py = this.my = y;
+  }
+
+  renderUnder(b, alpha) { this.kit.renderUnder(b, alpha); }
+  renderOver(b, alpha) { this.kit.renderOver(b, alpha); }
 
   _updateFight() {
     const c = this, w = this.w, ph = this.phase;
@@ -244,6 +273,7 @@ export class BossController {
     this._emit('bossPhaseClear', { index: i, bonus, reason });
     if (last) { this._defeat(reason === 'instant' ? 'instantPhaseClear' : reason); return; }
     this.e.hp = this.floor;
+    this.kit.clearPhase();
     this._clearBullets();
     this._setState('transition');
     // Phase-break hit: flash, shockwave, a couple of armour bursts.
@@ -267,9 +297,17 @@ export class BossController {
     this.mx = WORLD_W / 2;
     this.my = HOME_Y - 20 + Math.sin(st * 0.08) * 8;
     e.x += Math.sin(st * 1.7) * 1.2 * (1 - st / TR.end);
-    e.rot += 0.02 + 0.15 * Math.sin((st / TR.end) * Math.PI);
+    // Spinning cores spin up; hulls shudder.
+    if (this.def.transitionSpin) e.rot += 0.02 + 0.15 * Math.sin((st / TR.end) * Math.PI);
+    else e.rot = Math.sin(st * 0.7) * 0.06 * (1 - st / TR.end);
     if (st % 9 === 0) w.explosions.sparks(e.x, e.y, 6, this.def.glow || [1, 0.5, 0.8], 5, 22, 4);
     if (st === TR.arena) this._emit('bossArena', { arena: next.arena, fx: next.transitionFx, dur: TR.arenaDur });
+    // Transformation: the new form appears at the arena swap, in a burst.
+    if (st === TR.arena + TR.arenaDur / 2 && this._setForm(next.sprite)) {
+      w.explosions.sparks(e.x, e.y, 30, this.def.glow || [1, 1, 1], 8, 30, 5);
+      w.g.renderer.post.flash(1, 1, 1, 0.35, 0.05);
+      w.g.renderer.post.shockwave(e.x, e.y, 0.03, 0.02, 0.6);
+    }
     if (st === TR.card) this._card(this.index + 1);
     if (st === TR.music) this._emit('bossMusic', { layer: next.musicLayer });
     if (st >= TR.end) this._startPhase(this.index + 1);
@@ -286,6 +324,7 @@ export class BossController {
     this.pendingPhaseEnd = false;
     this.shield = 0;
     this.e.hp = Math.max(EPS, Math.min(this.e.hp, EPS * 2));
+    this.kit.clearPhase();
     this._clearBullets();
     this._setState('dying');
     this.dieX = this.e.x;
@@ -298,27 +337,26 @@ export class BossController {
   }
 
   _updateDeath() {
-    const st = this.st, e = this.e, w = this.w, R = w.fxRng;
+    const st = this.st, e = this.e, w = this.w;
     if (w.bullets.count) this._clearBullets();
-    const style = this.def.deathSequence || 'chain_explode';
-    this.mx = this.dieX + Math.sin(st * 1.3) * 3;
     // Defeated during the fly-in: drift on-screen so the death stays visible.
-    this.my = style === 'sink_and_explode' ? Math.max(90, this.dieY) + st * 0.45 : Math.max(90, this.dieY);
-    e.rot += style === 'spin_out' ? 0.05 + st * 0.002 : 0;
+    this.mx = this.dieX + Math.sin(st * 1.3) * 3;
+    this.my = Math.max(90, this.dieY);
+    const style = DEATH_STYLES[this.def.deathSequence] || DEATH_STYLES.chain_explode;
     if (st < DEATH.chain) {
-      // Stage 1: rolling chain of hull blasts, accelerating.
-      const every = Math.max(3, 10 - Math.floor(st / 16));
-      if (st % every === 0) {
-        w.explosions.blast(e.x + R.range(-e.r, e.r) * 1.1, e.y + R.range(-e.r, e.r) * 0.8, R.range(0.6, 1.2), this.def.glow);
-        w.g.camera.addTrauma(0.08);
-      }
-      e.flash = st % 4 < 2 ? 2 : 0;
+      // Stage 1: archetype-specific breakdown (motion + effects).
+      style.step(this, st, e, w, w.fxRng);
+      if (style.flash !== false) e.flash = st % 4 < 2 ? 2 : 0;
     } else if (st === DEATH.final) {
       // Stage 2: core breach.
-      w.explosions.breakApart(e.x, e.y, e.r, 8);
+      if (style.final) style.final(this, e, w);
+      else w.explosions.breakApart(e.x, e.y, e.r, 8);
       w.g.renderer.post.flash(1, 0.95, 0.85, 0.8, 0.025);
       w.g.renderer.post.shockwave(e.x, e.y, 0.06, 0.02, 0.9);
-    } else if (st >= DEATH.kill) {
+    } else if (st > DEATH.final && style.after) {
+      style.after(this, st, e, w);
+    }
+    if (st >= DEATH.kill) {
       // Stage 3: hand over to the normal enemy death (score, medals, director).
       e.hp = 0;
       w.killEnemy(e);
@@ -326,6 +364,133 @@ export class BossController {
     }
   }
 }
+
+// ------------------------------------------------------- death styles
+
+/** Rolling hull blasts that speed up. */
+function chainBlasts(c, st, e, w, R, tint = c.def.glow, spread = 1.1) {
+  const every = Math.max(3, 10 - Math.floor(st / 16));
+  if (st % every === 0) {
+    w.explosions.blast(e.x + R.range(-e.r, e.r) * spread, e.y + R.range(-e.r, e.r) * 0.8, R.range(0.6, 1.2), tint);
+    w.g.camera.addTrauma(0.08);
+  }
+}
+
+function particle(w, frame, x, y, vx, vy, life, size, rgb, rgb1, drag = 0.95, grav = 0, add = 1) {
+  const H = w.fxHigh;
+  const i = H.spawn(frame, x, y, vx, vy, life);
+  if (i < 0) return;
+  H.size(i, size[0], size[1]);
+  H.color(i, rgb[0], rgb[1], rgb[2], rgb1[0], rgb1[1], rgb1[2]);
+  H.phys(i, drag, grav);
+  H.look(i, 1, add, FADE_OUT, 0.3);
+}
+
+/**
+ * deathSequence → per-step stage-1 behaviour (+ optional final / after).
+ * Every style runs inside the same timeline and ends in killEnemy, so all
+ * of them pay out score + medals and hand control back identically.
+ */
+export const DEATH_STYLES = {
+  chain_explode: { step: (c, st, e, w, R) => chainBlasts(c, st, e, w, R) },
+
+  // Ground: ammunition cooks off; fire columns and flying track links.
+  tank_cookoff: {
+    step(c, st, e, w, R) {
+      chainBlasts(c, st, e, w, R, [1, 0.45, 0.1]);
+      if (st % 6 === 0) {
+        const x = e.x + R.range(-e.r, e.r) * 0.6;
+        for (let k = 0; k < 4; k++) particle(w, w.F.glow, x, e.y, R.range(-0.6, 0.6), R.range(-5, -2.5), R.range(20, 34), [26, 8], [2, 1.2, 0.4], [1, 0.2, 0]);
+      }
+      if (st % 14 === 0) for (let k = 0; k < 6; k++) particle(w, w.F.spark, e.x + R.sign() * e.r * 0.7, e.y + R.range(-e.r, e.r) * 0.6, R.sign() * R.range(2, 6), R.range(-5, -1), 50, [6, 3], [1.4, 1.2, 1], [0.4, 0.4, 0.4], 0.97, 0.15, 0);
+      c.my = Math.max(90, c.dieY) + st * 0.1;
+    },
+  },
+
+  // Aerial: loses lift, spins and drifts down trailing smoke.
+  spin_out: {
+    step(c, st, e, w, R) {
+      chainBlasts(c, st, e, w, R, [0.5, 0.8, 1]);
+      e.rot += 0.01 + st * 0.0006;
+      c.mx = c.dieX + Math.sin(st * 0.03) * 60;
+      c.my = Math.max(90, c.dieY) + st * 1.1;
+      if (st % 2 === 0) {
+        const L = w.fxLow, i = L.spawn(w.r.frame('smoke'), e.x + R.range(-20, 20), e.y, R.range(-0.3, 0.3), -1, 70);
+        if (i >= 0) { L.size(i, 20, 60); L.color(i, 0.15, 0.15, 0.18, 0.05, 0.05, 0.06); L.phys(i, 0.97, -0.01); L.look(i, 0.7, 0); }
+      }
+    },
+  },
+
+  // Sea: lists, sinks, splash rings and a final underwater burst.
+  sink_and_explode: {
+    step(c, st, e, w, R) {
+      chainBlasts(c, st, e, w, R, [1, 0.7, 0.3], 0.6);
+      c.my = Math.max(90, c.dieY) + st * 0.5;
+      e.rot += (0.0015 - e.rot * 0.01);
+      e.scale += (c.def.scale * 0.75 - e.scale) * 0.01;
+      if (st % 10 === 0) particle(w, w.F.ring, e.x + R.range(-40, 40), e.y + R.range(-80, 80), 0, 0, 40, [10, 90], [0.8, 1.2, 1.5], [0.2, 0.4, 0.8]);
+    },
+    final(c, e, w) {
+      w.explosions.breakApart(e.x, e.y, e.r, 6);
+      for (let k = 0; k < 40; k++) { const a = w.fxRng.angle(), s = w.fxRng.range(2, 7); particle(w, w.F.glow, e.x, e.y, Math.cos(a) * s, Math.sin(a) * s, 40, [14, 4], [0.8, 1.6, 2], [0.1, 0.4, 0.8]); }
+    },
+  },
+
+  // Mecha: locks up, light bursts from armour cracks, reactor white-out.
+  meltdown: {
+    flash: false,
+    step(c, st, e, w, R) {
+      c.mx = c.dieX + R.range(-1, 1) * (st / 40);
+      if (st % 12 === 0) {
+        const ang = R.angle(), len = R.range(300, 700);
+        c.kit.fx.push({ t: 0, life: 200, ang, len, draw: (b, F, f) => {
+          const k = Math.min(1, f.t / 20), x = e.x, y = e.y;
+          b.draw(F.laser, x + Math.cos(f.ang) * f.len * k / 2, y + Math.sin(f.ang) * f.len * k / 2, f.len * k, 10 + f.t * 0.15, f.ang, 2.2, 2.1, 1.8, 0.8, 1);
+        } });
+        w.g.renderer.post.aberrate(0.004);
+      }
+      if (st % 20 === 0) w.explosions.blast(e.x + R.range(-e.r, e.r) * 0.5, e.y + R.range(-e.r, e.r) * 0.5, 0.7, [1, 0.3, 0.2]);
+      e.flash = st > 70 ? 2 : (st % 6 < 3 ? 2 : 0);
+      w.g.camera.addTrauma(0.03);
+    },
+  },
+
+  // Alien: collapses inward to a point, then a glyph shockwave.
+  implode: {
+    flash: false,
+    step(c, st, e, w, R) {
+      e.scale += (0.15 - e.scale) * 0.02;
+      e.rot += 0.02 + st * 0.001;
+      for (let k = 0; k < 2; k++) {
+        const a = R.angle(), d = R.range(120, 220);
+        particle(w, w.F.spark, e.x + Math.cos(a) * d, e.y + Math.sin(a) * d, -Math.cos(a) * d / 24, -Math.sin(a) * d / 24, 24, [6, 2], [0.6, 2, 0.6], [1, 0.3, 1.6], 1);
+      }
+      if (st % 30 === 0) w.g.renderer.post.shockwave(e.x, e.y, -0.02, 0.02, 0.4);
+    },
+    final(c, e, w) {
+      w.explosions.blast(e.x, e.y, 2.8, [0.5, 1, 0.4]);
+      for (let k = 0; k < 64; k++) { const a = (k / 64) * Math.PI * 2; particle(w, w.F.spark, e.x, e.y, Math.cos(a) * 9, Math.sin(a) * 9, 50, [10, 2], [0.8, 2, 0.8], [0.6, 0.2, 1.4], 0.97); }
+    },
+  },
+
+  // Abyssal: eyes close, the body flickers out of existence into black ash.
+  dissolve: {
+    flash: false,
+    step(c, st, e, w, R) {
+      if (!c.baseF) c.baseF = e.f;
+      e.f = R.chance(st / 140) ? null : c.baseF;
+      for (let k = 0; k < 3; k++) {
+        const L = w.fxLow, i = L.spawn(w.r.frame('smoke'), e.x + R.range(-e.r, e.r), e.y + R.range(-e.r, e.r) * 0.8, R.range(-0.5, 0.5), R.range(-1.2, -0.2), 60);
+        if (i >= 0) { L.size(i, 14, 50); L.color(i, 0.05, 0.0, 0.06, 0, 0, 0); L.phys(i, 0.97, -0.01); L.look(i, 0.9, 0); }
+      }
+      if (st % 25 === 0) { w.g.renderer.post.aberrate(0.01); w.g.renderer.post.heat(0.4); }
+    },
+    final(c, e, w) {
+      e.f = null;
+      w.explosions.blast(e.x, e.y, 2.4, [0.6, 0.1, 0.8]);
+    },
+  },
+};
 
 // ------------------------------------------------------------ helpers
 
