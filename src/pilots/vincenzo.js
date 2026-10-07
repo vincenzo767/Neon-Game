@@ -267,6 +267,7 @@ function slash(p, w) {
   p.ps.tears.push(tear);
   w.g.camera.addTrauma(0.35);
   w.r.post.shockwave(W / 2, y, 0.03, 0.03, 0.5);
+  w.event('sfx', { id: 'voidSlash' });
   // Abyssal hands reach out of the tear for anything near it.
   for (const e of T) {
     if (p.ps.hands.length >= 10) break;
@@ -281,6 +282,7 @@ function slash(p, w) {
 function trumpet(p, w) {
   const ox = p.x, oy = Math.min(p.y - 90, H - 150); // from the owl
   p.ps.waves.push({ x: ox, y: oy, r: 10 });
+  w.event('sfx', { id: 'trumpet' }); // M6: brass blast into the cathedral reverb
   w.cancelAll();
   for (const e of targets(w)) { w.damage(e, 1, ONE_HIT); smite(w, e.x, e.y, !!(e.ctrl || e.boss)); }
   w.r.post.flash(1, 0.95, 0.75, 0.3, 0.04);
@@ -442,6 +444,7 @@ export default {
         // …where it vanishes (grabbed main bosses are defeated through the normal path).
         w.damage(e, 1, ONE_HIT);
         smite(w, hd.ox, hd.oy, !!(e.ctrl || e.boss));
+        w.event('sfx', { id: 'grab' });
         hd.done = true;
       }
     }

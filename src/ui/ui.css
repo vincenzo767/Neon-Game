@@ -101,6 +101,7 @@
   text-shadow: 0 0 calc(6 * var(--u)) var(--neon-a);
 }
 .menu-item.sel::before { content: '\25B6\00a0'; }
+.menu-item .vol { letter-spacing: 0.05em; font-size: 0.85em; margin-left: 0.6em; color: var(--pc, #4ff0ff); } /* M6 volume rows */
 
 /* -------------------------------------------------------------- cut-in */
 

@@ -3,7 +3,8 @@ import { World } from '../entities/World.js';
 import { Parallax } from '../fx/Parallax.js';
 import { ROSTER, getRoster, LEGENDARY_INDEX } from '../pilots/index.js';
 import { unlock } from '../pilots/unlocks.js';
-import { playChoir } from '../audio/sting.js';
+import { playChoir, playUiTick, playConfirm, playBack } from '../audio/sting.js';
+import { music } from '../audio/music.js';
 import { BIOMES } from '../stages/biomes.js';
 import { drawPortrait } from '../ui/portraits.js';
 import { handleDevKeys } from './devKeys.js';
@@ -31,6 +32,7 @@ export class PilotSelectScene {
 
   enter(g) {
     this.g = g;
+    music.menu(); // M6: the Precinct theme under every menu
     this.world = new World(g);
     g.renderer.background.setBiome(BIOMES[0].bg);
     this.parallax = new Parallax(g, BIOMES[0]);
@@ -125,6 +127,7 @@ export class PilotSelectScene {
     root.classList.toggle('legendary', !!p.legendary);
     // Legendary sting: a synthesized choir chord (UPDATE_01 §2.7).
     if (p.legendary && prev !== i && this.t > 0) playChoir(this.g.settings.data.sfxVolume ?? 0.8);
+    else if (prev !== i && this.t > 0) playUiTick(this.g.settings.data.sfxVolume ?? 0.8);
     el.name.textContent = p.locked ? 'CLASSIFIED' : p.name;
     el.vehicle.textContent = p.locked ? `${p.vehicle} · ${p.unlockHint || 'CLASSIFIED'}` : `${p.vehicle} — ${p.role}`;
     el.stats.innerHTML = STAT_KEYS.map(([k, label]) => {
@@ -169,16 +172,18 @@ export class PilotSelectScene {
     if (inp.pressed('down')) i = this._move(0, 1);
     if (i !== this.index) this._select(i);
 
-    if (inp.pressed('back')) { g.setScene(new DifficultySelectScene()); return; }
+    if (inp.pressed('back')) { playBack(); g.setScene(new DifficultySelectScene()); return; }
     // Dev only: U unseals Warden without beating a boss.
     if (import.meta.env.DEV && inp.keyPressed('KeyU')) { unlock('warden'); g.setScene(new PilotSelectScene({ index: this.index })); return; }
     const launch = inp.pressed('confirm'), test = inp.pressed('special');
     if (launch || test) {
       const p = this.roster[this.index];
       if (p.locked) {
+        playBack();
         this.el.name.classList.remove('deny'); void this.el.name.offsetWidth; this.el.name.classList.add('deny');
       } else {
         g.renderer.post.flash(...p.color, 0.5, 0.04);
+        playConfirm();
         g.setScene(launch ? new StageScene(p) : new TestRangeScene(p));
         return;
       }

@@ -12,8 +12,8 @@
 | **M4c** | One complete boss for each of the 6 archetypes (5 authored phases + unique arenas each) | ✅ Done |
 | **M4d** | World & faction pass: lore/faction data, greeble generator, faction enemy variants, 2 new biomes, intro cards + loop lines, boss visual retrofit | ✅ Done |
 | **M5** | Remaining 12 standard pilots + **Vincenzo (Legendary)** with the §4.6 firing concepts, ultimates, cut-ins | ✅ Done |
-| M6 | Audio engine and adaptive music (per-phase layers, archetype themes, a musical identity per faction) | ⏳ Next |
-| M7 | UI, scoring, polish, performance tuning | — |
+| **M6** | Audio engine and adaptive music (per-phase layers, archetype themes, a musical identity per faction) | ✅ Done |
+| M7 | UI, scoring, polish, performance tuning | ⏳ Next |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -358,6 +358,100 @@ Every boss also gets:
   - 0 deaths.
 - **Regression:** the M3, M4b and six-boss suites on the final build (see the M5 changelog).
 
+## M6 — Audio engine and adaptive music
+
+Everything is synthesized with the Web Audio API at runtime; there are no sound files. Audio unlocks on the first key, pointer or pad press (browser autoplay rules). Until then every call is a no-op, so the game never waits on audio.
+
+**New files** ([src/audio/](src/audio/)):
+
+| File | What |
+|---|---|
+| [engine.js](src/audio/engine.js) | AudioContext + master mixer: music bus (low-pass for the bomb "underwater" sweep and pause muffle → duck → volume), sfx bus (duck → volume), hall reverb per bus, a 5 s cathedral reverb (Trumpet, choir), tempo-synced echo, soft clip → limiter. `duck()`, `muffle()`, volume sliders (squared curve), peak meter |
+| [synth.js](src/audio/synth.js) | Voice primitives: `tone` (unison, glide, vibrato, filter env, drive, pan, sends), `noise` (white/pink/brown), `fm` bells, `kick`, `snare`, `clap`, `hat`, `metal` (six-square cymbal/anvil), `pad` (detuned chords or choir formants), `pluck` |
+| [themes.js](src/audio/themes.js) | **Musical identity per faction** (data only) + the boss-layer parser |
+| [music.js](src/audio/music.js) | Look-ahead step sequencer + adaptive layers; replaces the M4b stub, `setLayer()` / `layer` unchanged |
+| [sfx.js](src/audio/sfx.js) | Effect library with per-id throttling (minimum gap + max per 100 ms) |
+| [pilotVoices.js](src/audio/pilotVoices.js) | Shot and special voices for all 17 pilots (data keyed by pilot id; pilot files untouched) |
+| [director.js](src/audio/director.js) | Maps world events → sfx and computes the music intensity each step |
+
+**Faction themes** (each has its own tempo, mode, drum kit, bass, pad, arp, lead timbre and a 2-bar leitmotif; the boss theme reuses the leitmotif harder and faster):
+
+| Style | Feel | Stage / boss BPM | Mode | Signature |
+|---|---|---|---|---|
+| Precinct 9 (menus, prototype, test range) | Synthwave pursuit | 112 / 128 | A aeolian | Gated snare, octave bass, pulse arp |
+| Ironclad Brotherhood | Foundry industrial | 136 / 144 | E phrygian | Distorted chug bass, anvil clanks, power chords |
+| Stratos Cartel | Sky-lane drum & bass | 174 / 176 | F lydian | Two-step breaks, reese bass, fast airy arps |
+| Black Tide | Salt-synth shanty | 124 / 132 | D dorian, swung | Reed "accordion" lead, oom-pah, foghorn + bubbles |
+| Helix Dynamics | Corporate electro | 150 / 156 | A harmonic minor | 16th sequencer bass, gated organ, data blips |
+| Outer Star | Crystal hymn | 104 / 112 | Whole-tone | FM glass bells, gliding theremin lead, 5-against-4 glyph chimes |
+| Drowned Covenant | Sunken requiem | 78 / 84 | B locrian | Heartbeat kick, choir pads, bell tolls, brown-noise undertow |
+
+**Adaptive music:**
+- **Layers:** pad → bass → drums → arp → lead → perc. The stage track opens them by **intensity 0–4**, computed from bullet count (70 %) and enemy count (30 %). It rises fast and falls slowly, and changes land on bar lines.
+- **Stage:** the owning faction's theme (`stageFactions().main`).
+  - The mid-boss raises the floor to level 3.
+  - A boss WARNING strips the track back to pad and perc for two bars under the siren.
+- **Boss:** the `musicLayer` ids the bosses already emit (`sea_p3` …) pick the faction's boss theme. Each phase changes the arrangement:
+  - **p1:** lead in;
+  - **p2:** perc and an alternate chord on odd bars;
+  - **p3:** key +2 and an octave-jumping bass;
+  - **p4:** key +3, double-time hats, lead an octave up;
+  - **p5:** key +5 and a harmonised lead;
+  - **`_desperation`:** tempo +8 %, a half-step up, distortion, everything on.
+  - Changes wait for the next bar, with a riser on the last beat and a crash on the downbeat.
+- **Stingers:** stage clear (fanfare over the pad) and game over (falling line, music fades).
+- **Scheduler:** a 25 ms timer schedules notes 0.12–0.35 s ahead on the audio clock. The look-ahead grows if timer ticks arrive late (busy main thread), and the scheduler skips forward after a hidden tab instead of bursting.
+
+**SFX highlights:**
+- **Explosions:** three layers (sub thump + noise burst + metallic tail) in four sizes from enemy HP. Boss parts and boss deaths get a chained 2.5 s sequence.
+- **Feedback:** graze tick (pitch climbs with the streak), boss hit tick, item chimes (P / B / S / medal pitch by value / 1UP fanfare), tier-up arpeggio, ULT READY shimmer, "not ready" buzz.
+- **Bomb:** heavy impact, with the music ducked and swept underwater for the bomb's length.
+- **Ultimate:** a riser through the cut-in, then the impact when play resumes. Music is ducked.
+- **Warnings and transitions:**
+  - two-tone boss siren over sub hits, plus a mid-boss alert;
+  - boss intro "braam" in the boss faction's key;
+  - phase break: glass shatter into a chime cascade;
+  - arena crossfade whoosh;
+  - laser-telegraph charge whine;
+  - soft enemy-volley ticks.
+- **Pilots:** a distinct shot voice per pilot. Examples: Dax's pitch climbs with engine heat, Holt fires left/right twins, and Cass drops a bass hit on her beat. Beams get a sustained hum, and every pilot has its own special sound.
+- **Vincenzo:** the Trumpet is a B♭ brass stack with a semitone scoop into the 5 s cathedral reverb. The Void Mecha slash and the hand grab have their own sounds; the choir select sting now runs through the mixer.
+- **Menus:** the Precinct theme plays under difficulty and pilot select; UI ticks, confirm and back sounds.
+
+**Mixer:**
+- Pause muffles the music (600 Hz low-pass) and mutes sfx.
+- The pause menu has **MUSIC** and **SFX** volume rows (◀ ▶ in 10 % steps), saved in Settings.
+- Music sits about 4 dB under the sfx; a soft clip and limiter guard the output.
+- The stats overlay (`` ` `` / F3) shows an `audio` line: style, BPM, open layers, intensity, live voices and throttled sfx.
+
+**Existing files touched** (listed before the work began; all additive):
+
+| File | Change |
+|---|---|
+| [audio/music.js](src/audio/music.js) | Stub replaced by the engine; `setLayer()` / `layer` kept |
+| [audio/sting.js](src/audio/sting.js) | Same exports (+ `playBack`), now routed through the mixer |
+| [main.js](src/main.js) | `attachAudio(game.settings)` |
+| [entities/World.js](src/entities/World.js) | `shotsFired` counter in `shot()` (one sound per volley) |
+| [scenes/PlayScene.js](src/scenes/PlayScene.js) | Creates the AudioDirector; forwards events and steps; pause muffle; volume rows; `audio` stats line |
+| [scenes/StageScene.js](src/scenes/StageScene.js) | `music.setStage(faction)` per stage (replaces `setLayer(null)` there) |
+| [scenes/DifficultySelectScene.js](src/scenes/DifficultySelectScene.js), [scenes/PilotSelectScene.js](src/scenes/PilotSelectScene.js) | `music.menu()`; tick / confirm / back sounds on pilot select |
+| [pilots/vincenzo.js](src/pilots/vincenzo.js) | `sfx` events for the Trumpet, slash and grab (no logic change) |
+| [ui/ui.css](src/ui/ui.css) | Style for the volume rows |
+
+No boss, enemy, pattern, HP, phase or damage-flag changes. No renames.
+
+**Verified** (headless Chrome, software GL, `--autoplay-policy=no-user-gesture-required`):
+- **Audio unlock:** the context runs after the first key press; the menu theme is audible.
+- **Stage start:** plays the faction track (Skyway → Ironclad); layers open as bullets build up (`pad,bass` → `+drums,arp`).
+- **Bomb:** music duck drops to 0.35 with the low-pass at 280 Hz, and both recover after the bomb.
+- **Ultimate:** music duck drops to 0.25.
+- **Pause:** the low-pass drops to 600 Hz and comes back on resume. The volume rows change the setting and the bus gain.
+- **All six bosses (Extreme, instant phase clears):** each plays stage track → boss p1 → p2 → p3 → p4 → p5 → desperation → next stage's faction track, then the tally.
+- **Output health:** peak ≤ 0.90, no NaN, live voices ≤ 125 at the busiest, and back to idle afterwards (no leaks).
+- **All 17 pilots in the test range** play their shot voice, special, bomb and ultimate. Cass's downbeat bass drop and Vincenzo's Trumpet (8 blasts in one Divine Form) fired. No console errors.
+- **Regression:** the M4a, M4b and six-boss suites on the final build (see the M6 changelog).
+- **Not verified:** the mix by ear. It was tuned from meters only; see Known issues.
+
 ## Run
 
 ```
@@ -516,7 +610,15 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 - Balance is first-pass only: DPS per pilot, ultimate charge rates, and item drop rates. Tune in M7.
 - Score is basic: kills × chain bonus, graze, cancels and medals. The full multiplier system, the no-bomb boss bonus, extends at score thresholds, and the high-score table (with pilot + seed) arrive in M7. Right now a single local hi-score is saved.
 - Key remap UI and the options menu are M7. Bindings are already remappable in [Settings](src/core/Settings.js).
-- No audio yet (M6).
+- **Audio (M6) is tuned by meter, not by ear.** Levels, the music/sfx balance (music ~4 dB under), shot-voice loudness and the bomb's underwater sweep were set from peak readings in headless Chrome. A listening pass on real speakers is the first thing to do in M7.
+- **Only the music and SFX volumes are adjustable, from the pause menu.** There is no master volume yet, and the full options screen arrives in M7.
+- **Some sounds were not exercised by the automated runs:**
+  - the Void Mecha slash and hand-grab sounds (Vincenzo's mecha form starts after the test windows);
+  - the smallest explosion size (the test range spawns only mid-HP enemies);
+  - game-over and continue stingers on a real defeat.
+  They're wired through the same paths that were tested.
+- Enemy fire has only a soft, throttled per-volley tick, so faction-specific weapon sounds (§4.5 firing language) are not there yet. This pairs naturally with the enemy bullet-skin pass.
+- Software GL runs at ~5 FPS, so the look-ahead scheduler stretched to its 0.35 s ceiling in tests. On a normal machine it stays at 0.12 s, which means music layer changes land within a beat.
 - WebGL context loss isn't handled yet (M7).
 - Verified in headless Chrome (software GL), with no runtime errors:
   - each pilot: select, shot, focus, special, ultimate + cut-in, bomb, pause → pilot select
@@ -529,19 +631,25 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 
 
 
-## Next steps (M6 — audio)
+## Next steps (M7 — UI, scoring, polish, performance)
 
-Per the prompt §6 and UPDATE_02 §6 (a musical identity per faction):
+Per the prompt §5, §8 and the known issues above:
 
-1. **Audio engine** to replace the stub [audio/music.js](src/audio/music.js) and absorb [audio/sting.js](src/audio/sting.js):
-   - a master mixer with ducking during bombs and ultimates;
-   - volume sliders (`sfxVolume` already exists in Settings).
-2. **SFX:**
-   - per-pilot shot sounds (17 pilots);
-   - layered explosions, graze tick, power-up chimes, boss warning sirens;
-   - bomb impacts with a low-pass sweep;
-   - Vincenzo's Trumpet blast with a long reverb tail (UPDATE_01 §2.5).
-3. **Adaptive music:**
-   - intensity layers keyed to bullet density;
-   - per-phase boss layers (`musicLayer` ids are already emitted);
-   - an archetype boss theme per faction.
+1. **Flow and UI** (§8):
+   - title screen → attract demo → difficulty → pilot select;
+   - options screen: graphics quality, CRT, shake, key remap, master/music/SFX volume;
+   - practice mode for any boss already reached.
+2. **Scoring** (§5):
+   - the full multiplier system, the no-bomb boss bonus, extends at score thresholds;
+   - a local high-score table that records pilot, difficulty and seed;
+   - tally tick sounds.
+3. **Polish:**
+   - an audio listening pass (mix levels, per-pilot shot loudness);
+   - faction bullet skins and enemy weapon sounds (§4.5);
+   - per-pilot flak tints, a stage-to-stage biome crossfade, faction animation traits on regular enemies;
+   - a widening decision for boss hitboxes.
+4. **Performance and robustness:**
+   - a real-GPU FPS and start-up measurement (1,500+ bullets at 60 FPS);
+   - a 2048-atlas fallback check;
+   - WebGL context-loss handling;
+   - a balance pass for the 17 pilots and the boss phase HP.

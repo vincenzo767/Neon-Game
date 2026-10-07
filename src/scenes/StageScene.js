@@ -47,11 +47,11 @@ export class StageScene extends PlayScene {
     const g = this.g, w = this.world;
     this.stageIndex = index;
     this.arena.reset();
-    music.setLayer(null);
     this.plan = generateStage(g.seed, index, this.diffCfg.id);
     // Update 02: who owns this territory, and whose colours each enemy wears
     // (split territories change hands by unit type or after the mid-boss).
     this.factions = stageFactions(this.plan);
+    music.setStage(this.factions.main.id); // M6: the owning faction's musical identity
     this.upperLevels = false;
     w.factionOf = (def) => this.factions.resolve(def, this.upperLevels);
     g.renderer.background.setBiome(this.plan.biome.bg);

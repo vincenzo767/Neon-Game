@@ -57,6 +57,7 @@ export class World {
     this._score = 0;
     this.scoreMul = 1;      // difficulty score multiplier (applied to every gain)
     this.graze = 0;
+    this.shotsFired = 0;   // player shots spawned (audio cue counter)
     this.kills = 0;
     this.chain = 0;
     this.chainTimer = 0;
@@ -107,6 +108,7 @@ export class World {
 
   /** Player shot. Returns index (or -1). Configure with shots.behave(i, ...). */
   shot(x, y, angle, speed, frame, damage = 1, radius = 5, scale = 1) {
+    this.shotsFired++; // M6: the audio director voices one sound per volley
     const i = this.shots.spawn(x, y, angle, speed, frame.id, 0, radius, scale);
     if (i >= 0) this.shots.damage[i] = damage;
     return i;

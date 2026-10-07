@@ -6,6 +6,7 @@ import { DIFFICULTIES, DEFAULT_DIFFICULTY } from '../core/difficulty.js';
 import * as P from '../patterns/index.js';
 import { handleDevKeys } from './devKeys.js';
 import { playHellWarning, playUiTick, playConfirm } from '../audio/sting.js';
+import { music } from '../audio/music.js';
 import { PilotSelectScene } from './PilotSelectScene.js';
 
 // Difficulty select (UPDATE_01 §3.3): five cards with a colour identity,
@@ -24,6 +25,7 @@ const SPEC = {
 export class DifficultySelectScene {
   enter(g) {
     this.g = g;
+    music.menu(); // M6: starts once audio unlocks on the first key press
     g.renderer.background.setBiome(BIOMES[0].bg);
     this.parallax = new Parallax(g, BIOMES[0]);
     // A World with no player: just a bullet-preview emitter.

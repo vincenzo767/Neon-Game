@@ -4,6 +4,8 @@ import { Hud, saveHiScore, hiScoreId } from '../ui/Hud.js';
 import { showCutIn, CUTIN_STEPS } from '../ui/CutIn.js';
 import { handleDevKeys } from './devKeys.js';
 import { getDifficulty, startingReserve, startingBombs } from '../core/difficulty.js';
+import { AudioDirector } from '../audio/director.js';
+import { playUiTick } from '../audio/sting.js';
 
 // Base class for in-game scenes: owns the World, parallax, HUD, banners,
 // pause menu and game-over / continue flow, plus the common render order.
@@ -23,6 +25,7 @@ export class PlayScene {
     this.world.scoreMul = cfg.scoreMul;
     this.world.setPlayer(this.def, { lives: startingReserve(cfg), bombStock: startingBombs(cfg, this.def) });
     this.world.onEvent = (type, data) => this.onEvent(type, data);
+    this.audio = new AudioDirector(this); // M6: sfx + adaptive music
     this.parallax = new Parallax(g, null);
     this.paused = false;
     this.gameOver = false;
@@ -40,10 +43,12 @@ export class PlayScene {
     this.hud = new Hud(g.hud, this.world, cfg);
     this.bannerT = 0;
     this.setup();
+    this.audio.start();
   }
 
   exit() {
     this._saveHi();
+    this.audio.exit();
     const p = this.world.player;
     if (p && p.def.reset) p.def.reset(p, this.world);
     this.g.renderer.background.onLightning = null;
@@ -93,6 +98,7 @@ export class PlayScene {
 
   onEvent(type, data) {
     const hud = this.hud;
+    this.audio.onEvent(type, data);
     switch (type) {
       case 'ultimate': {
         const steps = data.ultimate.cutin || CUTIN_STEPS; // M5: pilots may lengthen the cinematic
@@ -156,10 +162,28 @@ export class PlayScene {
     }
 
     if (this.paused) {
+      this.audio.paused(true);
+      const prevIndex = this.menuIndex;
       this._menuNav();
-      this._renderMenu('PAUSED', ['RESUME', 'RESTART', 'PILOT SELECT'], this.menuHint || '');
+      if (this.menuIndex !== prevIndex) playUiTick();
+      // M6: MUSIC / SFX volume rows (left / right in 10 % steps).
+      const vols = [['musicVolume', 'MUSIC'], ['sfxVolume', 'SFX']];
+      const vrow = vols[this.menuIndex - 3];
+      if (vrow) {
+        const dir = (inp.pressed('right') ? 1 : 0) - (inp.pressed('left') ? 1 : 0);
+        if (dir) {
+          const v = Math.round(Math.max(0, Math.min(1, (g.settings.get(vrow[0]) ?? 0.7) + dir * 0.1)) * 10) / 10;
+          g.settings.set(vrow[0], v);
+          playUiTick();
+        }
+      }
+      const volItems = vols.map(([k, label]) => {
+        const v = g.settings.get(k) ?? 0.7, n = Math.round(v * 10);
+        return `${label} <span class="vol">◀ ${'▮'.repeat(n)}${'▯'.repeat(10 - n)} ${Math.round(v * 100)}% ▶</span>`;
+      });
+      this._renderMenu('PAUSED', ['RESUME', 'RESTART', 'PILOT SELECT', ...volItems], this.menuHint || '');
       if (inp.pressed('pause')) { this.paused = false; this._hideOverlay(); return; }
-      if (inp.pressed('confirm')) {
+      if (inp.pressed('confirm') && !vrow) {
         this.paused = false;
         this._hideOverlay();
         if (this.menuIndex === 1) this.restartScene();
@@ -182,9 +206,12 @@ export class PlayScene {
     this.tick();
     w.update();
     this.hud.update();
+    this.audio.paused(false);
+    this.audio.update();
 
     const dbg = g.debug;
     dbg.set('bullets', `${w.bullets.count}  shots ${w.shots.count}  lasers ${w.lasers.length}`);
+    dbg.set('audio', this.audio.info());
     dbg.set('particles', `${w.fxLow.count + w.fxHigh.count}`);
     dbg.set('enemies', `${w.enemies.count}  items ${w.items.count}`);
   }

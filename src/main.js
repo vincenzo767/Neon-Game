@@ -10,6 +10,7 @@ import { generateStage } from './stages/StageGen.js';
 import { BIOMES } from './stages/biomes.js';
 import { BOSSES, bossForStage, archetypeDeck } from './bosses/index.js';
 import { dmgFlags } from './core/damage.js';
+import { attachAudio } from './audio/engine.js';
 
 function boot() {
   const stage = document.getElementById('stage');
@@ -20,6 +21,7 @@ function boot() {
       hud: document.getElementById('hud'),
       debug: document.getElementById('debug'),
     });
+    attachAudio(game.settings); // M6: mixer volumes + unlock on the first key press
     // Shareable runs: ?seed=ABCD1234 replays the same stage sequence.
     const seed = new URLSearchParams(location.search).get('seed');
     if (seed) game.seed = seed.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) || game.seed;
