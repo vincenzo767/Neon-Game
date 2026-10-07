@@ -147,7 +147,7 @@
 }
 .sel-grid {
   position: absolute; top: calc(50 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u));
-  display: grid; grid-template-columns: repeat(8, 1fr); gap: calc(4 * var(--u));
+  display: grid; grid-template-columns: repeat(9, 1fr); gap: calc(4 * var(--u));
 }
 .sel-tile {
   aspect-ratio: 4 / 5; border: 1px solid rgba(255, 255, 255, 0.15); background: #05040a; position: relative;
@@ -163,7 +163,7 @@
 @keyframes tilePulse { from { opacity: 1; } to { opacity: 0; transform: scale(1.12); } }
 
 .sel-main {
-  position: absolute; top: calc(170 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u));
+  position: absolute; top: calc(184 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u));
   display: flex; gap: calc(12 * var(--u));
 }
 .sel-portrait {
@@ -189,12 +189,12 @@
 @keyframes pip { from { opacity: 0; transform: skewX(-20deg) scaleY(0); } }
 
 .sel-bio {
-  position: absolute; top: calc(318 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u));
+  position: absolute; top: calc(330 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u));
   font-size: calc(8 * var(--u)); line-height: 1.55; opacity: 0.9;
   background: rgba(3, 4, 12, 0.55); padding: calc(6 * var(--u)) calc(8 * var(--u));
 }
 .sel-abilities {
-  position: absolute; top: calc(370 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u));
+  position: absolute; top: calc(398 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u));
   font-size: calc(7.2 * var(--u)); line-height: 1.6;
   background: rgba(3, 4, 12, 0.55); padding: calc(4 * var(--u)) calc(8 * var(--u));
 }

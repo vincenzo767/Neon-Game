@@ -7,6 +7,7 @@ import { music } from '../audio/music.js';
 import { DMG_IGNORES_SHIELDS, DMG_INSTANT_KILL, DMG_INSTANT_PHASE_CLEAR } from '../core/damage.js';
 import { stageFactions, factionForArchetype } from '../data/factions/index.js';
 import { showFactionCard } from '../ui/factionCard.js';
+import { recordBossDefeat } from '../pilots/unlocks.js';
 
 // The main game: an endless sequence of procedurally generated stages.
 // The run is fully determined by the seed (game.seed) plus player input.
@@ -102,6 +103,13 @@ export class StageScene extends PlayScene {
       case 'bossPhaseCard': this._phaseCard(data); break;
       case 'bossMusic': music.setLayer(data.layer); break;
       case 'bossPartDown': this.hud.toast(`${data.name} DESTROYED · +${data.medals} MEDALS`, 'gold'); break;
+      case 'bossDefeated': {
+        // M5: Warden's Verdict copies the last boss defeated; the first defeat unseals Warden.
+        const arch = data.ctrl.archetype;
+        this.world.lastBossArchetype = arch;
+        if (recordBossDefeat(arch)) this.hud.toast('PERSONNEL FILE UNSEALED · "WARDEN" UNLOCKED', 'gold');
+        break;
+      }
       case 'bossPhaseClear':
         if (data.bonus) this.hud.toast(`PHASE BREAK +${Math.round(data.bonus * this.diffCfg.scoreMul).toLocaleString('en-US')}`, 'gold');
         else if (data.reason === 'timeout') this.hud.toast('PHASE TIMED OUT', 'red');

@@ -1,0 +1,68 @@
+/* Legendary presentation (UPDATE_01 §2.7): Vincenzo's select tile with an
+   animated gold-and-void border, particle shimmer and LEGENDARY badge; the
+   gold theme while he is selected; and the gold cut-in band. */
+
+.sel-tile.legendary {
+  grid-column: 9; grid-row: 1 / span 2; aspect-ratio: auto;
+  border: none; overflow: hidden; background: #000;
+  padding: calc(2 * var(--u));
+}
+.sel-tile.legendary::before {
+  /* Rotating gold / void conic border. */
+  content: ''; position: absolute; inset: -60%;
+  background: conic-gradient(from 0deg, #000 0deg, #ffd870 40deg, #fff6d8 60deg, #000 110deg, #000 180deg, #ffd870 220deg, #fff6d8 240deg, #000 290deg);
+  animation: legSpin 3.2s linear infinite;
+}
+.sel-tile.legendary canvas {
+  position: relative; z-index: 1; width: 100%; height: 100%; object-fit: cover; background: #020104;
+}
+.sel-tile.legendary.sel { transform: scale(1.05); box-shadow: 0 0 calc(18 * var(--u)) #ffd870; }
+.sel-tile.legendary.sel::after { border-color: #ffd870; }
+.leg-badge {
+  position: absolute; z-index: 2; left: 0; right: 0; bottom: calc(6 * var(--u)); text-align: center;
+  font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: calc(5.2 * var(--u)); letter-spacing: 0.12em;
+  color: #fff6d8; text-shadow: 0 0 calc(4 * var(--u)) #ffb020, 0 0 calc(8 * var(--u)) #ffb020;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.85), transparent);
+}
+.leg-spark {
+  position: absolute; z-index: 2; width: calc(2 * var(--u)); height: calc(2 * var(--u)); border-radius: 50%;
+  background: #fff6d8; box-shadow: 0 0 calc(4 * var(--u)) #ffd870;
+  animation: legSpark 2.4s ease-in-out infinite;
+}
+.leg-spark:nth-of-type(1) { left: 20%; top: 18%; animation-delay: 0s; }
+.leg-spark:nth-of-type(2) { left: 70%; top: 30%; animation-delay: 0.4s; }
+.leg-spark:nth-of-type(3) { left: 35%; top: 52%; animation-delay: 0.8s; }
+.leg-spark:nth-of-type(4) { left: 80%; top: 64%; animation-delay: 1.2s; }
+.leg-spark:nth-of-type(5) { left: 15%; top: 76%; animation-delay: 1.6s; }
+.leg-spark:nth-of-type(6) { left: 55%; top: 86%; animation-delay: 2s; }
+@keyframes legSpin { to { transform: rotate(360deg); } }
+@keyframes legSpark { 0%, 100% { opacity: 0; transform: translateY(0) scale(0.4); } 50% { opacity: 1; transform: translateY(calc(-8 * var(--u))) scale(1); } }
+
+/* Gold theme while the Legendary pilot is highlighted. */
+.select.legendary .sel-name {
+  background: linear-gradient(90deg, #fff6d8, #ffd870, #fff6d8); -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: none; filter: drop-shadow(0 0 calc(6 * var(--u)) #ffb020);
+  font-size: calc(14 * var(--u));
+}
+.select.legendary .sel-vehicle::after {
+  content: ' · LEGENDARY'; color: #fff6d8; text-shadow: 0 0 calc(6 * var(--u)) #ffb020;
+}
+.select.legendary .sel-portrait { border-color: #ffd870; box-shadow: 0 0 calc(18 * var(--u)) #ffb020, inset 0 0 calc(10 * var(--u)) #000; }
+.select.legendary .sel-info { border-left-color: #ffd870; background: linear-gradient(90deg, rgba(40, 28, 6, 0.75), rgba(3, 4, 12, 0.6)); }
+
+/* Gold cut-in (Vincenzo's transformations). */
+.cutin.legendary .cutin-band {
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.92), rgba(60, 40, 6, 0.92) 40%, rgba(0, 0, 0, 0.92));
+  border-top-color: #ffd870; border-bottom-color: #ffd870;
+  box-shadow: 0 0 calc(30 * var(--u)) #ffb020;
+}
+.cutin.legendary .cutin-text b { color: #fff6d8; text-shadow: 0 0 calc(10 * var(--u)) #ffb020, 0 0 calc(24 * var(--u)) #ffb020; }
+.cutin.legendary .cutin-flash { background: radial-gradient(circle, rgba(255, 246, 216, 0.9), rgba(255, 200, 80, 0.2) 50%, transparent 70%); }
+.cutin.legendary::before {
+  content: ''; position: absolute; inset: -50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 220, 140, 0.18) 0deg 6deg, transparent 6deg 18deg);
+  animation: legSpin 6s linear infinite; pointer-events: none;
+}
+
+/* HUD tag for Legendary runs (their hi-scores are kept separately). */
+.hud-legendary { color: #fff6d8; text-shadow: 0 0 calc(6 * var(--u)) #ffb020; font-weight: 700; }

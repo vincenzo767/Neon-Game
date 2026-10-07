@@ -1,6 +1,6 @@
 import { World } from '../entities/World.js';
 import { Parallax } from '../fx/Parallax.js';
-import { Hud, saveHiScore } from '../ui/Hud.js';
+import { Hud, saveHiScore, hiScoreId } from '../ui/Hud.js';
 import { showCutIn, CUTIN_STEPS } from '../ui/CutIn.js';
 import { handleDevKeys } from './devKeys.js';
 import { getDifficulty, startingReserve, startingBombs } from '../core/difficulty.js';
@@ -51,7 +51,7 @@ export class PlayScene {
   }
 
   /** Hi-scores are kept per difficulty; unranked scenes (test range) don't save. */
-  _saveHi() { if (this.ranked !== false) saveHiScore(this.world.score, this.diffCfg.id); }
+  _saveHi() { if (this.ranked !== false) saveHiScore(this.world.score, hiScoreId(this.diffCfg, this.def)); }
 
   // ------------------------------------------------------------- overlays
 
@@ -94,11 +94,21 @@ export class PlayScene {
   onEvent(type, data) {
     const hud = this.hud;
     switch (type) {
-      case 'ultimate':
-        showCutIn(this.g.hud, data);
-        this.g.hitStop(CUTIN_STEPS);
+      case 'ultimate': {
+        const steps = data.ultimate.cutin || CUTIN_STEPS; // M5: pilots may lengthen the cinematic
+        showCutIn(this.g.hud, data, { steps });
+        this.g.hitStop(steps);
         this.g.renderer.post.flash(...data.color, 0.3, 0.02);
         break;
+      }
+      // M5: other pilot cinematics (Vincenzo's Void Mecha transformation).
+      case 'cutin':
+        showCutIn(this.g.hud, data.def, data);
+        this.g.hitStop(data.steps || CUTIN_STEPS);
+        this.g.renderer.post.flash(...data.def.color, 0.3, 0.02);
+        break;
+      // M5: short pilot messages (hopper swaps, hacks, combos).
+      case 'toast': hud?.toast(data.text, data.cls || ''); break;
       case 'bomb': hud?.toast(data.counter ? `COUNTER BOMB! ${data.name}` : data.name, data.counter ? 'gold' : ''); break;
       case 'special': hud?.toast(data, 'pc'); break;
       case 'tier': hud?.toast(data >= 4 ? 'POWER MAX!' : `POWER UP · TIER ${data}`, 'gold'); break;

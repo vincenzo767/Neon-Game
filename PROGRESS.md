@@ -11,8 +11,8 @@
 | **M4b** | Boss framework: arena mode, per-phase arena transitions, damage flags, safe defeat routing | ✅ Done |
 | **M4c** | One complete boss for each of the 6 archetypes (5 authored phases + unique arenas each) | ✅ Done |
 | **M4d** | World & faction pass: lore/faction data, greeble generator, faction enemy variants, 2 new biomes, intro cards + loop lines, boss visual retrofit | ✅ Done |
-| M5 | Remaining 12 standard pilots + **Vincenzo (Legendary)** with the §4.6 firing concepts, ultimates, cut-ins | ⏳ Next |
-| M6 | Audio engine and adaptive music (per-phase layers, archetype themes, a musical identity per faction) | — |
+| **M5** | Remaining 12 standard pilots + **Vincenzo (Legendary)** with the §4.6 firing concepts, ultimates, cut-ins | ✅ Done |
+| M6 | Audio engine and adaptive music (per-phase layers, archetype themes, a musical identity per faction) | ⏳ Next |
 | M7 | UI, scoring, polish, performance tuning | — |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
@@ -286,6 +286,78 @@ Every boss also gets:
   - first 10 stages on `TESTSEED`: skyway, datacore, **undercity**, elevator, spire, storm, elevator, datacore, skyway, **undercity**.
 - **Regression on the final build:** the M3 suite, the M4b framework suite and all six bosses on Extreme (see the M4d changelog).
 
+## M5 — The full roster (16 standard pilots + Vincenzo, Legendary)
+
+**Existing files touched** (listed before the work began; all additive):
+
+| File | Change | Why |
+|---|---|---|
+| [pilots/index.js](src/pilots/index.js) | Registers all 17 pilots; `getRoster()` shows Warden as a sealed slot until unlocked | Roster |
+| [scenes/PilotSelectScene.js](src/scenes/PilotSelectScene.js) + [ui/ui.css](src/ui/ui.css) | 9-column grid: 8×2 standard tiles plus a tall Legendary tile; grid navigation; panels moved below the grid (the old second row was hidden under the info panel); unlock hint; Legendary theme and choir sting; dev `U` unlock | §3 select screen, UPDATE_01 §2.7 |
+| [ui/portraits.js](src/ui/portraits.js) | New hair styles, eyes and accents, twin portraits, Legendary backdrop. The original four portraits draw exactly as before. | 13 new faces |
+| [ui/CutIn.js](src/ui/CutIn.js), [scenes/PlayScene.js](src/scenes/PlayScene.js) | Cut-in takes a custom title/sub/length; `ultimate.cutin` lengthens the freeze; new `cutin` and `toast` pilot events | Vincenzo's 1.5 s / 2 s cinematics, pilot feedback |
+| [ui/Hud.js](src/ui/Hud.js), PlayScene | Legendary runs save under a separate hi-score key (`<difficulty>.legendary`); HUD tag | UPDATE_01 §2.7 |
+| [scenes/StageScene.js](src/scenes/StageScene.js) | On `bossDefeated`: record the archetype (Warden's weapon) and unlock Warden | Warden is unlockable |
+| [audio/sting.js](src/audio/sting.js) | `playChoir()` | Legendary select sting |
+
+`Player.js` is untouched. Vincenzo's intangibility uses the existing `onHit` hook, which every hit path (bullets, lasers, hazards, body contact) already goes through.
+
+**Shared pilot helpers** ([pilots/common.js](src/pilots/common.js)):
+- **§4.6 firing concepts:** muzzle flashes, impact bursts, ring pulses, jagged lightning strands (`zap`), lock-on target picking, chain targets;
+- **`stun()`**, which pauses a regular enemy's AI without touching bosses;
+- **`shipScale()`**, which lowers resolution on 2048 atlases.
+
+**The new pilots.** Every pilot has:
+- 4 tier sprites that visibly change;
+- option pods by tier;
+- a main shot and a focus shot;
+- a special, a bomb, and an ultimate with a cut-in;
+- muzzle flashes;
+- shots in cool or translucent colours (§4.5).
+
+| # | Pilot / vehicle | Shot · Focus | Special | Bomb · Ultimate |
+|---|---|---|---|---|
+| 5 | Oduya Rex · Thunderjaw | arcing plasma mortars that curve onto targets and burst · chain-lightning strand that locks on and jumps | Ground-Slam EMP (clear + stun) | Storm Cell · Chain-Lightning Storm |
+| 6 | Lin Hayase · Petal Engine | petals + seeds that take root as turrets (turrets eat bullets) · converged petals, every turret fires on your target | Bloom (instant garden) | Petal Storm · Forest of Light (beam pillars) |
+| 7 | Dax Morrow · Overclock | fire rate climbs with heat (9 → 2 steps), heat gauge · Heat Lance widens with heat | Vent Blast (cone ∝ heat) | Nitro Wall · Meltdown Nova |
+| 8 | Sera Voss · Glacier | piercing frost shards that chill bullets · Cryo Beam slows every bullet in its path | Cryo Shell (frost field) | Absolute Zero · Time-Stop Shatter (bullets hang, regular enemies freeze, then shatter) |
+| 9 | NOVA-7 · Cipher | homing data bolts · Breach Beam: hold the lock to **hack** an enemy into an ally that hunts its squad, then self-destructs | Firewall | System Crash · City-Wide Override (all regulars hacked, all bullets rewritten) |
+| 10 | Rufus Graine · Junkyard Saint | the hopper deals a random scrap gun every 2 s (nails, rails, springs, saws, bolt flak) · Magnet Choke | Magnet Pull (vacuums items, swallows bullets into a ball you fling) | Scrap Storm · Junk Meteor |
+| 11 | Aiko Brandt · Tempest | corkscrew rotor streams + tornado cells that grind and sweep bullets · drill-wind cells held ahead | Downdraft (blows bullets away) | Cyclone Walls · Hurricane Eye |
+| 12 | Maj. Eldon Pike · Bastion | heavy twin cannons + escort drones (2/3/4/6) in V formation · drones lock into a firing line on your target | Scramble (drones become homing interceptors) | Siege Grid · Full Air Squadron Strike (3 V-formations) |
+| 13 | Zuri Ankara · Solar Fang | translucent solar darts · Fang Beam grows with hold time (3 s); release at full charge → Solar Lance | Solar Flare | Corona · Miniature-Sun Collapse |
+| 14 | Cass Rivera · Pulse Rider | sonic rings on a 128 BPM beat clock, bass ring on the downbeat · tight groove | **Drop the Beat:** on-beat presses stack ×1.25 damage (to ×2), off-beat resets; beat ring shows the window | Subwoofer · Bass-Drop Shockwave |
+| 15 | Holt & Holt · Gemini | the twin mirrors your flight across the centre line; both fire · twins dock → Binary Lance | Tether (damaging laser link) | Twin Cross · Binary Star |
+| 16 | "Warden" · Verdict *(unlockable)* | **adaptive:** the gun copies the last main boss defeated, e.g. Crawler → siege slugs, Carrier → curtain lances, Leviathan → torpedoes, Titan → spiral docket, Hive → crystal shards, Maw → void writs · Verdict Beam | Objection (cross seal) | Sentence (gavel) · Final Judgment |
+
+- **Warden unlock:** defeating any Undercrown main boss unseals Warden. The unlock and the last archetype persist in `localStorage` (`npo.unlocks.v1`), and a boss beaten mid-run re-teaches the weapon at once.
+
+**Vincenzo the Conqueror · Dimensional Hypership · LEGENDARY** ([pilots/vincenzo.js](src/pilots/vincenzo.js), UPDATE_01 §2). Gold, white and void black only (§4.6).
+- **Holy Bullets:** a dense golden-white stream, 9–13 rounds every 2 steps.
+  - pierce, and `ignoresShields`;
+  - each bullet has a **60%** chance (gameplay RNG, so replays match) to carry `instantPhaseClear`: regular enemies and mid-bosses die, and a main boss loses its current phase, so every arena transition still plays;
+  - golden smite bursts mark the procs.
+- **Absolute Intangibility:** `onHit` absorbs everything with a ripple. Grazing still charges the ultimate, and lives are never lost.
+- **Bomb, Dimensional Rifts:** five rifts fire one-hit beams (`instantKill`), then a 1.5 s Void Mecha cut-in.
+  - The **Void Mecha** form lasts `VOID_FORM_DURATION` (12 s). Its screen-wide slashes leave rifts; abyssal hands grab anything near a rift and drag it in. A grabbed main boss is defeated.
+- **Ultimate, The God's Trumpet:** the mecha (or ship) shatters, a 2 s cut-in plays, and the four-winged divine owl takes over for `DIVINE_FORM_DURATION` (20 s).
+  - Every attack is the Trumpet: a screen-wide wave that one-hit-kills everything, bosses included.
+- **Presentation:**
+  - an animated gold/void select tile with shimmer, LEGENDARY badge and a gold theme;
+  - a synthesized choir sting;
+  - the gold cut-in band and a HUD tag;
+  - a separate Legendary hi-score key.
+
+**Verified** (headless Chrome, software GL, no console errors):
+- **Select screen:** 17 slots, the Legendary tile and gold theme. Warden shows "UNLOCK: DEFEAT ANY UNDERCROWN MAIN BOSS" until unlocked.
+- **Test range:** each of the 13 new pilots at tier 4 for shot, focus, special, bomb and ultimate, with screenshots reviewed. Every ultimate fires.
+- **Vincenzo against real bosses on Hell:**
+  - Holy procs clear all 6 Titan phases (desperation included) one transition at a time, then death → tally → stage 2.
+  - A Void Mecha hand grab defeats the Hive Sovereign → tally.
+  - The Trumpet during the Maw's fly-in → defeat → tally → stage 4.
+  - 0 deaths.
+- **Regression:** the M3, M4b and six-boss suites on the final build (see the M5 changelog).
+
 ## Run
 
 ```
@@ -321,7 +393,7 @@ Flow right now:
 | Pause | Esc / P | Start |
 | Stats overlay | ` / F3 | — |
 
-Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` shake.
+Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` shake. Dev server only: `B` / `N` / `M` boss skip / phase-clear / kill in stages; `U` on pilot select unseals "Warden".
 
 ## Architecture
 
@@ -428,6 +500,16 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
   - natural home: M7 polish, or a bullet-skin pass keyed on the shooter's `e.faction`.
 - Bloom on the Titan's ceramic armour is the brightest of the six. Check it on a real GPU.
 - Start-up under software GL is ~7 s, because the 4096 atlas is rasterised by the CPU. Real-GPU start-up isn't measured yet. On GPUs without 4096 textures the atlas falls back to 2048: hulls are drawn at lower resolution and enemies keep their base colours.
+- **Pilot balance is first-pass.** The 13 new pilots were tuned only in the headless test range, with no real-GPU playtest. Watch for:
+  - NOVA-7's hack lock time;
+  - Lin's turret cap;
+  - Dax's heat ramp;
+  - Cass's beat window (±5 steps);
+  - how dominant Vincenzo is (he's meant to be).
+- **Lin's Forest of Light pillars are very bright.** All bullets are cleared while they're up, so readability isn't affected, but they could be toned down.
+- **Software-GL start-up is now ~21 s** (the 4096 atlas plus 13 more vehicles, many glow strokes). Real-GPU start-up isn't measured yet.
+- **On a 2048 atlas the art is drawn smaller**, but the extra M5 art has not been checked against that fallback for running out of atlas space.
+- **Flak bursts are orange for every pilot.** World's shared `SHOT_FLAK` burst colour is orange, so Oduya's mortars, Rufus' bolts and Warden's slugs pop orange (§4.5 prefers cool player colours). This could become a per-shot tint in M7.
 - Faction animation traits (§5) on regular enemies, such as banking, wake trails and visor glows, are only covered by the recolour and drop shadow. Per-enemy animation states are M7 polish.
 - Stage-to-stage biome change is an instant swap behind the tally overlay (no crossfade yet).
 - Readability check per biome done visually (harbor water and foundry lava were toned down). It still needs a real-GPU playtest for pacing and difficulty.
@@ -447,17 +529,19 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 
 
 
-## Next steps (M5 — pilots)
+## Next steps (M6 — audio)
 
-Per the prompt, UPDATE_01 §2 and UPDATE_02 §4.6 (player firing concepts: cool/translucent layered shots with muzzle flashes, focused beams that lock on, tier-visible option pods, impact sparks, per-pilot bombs; Vincenzo in gold, white and void black only). Pilot lore is already in `src/data/lore/pilots.js`.
+Per the prompt §6 and UPDATE_02 §6 (a musical identity per faction):
 
-1. **The 12 remaining standard pilots** (roster slots already reserved in `src/pilots/index.js`), each with:
-   - a unique vehicle, shot and focus shot
-   - a special, a bomb and an ultimate with a cut-in
-   - tier visuals
-2. **Vincenzo the Conqueror (Legendary, slot #17):**
-   - **Holy Bullets:** piercing, `ignoresShields`, and a 60% `instantPhaseClear`/destroy proc. Uses the M4b flags via `BulletSystem.dflags`.
-   - **Permanent intangibility.**
-   - **Bomb:** Dimensional Rifts → Void Mecha form (`VOID_FORM_DURATION`). Grabbed bosses are defeated through the normal defeat path.
-   - **Ultimate:** The God's Trumpet → Divine Owl form (`DIVINE_FORM_DURATION`), with one-hit `instantKill` waves.
-   - **Legendary presentation** on pilot select.
+1. **Audio engine** to replace the stub [audio/music.js](src/audio/music.js) and absorb [audio/sting.js](src/audio/sting.js):
+   - a master mixer with ducking during bombs and ultimates;
+   - volume sliders (`sfxVolume` already exists in Settings).
+2. **SFX:**
+   - per-pilot shot sounds (17 pilots);
+   - layered explosions, graze tick, power-up chimes, boss warning sirens;
+   - bomb impacts with a low-pass sweep;
+   - Vincenzo's Trumpet blast with a long reverb tail (UPDATE_01 §2.5).
+3. **Adaptive music:**
+   - intensity layers keyed to bullet density;
+   - per-phase boss layers (`musicLayer` ids are already emitted);
+   - an archetype boss theme per faction.

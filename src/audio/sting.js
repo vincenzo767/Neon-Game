@@ -99,3 +99,38 @@ export function playHellWarning(volume = 0.8) {
   s.start(t);
   s.stop(t + 1.2);
 }
+
+/**
+ * Legendary select sting (M5): a synthesized choir chord. Stacked detuned
+ * saw "voices" on a major chord, shaped by two vowel formant band-passes
+ * ("ah") with a slow swell and a long fade.
+ */
+export function playChoir(volume = 0.8) {
+  const c = audio();
+  if (!c || volume <= 0) return;
+  const t = c.currentTime;
+  const out = c.createGain();
+  out.gain.setValueAtTime(0.0001, t);
+  out.gain.exponentialRampToValueAtTime(0.16 * volume, t + 0.35);
+  out.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
+  out.connect(c.destination);
+  const formants = [700, 1150].map((f, i) => {
+    const bp = c.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 6;
+    const g = c.createGain(); g.gain.value = i ? 0.6 : 1;
+    bp.connect(g); g.connect(out);
+    return bp;
+  });
+  // D major across three octaves, three slightly detuned voices per note.
+  for (const f of [146.8, 220, 293.7, 370, 440, 587.3]) {
+    for (const d of [-6, 0, 7]) {
+      const o = c.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(f, t);
+      o.detune.setValueAtTime(d, t);
+      for (const bp of formants) o.connect(bp);
+      o.start(t);
+      o.stop(t + 2.7);
+    }
+  }
+}

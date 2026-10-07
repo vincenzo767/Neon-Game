@@ -10,13 +10,15 @@ export function loadHiScore(diffId) {
 export function saveHiScore(v, diffId) {
   try { if (v > loadHiScore(diffId)) localStorage.setItem(hiKey(diffId), String(v)); } catch { /* ignore */ }
 }
+/** Hi-score key: per difficulty; Legendary runs are kept separately (UPDATE_01 §2.7). */
+export const hiScoreId = (diff, def) => (diff ? `${diff.id}${def && def.legendary ? '.legendary' : ''}` : null);
 
 export class Hud {
   /** @param diff difficulty config (core/difficulty.js) — shown as a badge, keys the hi-score */
   constructor(root, world, diff = null) {
     this.world = world;
-    this.hi = loadHiScore(diff && diff.id);
     const p = world.player, def = p.def;
+    this.hi = loadHiScore(hiScoreId(diff, def));
     root.insertAdjacentHTML('beforeend', `
       <div class="hud" style="--pc:${def.css}">
         <div class="hud-top">
@@ -24,7 +26,7 @@ export class Hud {
           <div class="hud-chain" data-k="chainBox"><b data-k="chain">0</b><span>CHAIN</span></div>
           <div class="hud-hi"><span>HI</span><b data-k="hi">0</b></div>
         </div>
-        <div class="hud-pilot">${def.name} · ${def.vehicle}</div>
+        <div class="hud-pilot">${def.name} · ${def.vehicle}${def.legendary ? ' · <b class="hud-legendary">LEGENDARY</b>' : ''}</div>
         <div class="hud-stage" data-k="stage"></div>
         ${diff ? `<div class="hud-diff" style="--dc:${diff.color}">${diff.name}</div>` : ''}
         <div class="hud-boss" data-k="boss"><div class="hud-boss-name" data-k="bossName"></div><div class="hud-boss-bar"><i data-k="bossHp"></i><div class="segs" data-k="bossSegs"></div></div></div>

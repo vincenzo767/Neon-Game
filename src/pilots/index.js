@@ -2,29 +2,40 @@ import kairo from './kairo.js';
 import mira from './mira.js';
 import bruno from './bruno.js';
 import tess from './tess.js';
+import oduya from './oduya.js';
+import lin from './lin.js';
+import dax from './dax.js';
+import sera from './sera.js';
+import nova from './nova.js';
+import rufus from './rufus.js';
+import aiko from './aiko.js';
+import pike from './pike.js';
+import zuri from './zuri.js';
+import cass from './cass.js';
+import holt from './holt.js';
+import warden from './warden.js';
+import vincenzo from './vincenzo.js';
+import { isUnlocked } from './unlocks.js';
 
 // Pilot registry. To add a pilot: create src/pilots/<id>.js exporting a
 // definition (see kairo.js for the full shape) and list it here.
 
-export const PILOTS = [kairo, mira, bruno, tess];
+export const PILOTS = [kairo, mira, bruno, tess, oduya, lin, dax, sera, nova, rufus, aiko, pike, zuri, cass, holt, warden, vincenzo];
 
-// The full 16-pilot roster. Entries without a definition are shown on the
-// select screen as CLASSIFIED until they're implemented (M5).
-export const ROSTER = [
-  kairo, mira, bruno, tess,
-  { id: 'oduya', name: 'ODUYA REX', vehicle: 'THUNDERJAW', locked: true },
-  { id: 'lin', name: 'LIN HAYASE', vehicle: 'PETAL ENGINE', locked: true },
-  { id: 'dax', name: 'DAX MORROW', vehicle: 'OVERCLOCK', locked: true },
-  { id: 'sera', name: 'SERA VOSS', vehicle: 'GLACIER', locked: true },
-  { id: 'nova', name: 'NOVA-7', vehicle: 'CIPHER', locked: true },
-  { id: 'rufus', name: 'RUFUS GRAINE', vehicle: 'JUNKYARD SAINT', locked: true },
-  { id: 'aiko', name: 'AIKO BRANDT', vehicle: 'TEMPEST', locked: true },
-  { id: 'pike', name: 'MAJ. ELDON PIKE', vehicle: 'BASTION', locked: true },
-  { id: 'zuri', name: 'ZURI ANKARA', vehicle: 'SOLAR FANG', locked: true },
-  { id: 'cass', name: 'CASS RIVERA', vehicle: 'PULSE RIDER', locked: true },
-  { id: 'holt', name: 'HOLT & HOLT', vehicle: 'GEMINI', locked: true },
-  { id: 'warden', name: '"WARDEN"', vehicle: 'VERDICT', locked: true },
-];
+/** The 16 standard pilots in roster order, plus the Legendary slot (#17). */
+export const ROSTER = PILOTS;
+export const LEGENDARY_INDEX = PILOTS.indexOf(vincenzo);
+
+/**
+ * The roster as the select screen shows it right now: locked pilots
+ * ("Warden" until a main boss has been defeated) are replaced by a sealed
+ * stub that keeps the slot, name and unlock hint.
+ */
+export function getRoster() {
+  return PILOTS.map((p) => (isUnlocked(p.id) ? p : {
+    id: p.id, name: p.name, vehicle: p.vehicle, locked: true, unlockHint: p.unlockHint, css: p.css,
+  }));
+}
 
 export function pilotById(id) { return PILOTS.find((p) => p.id === id) || PILOTS[0]; }
 
