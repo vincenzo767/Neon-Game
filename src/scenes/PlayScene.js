@@ -1,11 +1,14 @@
 import { World } from '../entities/World.js';
 import { Parallax } from '../fx/Parallax.js';
-import { Hud, saveHiScore, hiScoreId } from '../ui/Hud.js';
+import { Hud, hiScoreId } from '../ui/Hud.js';
 import { showCutIn, CUTIN_STEPS } from '../ui/CutIn.js';
 import { handleDevKeys } from './devKeys.js';
 import { getDifficulty, startingReserve, startingBombs } from '../core/difficulty.js';
 import { AudioDirector } from '../audio/director.js';
-import { playUiTick } from '../audio/sting.js';
+import { playUiTick, playConfirm, playBack } from '../audio/sting.js';
+import { ExtendTracker, MAX_LIVES } from '../core/scoring.js';
+import { addEntry, rankFor, loadBoard, lastName, saveLastName } from '../core/hiscores.js';
+import { nameEntryHtml, rankingTableHtml, NAME_CHARS } from '../ui/ranking.js';
 
 // Base class for in-game scenes: owns the World, parallax, HUD, banners,
 // pause menu and game-over / continue flow, plus the common render order.
@@ -23,6 +26,7 @@ export class PlayScene {
     // Difficulty (chosen on the difficulty select screen) sets lives, bombs and score rate.
     const cfg = (this.diffCfg = getDifficulty(g.difficultyId));
     this.world.scoreMul = cfg.scoreMul;
+    this.world.extends = new ExtendTracker(cfg.scoreMul); // M7a: 1UPs at score thresholds
     this.world.setPlayer(this.def, { lives: startingReserve(cfg), bombStock: startingBombs(cfg, this.def) });
     this.world.onEvent = (type, data) => this.onEvent(type, data);
     this.audio = new AudioDirector(this); // M6: sfx + adaptive music
@@ -30,6 +34,9 @@ export class PlayScene {
     this.paused = false;
     this.gameOver = false;
     this.continues = 0;
+    this.recorded = false;  // this credit's score is already in the ranking
+    this.entry = null;      // initials entry in progress (game over)
+    this.lastRank = -1;
     this.menuIndex = 0;
     this.menuItems = [];
     g.hud.innerHTML = `
@@ -55,8 +62,57 @@ export class PlayScene {
     this.g.hud.innerHTML = '';
   }
 
-  /** Hi-scores are kept per difficulty; unranked scenes (test range) don't save. */
-  _saveHi() { if (this.ranked !== false) saveHiScore(this.world.score, hiScoreId(this.diffCfg, this.def)); }
+  // ------------------------------------------------------------ ranking (M7a)
+
+  get board() { return hiScoreId(this.diffCfg, this.def); }
+
+  /** Ranking entry for the current credit. */
+  _entry(name) {
+    return {
+      score: this.world.score, name, pilot: this.def.id, pilotName: this.def.name, seed: this.g.seed,
+      diff: this.diffCfg.id, stage: this.stageLabel ? this.stageLabel() : '', loop: this.plan ? this.plan.loop : 0, cont: this.continues,
+    };
+  }
+
+  /** Leaving mid-credit (pause → quit): record silently under the last initials. */
+  _saveHi() {
+    if (this.ranked === false || this.recorded || this.entry) return;
+    this.recorded = true;
+    addEntry(this.board, this._entry(lastName()));
+  }
+
+  /** Game over: start initials entry if the score places, else just show the table. */
+  _beginEntry() {
+    if (this.ranked === false || this.recorded) return;
+    const rank = rankFor(this.board, this.world.score);
+    if (rank < 0) { this.recorded = true; this.lastRank = -1; return; }
+    this.entry = { rank, letters: lastName().padEnd(3, ' ').split('').slice(0, 3), pos: 0, score: this.world.score };
+  }
+
+  _updateEntry() {
+    const inp = this.g.input, st = this.entry, n = NAME_CHARS.length;
+    if (st.pos < 3) {
+      const k = NAME_CHARS.indexOf(st.letters[st.pos]);
+      if (inp.pressed('up')) { st.letters[st.pos] = NAME_CHARS[(k + 1 + n) % n]; playUiTick(); }
+      if (inp.pressed('down')) { st.letters[st.pos] = NAME_CHARS[(Math.max(0, k) - 1 + n) % n]; playUiTick(); }
+    }
+    if (inp.pressed('left')) { st.pos = Math.max(0, st.pos - 1); playUiTick(); }
+    if (inp.pressed('right')) { st.pos = Math.min(3, st.pos + 1); playUiTick(); }
+    if (inp.pressed('back') && st.pos > 0) { st.pos--; playBack(); }
+    else if (inp.pressed('confirm')) {
+      if (st.pos < 3) { st.pos++; playUiTick(); } else {
+        const name = st.letters.join('').trim() || '---';
+        saveLastName(name);
+        this.lastRank = addEntry(this.board, this._entry(name));
+        this.recorded = true;
+        this.entry = null;
+        playConfirm();
+        return;
+      }
+    }
+    this.overlayEl.innerHTML = nameEntryHtml({ ...st, pilotName: this.def.name });
+    this.overlayEl.classList.add('show');
+  }
 
   // ------------------------------------------------------------- overlays
 
@@ -123,12 +179,14 @@ export class PlayScene {
       case 'speed': hud?.toast(`SPEED TUNE ${data}/3`); break;
       case 'brace': hud?.toast('BRACE HELD!', 'gold'); break;
       case 'death': hud?.toast('PILOT DOWN', 'red'); break;
+      case 'medalBreak': hud?.toast('MEDAL CHAIN BROKEN', 'red'); break;
+      case 'bossNoBomb': hud?.toast(`NO-BOMB ${data.type === 'boss' ? 'BOSS' : 'MID-BOSS'} BONUS +${Math.round(data.bonus * this.diffCfg.scoreMul).toLocaleString('en-US')}`, 'gold'); break;
       case 'gameover':
         this.gameOver = true;
         this.continueT = CONTINUE_SECONDS * 60;
         this.menuIndex = 0;
         this.menuItems = ['CONTINUE', 'PILOT SELECT'];
-        this._saveHi();
+        this._beginEntry();
         break;
       default:
         if (this.onSceneEvent) this.onSceneEvent(type, data);
@@ -142,15 +200,22 @@ export class PlayScene {
     if (this.leaving) return;
 
     if (this.gameOver) {
+      // M7a: a placing score enters initials first (the continue timer waits).
+      if (this.entry) { this._updateEntry(); this._idle(); return; }
       this._menuNav();
       const secs = Math.ceil(this.continueT / 60);
+      if (this.rankHtml === undefined) this.rankHtml = this.ranked === false ? '' : rankingTableHtml(loadBoard(this.board), { rows: 5, highlight: this.lastRank });
+      const table = this.rankHtml;
       this._renderMenu('GAME OVER', ['CONTINUE', 'PILOT SELECT'],
-        `<div class="menu-sub">CONTINUE? <b>${secs}</b><br>SCORE ${w.score.toLocaleString('en-US')}</div>`);
+        `<div class="menu-sub">CONTINUE? <b>${secs}</b><br>SCORE ${w.score.toLocaleString('en-US')}</div>${table}`);
       if (inp.pressed('confirm')) {
         if (this.menuIndex === 0) {
           this.gameOver = false;
           this.continues++;
           w.setScoreRaw(this.continues); // arcade convention: score resets, last digit counts continues
+          this.recorded = false; // a new credit: its score gets its own ranking entry
+          this.lastRank = -1;
+          this.rankHtml = undefined;
           w.player.continueGame();
           this._hideOverlay();
         } else this.pilotSelect();
@@ -205,6 +270,11 @@ export class PlayScene {
     this.parallax.update();
     this.tick();
     w.update();
+    // M7a: extends at score thresholds.
+    for (let n = w.extends.check(w.score); n > 0; n--) {
+      if (w.player.lives < MAX_LIVES) w.player.lives++;
+      this.onEvent('extend');
+    }
     this.hud.update();
     this.audio.paused(false);
     this.audio.update();

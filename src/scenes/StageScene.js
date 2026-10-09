@@ -4,6 +4,7 @@ import { generateStage } from '../stages/StageGen.js';
 import { Arena } from '../bosses/Arena.js';
 import { ARCHETYPE_LABEL } from '../bosses/index.js';
 import { music } from '../audio/music.js';
+import { sfx } from '../audio/sfx.js';
 import { DMG_IGNORES_SHIELDS, DMG_INSTANT_KILL, DMG_INSTANT_PHASE_CLEAR } from '../core/damage.js';
 import { stageFactions, factionForArchetype } from '../data/factions/index.js';
 import { showFactionCard } from '../ui/factionCard.js';
@@ -42,6 +43,9 @@ export class StageScene extends PlayScene {
   }
 
   restartScene() { this.g.setScene(new StageScene(this.def)); }
+
+  /** "loop-stage" reached, for ranking entries (M7a). */
+  stageLabel() { return this.plan ? `${this.plan.loop}-${this.plan.stageInLoop + 1}` : ''; }
 
   beginStage(index) {
     const g = this.g, w = this.world;
@@ -170,6 +174,7 @@ export class StageScene extends PlayScene {
     const st = this.tallyState;
     st.t++;
     if (st.t % 3 === 0 || st.t === 1) this._renderTally();
+    if (st.t < TALLY_COUNT_STEPS && st.t % 6 === 0) sfx.play('tallyTick'); // M7a: count-up ticks
     const done = st.t >= TALLY_COUNT_STEPS;
     if ((done && this.g.input.pressed('confirm')) || st.t > TALLY_COUNT_STEPS + 420) {
       this.world.score += st.data.total;

@@ -113,6 +113,16 @@ const LIB = {
     const n = 84 + Math.round((s.level || 0) * 12);
     fm(c, o, t, { f: hz(n), ratio: 4, index: 1.5, dur: 0.25, peak: 0.06, a: 0.001, pan: s.pan });
   },
+  medalBreak(c, o, t) {
+    // The medal chain shatters: a falling glass arpeggio.
+    [24, 19, 12, 7, 0].forEach((n, i) => fm(c, o, t + i * 0.05, { f: hz(72 + n), ratio: 3.5, index: 1.5, dur: 0.2, peak: 0.05 }));
+    noise(c, o, t, { dur: 0.25, peak: 0.08, filter: { type: 'highpass', f: 5000 } });
+  },
+  bonus(c, o, t) {
+    // Boss bonus: a bright coin cascade into a chord.
+    for (let k = 0; k < 8; k++) fm(c, o, t + k * 0.06, { f: hz(84 + [0, 4, 7, 12, 7, 12, 16, 19][k]), ratio: 4, index: 1.2, dur: 0.3, peak: 0.05, pan: k % 2 ? 0.3 : -0.3 });
+    pad(c, o, t + 0.5, { freqs: [hz(72), hz(76), hz(79), hz(84)], dur: 1.2, peak: 0.08, a: 0.01, cutoff: 6000, cutoff2: 1500, unison: 3, send: { rev: 0.4 } });
+  },
   extend(c, o, t) {
     [0, 4, 7, 12, 16].forEach((n, i) => tone(c, o, t + i * 0.08, { type: 'square', f: hz(72 + n), dur: i === 4 ? 0.5 : 0.1, peak: 0.07, filter: { type: 'lowpass', f: 4000 }, send: { rev: 0.3 } }));
   },

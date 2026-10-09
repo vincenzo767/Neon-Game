@@ -20,6 +20,10 @@
 .hud-chain.on { opacity: 1; }
 .hud-chain b { display: block; font-size: 1.8em; color: #ffe066; text-shadow: 0 0 calc(8 * var(--u)) #ff9a1a; }
 .hud-chain span { font-size: 0.65em; letter-spacing: 0.3em; }
+.hud-chain em { font-style: normal; letter-spacing: 0.05em; color: #9fe8ff; } /* M7a combo multiplier */
+.hud-chain em.hot { color: #ffe066; text-shadow: 0 0 calc(6 * var(--u)) #ff9a1a; }
+.hud-chain-t { height: calc(2 * var(--u)); margin: calc(2 * var(--u)) auto 0; width: 70%; background: rgba(255, 255, 255, 0.12); }
+.hud-chain-t i { display: block; height: 100%; background: #ffe066; }
 
 .hud-pilot {
   position: absolute; top: calc(36 * var(--u)); left: calc(8 * var(--u));

@@ -1,6 +1,7 @@
 import { WORLD_W } from '../core/constants.js';
 import { spawnEnemy } from '../entities/enemies/index.js';
 import { spawnArenaBoss } from '../bosses/index.js';
+import { NO_BOMB_BOSS } from '../core/scoring.js';
 
 // Runs a generated stage plan on a World, step by step:
 //   intro (banner) → wave sets (timed spawns; a set ends when it is
@@ -34,6 +35,8 @@ export class StageDirector {
       kills: w.kills, spawned: w.spawned, graze: w.graze,
       deaths: p.deaths, bombs: p.bombsUsed, score: w.score,
     };
+    this.bossBonus = 0;      // M7a: NO-BOMB boss bonuses earned this stage (raw, before loop)
+    this.bossClears = [];
     this._next();
   }
 
@@ -108,6 +111,7 @@ export class StageDirector {
       if (this.t >= WARNING_STEPS[s.type]) {
         this.bossE = s.arena ? spawnArenaBoss(w, s.arena) : spawnEnemy(w, s.id, WORLD_W / 2, -90);
         this.bossT = 0;
+        this.bossBombs = w.player.bombsUsed; // M7a: NO-BOMB boss bonus window opens
         this.bossCtrl = s.arena ? this.bossE.ctrl : null;
         if (s.arena) w.event('arenaEnter', this.bossCtrl);
         w.event('bossIntro', this.bossE);
@@ -121,6 +125,12 @@ export class StageDirector {
         const killed = e.hp <= 0;
         this.bossDownT = killed ? 150 : 40;
         if (w.boss === e) w.boss = null;
+        if (killed && w.player.bombsUsed === this.bossBombs) {
+          const bonus = NO_BOMB_BOSS[s.type] || 0;
+          this.bossBonus += bonus;
+          this.bossClears.push(s.type);
+          w.event('bossNoBomb', { type: s.type, bonus: bonus * this.plan.loop });
+        }
         w.event(killed ? 'bossDown' : 'bossEscape', { e, type: s.type });
         if (s.arena) w.event('arenaExit', this.bossCtrl);
       } else if (s.type === 'midboss' && this.bossT > MIDBOSS_TIMEOUT && e.data.ph === 1) {
@@ -144,6 +154,7 @@ export class StageDirector {
       ['MAX CHAIN', w.maxChain, w.maxChain * 200],
       ['NO MISS', noMiss ? 'CLEAR' : '—', noMiss ? 100000 * loop : 0],
       ['NO BOMB', noBomb ? 'CLEAR' : '—', noBomb ? 50000 * loop : 0],
+      ['NO-BOMB BOSS', this.bossClears.length ? this.bossClears.map((t) => (t === 'boss' ? 'BOSS' : 'MID')).join(' + ') : '—', this.bossBonus * loop],
     ];
     return { plan: this.plan, rows, total: rows.reduce((a, r) => a + r[2], 0) };
   }

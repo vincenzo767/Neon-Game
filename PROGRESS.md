@@ -13,7 +13,7 @@
 | **M4d** | World & faction pass: lore/faction data, greeble generator, faction enemy variants, 2 new biomes, intro cards + loop lines, boss visual retrofit | ✅ Done |
 | **M5** | Remaining 12 standard pilots + **Vincenzo (Legendary)** with the §4.6 firing concepts, ultimates, cut-ins | ✅ Done |
 | **M6** | Audio engine and adaptive music (per-phase layers, archetype themes, a musical identity per faction) | ✅ Done |
-| M7 | UI, scoring, polish, performance tuning | ⏳ Next |
+| M7 | UI, scoring, polish, performance tuning: **M7a** scoring ✅ · M7b flow & UI · M7c polish & performance | ⏳ In progress |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -452,6 +452,59 @@ No boss, enemy, pattern, HP, phase or damage-flag changes. No renames.
 - **Regression:** the M4a, M4b and six-boss suites on the final build (see the M6 changelog).
 - **Not verified:** the mix by ear. It was tuned from meters only; see Known issues.
 
+## M7a — Scoring and high-score tables
+
+M7 is split into three committed steps: **M7a** scoring, **M7b** flow and UI, **M7c** polish and performance.
+
+**Rules** (all numbers in [core/scoring.js](src/core/scoring.js)):
+
+| System | Rule |
+|---|---|
+| Kill combo | Kills within 2 s (120 steps) of each other build a chain. Every 8 kills add ×0.25 to the kill-score multiplier, up to ×4.0. Replaces the old `1 + chain × 0.05` bonus. HUD: chain count, multiplier (gold from ×2) and a draining timer bar |
+| Medal chain | Each medal is worth 100 more than the last (cap 10,000). A medal that falls off-screen resets the value to 100: MEDAL CHAIN BROKEN toast + sound. HUD shows the current value |
+| NO-BOMB boss | A boss defeated without a bomb during the fight pays 300,000 (mid-boss 80,000) × loop. It appears as a NO-BOMB BOSS tally row and a toast at the kill. Counter-bombs count as bombs |
+| Extends | 1UP at 2M, 6M, 12M, then every 12M, each × the difficulty score multiplier. Lives cap at 8. Thresholds already claimed stay claimed after a continue (no farming). HUD shows the next threshold |
+| Tally | Count-up tick sounds |
+
+All gains still pass through the difficulty score multiplier (UPDATE_01 §3).
+
+**High-score tables** ([core/hiscores.js](src/core/hiscores.js), [ui/ranking.js](src/ui/ranking.js)):
+- **Boards:**
+  - one board per difficulty, plus `<difficulty>.legendary` for Vincenzo;
+  - top 10 each;
+  - entries record initials, score, pilot, seed, difficulty, stage reached (loop-stage), continues used and date.
+- **Saving:**
+  - On game over, a placing score opens **initials entry**. Controls: ▲▼ letter, ◀▶ move, Z next, X back. The continue timer waits.
+  - After entry, the game-over screen shows the top 5 with your entry highlighted.
+- **Continues and quitting:**
+  - Each credit is recorded separately (a continue resets the score to the continue count, arcade style).
+  - Quitting mid-run from the pause menu records the credit silently under your last initials.
+  - The test range is unranked.
+- **Migration:** the pre-M7 single hi-score per board is imported once as a `---` entry.
+- **HUD HI:** reads the board's best, and keeps the run's best across continues.
+
+**Existing files touched:**
+
+| File | Change |
+|---|---|
+| [entities/World.js](src/entities/World.js) | Kill score uses `comboMult`; medal constants; `medalBreak` event |
+| [stages/StageDirector.js](src/stages/StageDirector.js) | Bombs-used snapshot at boss spawn; `bossNoBomb` event; NO-BOMB BOSS tally row |
+| [ui/Hud.js](src/ui/Hud.js) + [ui/ui.css](src/ui/ui.css) | HI from the ranking table (old `saveHiScore` removed); multiplier, chain timer, medal value, next extend |
+| [scenes/PlayScene.js](src/scenes/PlayScene.js) | ExtendTracker, extend checks, initials entry, ranking on game over, per-credit records, new toasts |
+| [scenes/StageScene.js](src/scenes/StageScene.js) | `stageLabel()`; tally tick sounds |
+| [audio/director.js](src/audio/director.js), [audio/sfx.js](src/audio/sfx.js) | `medalBreak` and `bonus` sounds |
+
+**Verified** (headless Chrome, Standard):
+- **Combo:** 17 kills of a 300-point drone pay 300 at chain 1–7, 375 from chain 8 and 450 from chain 16. The HUD reads `17 · ×1.5`.
+- **Medal chain:** a dropped 700 medal resets the value to 100, with toast and sound.
+- **Extend:** crossing 2,000,000 adds a life, the next threshold shows 6,000,000, and the sound plays.
+- **NO-BOMB boss:** the tally shows `NO-BOMB BOSS · BOSS · 300,000`; 19 tally ticks played.
+- **Game over and ranking:**
+  - game over at 2.64M → initials entry → "MQO" saved as 1st;
+  - the table shows it highlighted above the migrated 12,345 record.
+- **Continue and quit:** a continue starts a new credit, and quitting recorded it as a second entry (`cont: 1`). The HUD HI stays at the run best.
+- **Regression:** the M4b and six-boss suites (see the M7a changelog).
+
 ## Run
 
 ```
@@ -608,7 +661,7 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 - Stage-to-stage biome change is an instant swap behind the tally overlay (no crossfade yet).
 - Readability check per biome done visually (harbor water and foundry lava were toned down). It still needs a real-GPU playtest for pacing and difficulty.
 - Balance is first-pass only: DPS per pilot, ultimate charge rates, and item drop rates. Tune in M7.
-- Score is basic: kills × chain bonus, graze, cancels and medals. The full multiplier system, the no-bomb boss bonus, extends at score thresholds, and the high-score table (with pilot + seed) arrive in M7. Right now a single local hi-score is saved.
+- Scoring constants (combo step, extend thresholds, NO-BOMB bonus) are first-pass; tune them with the M7c balance pass.
 - Key remap UI and the options menu are M7. Bindings are already remappable in [Settings](src/core/Settings.js).
 - **Audio (M6) is tuned by meter, not by ear.** Levels, the music/sfx balance (music ~4 dB under), shot-voice loudness and the bomb's underwater sweep were set from peak readings in headless Chrome. A listening pass on real speakers is the first thing to do in M7.
 - **Only the music and SFX volumes are adjustable, from the pause menu.** There is no master volume yet, and the full options screen arrives in M7.
@@ -631,24 +684,21 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 
 
 
-## Next steps (M7 — UI, scoring, polish, performance)
+## Next steps (M7b — flow and UI, then M7c)
 
-Per the prompt §5, §8 and the known issues above:
+Per the prompt §8 and the known issues above:
 
-1. **Flow and UI** (§8):
-   - title screen → attract demo → difficulty → pilot select;
+1. **M7b — flow and UI** (§8):
+   - title screen → attract demo (with the ranking boards) → difficulty → pilot select;
    - options screen: graphics quality, CRT, shake, key remap, master/music/SFX volume;
-   - practice mode for any boss already reached.
-2. **Scoring** (§5):
-   - the full multiplier system, the no-bomb boss bonus, extends at score thresholds;
-   - a local high-score table that records pilot, difficulty and seed;
-   - tally tick sounds.
-3. **Polish:**
+   - practice mode for any boss already reached;
+   - a results screen at the end of a run.
+2. **M7c — polish:**
    - an audio listening pass (mix levels, per-pilot shot loudness);
    - faction bullet skins and enemy weapon sounds (§4.5);
    - per-pilot flak tints, a stage-to-stage biome crossfade, faction animation traits on regular enemies;
    - a widening decision for boss hitboxes.
-4. **Performance and robustness:**
+3. **M7c — performance and robustness:**
    - a real-GPU FPS and start-up measurement (1,500+ bullets at 60 FPS);
    - a 2048-atlas fallback check;
    - WebGL context-loss handling;

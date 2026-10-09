@@ -129,6 +129,8 @@ export class AudioDirector {
         break;
       case 'medal': sfx.play('medal', { level: Math.min(1, Math.log10(Math.max(100, data) / 100) / 2) }); break;
       case 'extend': sfx.play('extend'); break;
+      case 'medalBreak': sfx.play('medalBreak'); break;
+      case 'bossNoBomb': sfx.play('bonus'); break;
       case 'tier': sfx.play('tier', { level: data }); break;
       case 'ultReady': sfx.play('ultReady'); break;
       case 'notReady': sfx.play('notReady'); break;

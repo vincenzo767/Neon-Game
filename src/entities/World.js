@@ -7,6 +7,7 @@ import { Explosions } from '../fx/Explosions.js';
 import { Player } from './Player.js';
 import { KIND_SPLIT, splitBullet } from '../patterns/index.js';
 import { DMG_IGNORES_SHIELDS, DMG_INSTANT } from '../core/damage.js';
+import { comboMult, COMBO_WINDOW, MEDAL_START, MEDAL_STEP, MEDAL_MAX } from '../core/scoring.js';
 
 // The gameplay world: every live object of a play session plus the API that
 // pilots, enemies and scenes use to interact (damage, cancel, beams, items).
@@ -62,7 +63,7 @@ export class World {
     this.chain = 0;
     this.chainTimer = 0;
     this.maxChain = 0;
-    this.medalValue = 100;
+    this.medalValue = MEDAL_START;
     this.autoCollect = 0;
     this.decoy = null;      // {x, y} when the player is cloaked
     this.t = 0;
@@ -171,9 +172,9 @@ export class World {
     e.alive = false;
     this.kills++;
     this.chain++;
-    this.chainTimer = 120;
+    this.chainTimer = COMBO_WINDOW;
     if (this.chain > this.maxChain) this.maxChain = this.chain;
-    this.score += Math.round(e.score * (1 + Math.min(this.chain, 100) * 0.05));
+    this.score += Math.round(e.score * comboMult(this.chain)); // M7a kill-combo multiplier
     if (e.blast > 0) this.explosions.blast(e.x, e.y, e.blast, e.blastTint || null);
     if (e.drops) for (const k of e.drops) this.spawnItem(k, e.x, e.y, e.drops.length > 3 ? 2 : 1);
     if (this.player) this.player.addUlt(e.ult);
@@ -447,7 +448,10 @@ export class World {
       if (it.x > WORLD_W - 8) { it.x = WORLD_W - 8; it.vx = -Math.abs(it.vx); }
       if (it.y > WORLD_H + 20) {
         it.alive = false;
-        if (it.kind === 'M') this.medalValue = 100; // dropped a medal: chain broken
+        if (it.kind === 'M' && this.medalValue > MEDAL_START) { // dropped a medal: chain broken
+          this.event('medalBreak', this.medalValue);
+          this.medalValue = MEDAL_START;
+        }
       }
     }
   }
@@ -470,7 +474,7 @@ export class World {
       case 'M':
         this.score += this.medalValue;
         this.event('medal', this.medalValue);
-        this.medalValue = Math.min(10000, this.medalValue + 100);
+        this.medalValue = Math.min(MEDAL_MAX, this.medalValue + MEDAL_STEP);
         break;
     }
     this.explosions.sparks(it.x, it.y, 4, [1, 0.9, 0.5], 2, 12, 3);

@@ -1,16 +1,13 @@
 // In-game HUD (DOM overlay, scaled by --u). Values are diffed against a
 // cache so the DOM is only touched when something actually changes.
 
-const HI_KEY = 'npo.hiscore.v1';
-const hiKey = (diffId) => (diffId ? `${HI_KEY}.${diffId}` : HI_KEY);
+import { topScore } from '../core/hiscores.js';
+import { comboMult, COMBO_WINDOW } from '../core/scoring.js';
 
-export function loadHiScore(diffId) {
-  try { return Number(localStorage.getItem(hiKey(diffId))) || 0; } catch { return 0; }
-}
-export function saveHiScore(v, diffId) {
-  try { if (v > loadHiScore(diffId)) localStorage.setItem(hiKey(diffId), String(v)); } catch { /* ignore */ }
-}
-/** Hi-score key: per difficulty; Legendary runs are kept separately (UPDATE_01 §2.7). */
+/** Best score on a board (M7a: read from the ranking table). */
+export function loadHiScore(boardId) { return boardId ? topScore(boardId) : 0; }
+
+/** Hi-score board id: per difficulty; Legendary runs are kept separately (UPDATE_01 §2.7). */
 export const hiScoreId = (diff, def) => (diff ? `${diff.id}${def && def.legendary ? '.legendary' : ''}` : null);
 
 export class Hud {
@@ -19,11 +16,12 @@ export class Hud {
     this.world = world;
     const p = world.player, def = p.def;
     this.hi = loadHiScore(hiScoreId(diff, def));
+    this.extends = world.extends || null; // M7a: ExtendTracker (ranked scenes only)
     root.insertAdjacentHTML('beforeend', `
       <div class="hud" style="--pc:${def.css}">
         <div class="hud-top">
           <div class="hud-score"><span>SCORE</span><b data-k="score">0</b></div>
-          <div class="hud-chain" data-k="chainBox"><b data-k="chain">0</b><span>CHAIN</span></div>
+          <div class="hud-chain" data-k="chainBox"><b data-k="chain">0</b><span>CHAIN <em data-k="mult">×1.0</em></span><div class="hud-chain-t"><i data-k="chainT"></i></div></div>
           <div class="hud-hi"><span>HI</span><b data-k="hi">0</b></div>
         </div>
         <div class="hud-pilot">${def.name} · ${def.vehicle}${def.legendary ? ' · <b class="hud-legendary">LEGENDARY</b>' : ''}</div>
@@ -34,6 +32,8 @@ export class Hud {
           <div class="hud-row"><span>LIFE</span><i data-k="lives"></i></div>
           <div class="hud-row"><span>BOMB</span><i data-k="bombs"></i></div>
           <div class="hud-row small"><span>GRAZE</span><b data-k="graze">0</b></div>
+          <div class="hud-row small"><span>MEDAL</span><b data-k="medal">100</b></div>
+          ${this.extends ? '<div class="hud-row small"><span>EXTEND</span><b data-k="ext"></b></div>' : ''}
         </div>
         <div class="hud-right">
           <div class="hud-meter"><label>PWR <b data-k="tier">T1</b></label><div class="bar"><i data-k="power"></i></div></div>
@@ -67,10 +67,14 @@ export class Hud {
     const w = this.world, p = w.player;
     const txt = (el, v) => { el.textContent = v; };
     this._set('score', w.score, (el, v) => { el.textContent = v.toLocaleString('en-US'); });
-    const hi = Math.max(this.hi, w.score);
-    this._set('hi', hi, (el, v) => { el.textContent = v.toLocaleString('en-US'); });
+    if (w.score > this.hi) this.hi = w.score; // keeps the best across continues (score resets)
+    this._set('hi', this.hi, (el, v) => { el.textContent = v.toLocaleString('en-US'); });
     this._set('chain', w.chain, txt);
     this._set('chainBox', w.chain > 1, (el, v) => el.classList.toggle('on', v));
+    this._set('mult', comboMult(w.chain), (el, v) => { el.textContent = `×${v.toFixed(2).replace(/0$/, '')}`; el.classList.toggle('hot', v >= 2); });
+    this._set('chainT', w.chain > 0 ? Math.ceil((w.chainTimer / COMBO_WINDOW) * 50) : 0, (el, v) => { el.style.width = `${v * 2}%`; });
+    this._set('medal', w.medalValue, (el, v) => { el.textContent = v.toLocaleString('en-US'); });
+    if (this.extends) this._set('ext', this.extends.next, (el, v) => { el.textContent = v.toLocaleString('en-US'); });
     this._set('graze', w.graze, txt);
     this._set('lives', p.lives, (el, v) => { el.textContent = '▲'.repeat(Math.min(v, 8)); });
     this._set('bombs', p.bombs, (el, v) => { el.textContent = '◆'.repeat(Math.min(v, 8)); });
