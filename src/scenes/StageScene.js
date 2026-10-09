@@ -8,7 +8,7 @@ import { sfx } from '../audio/sfx.js';
 import { DMG_IGNORES_SHIELDS, DMG_INSTANT_KILL, DMG_INSTANT_PHASE_CLEAR } from '../core/damage.js';
 import { stageFactions, factionForArchetype } from '../data/factions/index.js';
 import { showFactionCard } from '../ui/factionCard.js';
-import { recordBossDefeat } from '../pilots/unlocks.js';
+import { recordBossDefeat, recordBossSeen } from '../pilots/unlocks.js';
 
 // The main game: an endless sequence of procedurally generated stages.
 // The run is fully determined by the seed (game.seed) plus player input.
@@ -44,6 +44,12 @@ export class StageScene extends PlayScene {
 
   restartScene() { this.g.setScene(new StageScene(this.def)); }
 
+  /** Stage plan for global stage `index` (M7b: practice overrides it). */
+  makePlan(index) { return generateStage(this.g.seed, index, this.diffCfg.id); }
+
+  /** After the tally closes (M7b: practice overrides it). */
+  nextStage() { this.beginStage(this.stageIndex + 1); }
+
   /** "loop-stage" reached, for ranking entries (M7a). */
   stageLabel() { return this.plan ? `${this.plan.loop}-${this.plan.stageInLoop + 1}` : ''; }
 
@@ -51,7 +57,7 @@ export class StageScene extends PlayScene {
     const g = this.g, w = this.world;
     this.stageIndex = index;
     this.arena.reset();
-    this.plan = generateStage(g.seed, index, this.diffCfg.id);
+    this.plan = this.makePlan(index);
     // Update 02: who owns this territory, and whose colours each enemy wears
     // (split territories change hands by unit type or after the mid-boss).
     this.factions = stageFactions(this.plan);
@@ -80,6 +86,7 @@ export class StageScene extends PlayScene {
       case 'bossIntro': {
         const e = data, c = e.ctrl;
         if (c) {
+          if (this.ranked !== false) recordBossSeen(c.def.id, c.mk || 1); // M7b: unlocks it in practice
           // Named intro card: archetype class (or the slot a prototype stands in for) + phase count.
           const label = ARCHETYPE_LABEL[c.archetype] || '';
           const cls = c.def.archetype === c.archetype ? `${label} CLASS` : `${c.def.title || 'PROTOTYPE'} · ${label} SLOT`;
@@ -111,7 +118,8 @@ export class StageScene extends PlayScene {
         // M5: Warden's Verdict copies the last boss defeated; the first defeat unseals Warden.
         const arch = data.ctrl.archetype;
         this.world.lastBossArchetype = arch;
-        if (recordBossDefeat(arch)) this.hud.toast('PERSONNEL FILE UNSEALED · "WARDEN" UNLOCKED', 'gold');
+        if (!this.attract && recordBossDefeat(arch)) // M7b: never from the attract demo
+          this.hud.toast('PERSONNEL FILE UNSEALED · "WARDEN" UNLOCKED', 'gold');
         break;
       }
       case 'bossPhaseClear':
@@ -182,7 +190,7 @@ export class StageScene extends PlayScene {
       this.blockPause = false;
       this._hideOverlay();
       this.g.renderer.post.flash(1, 1, 1, 0.5, 0.04);
-      this.beginStage(this.stageIndex + 1);
+      this.nextStage();
     }
   }
 

@@ -34,3 +34,19 @@ export function recordBossDefeat(archetype) {
   save(d);
   return fresh;
 }
+
+// ------------------------------------------------------------ practice (M7b)
+// Practice mode (prompt §8) unlocks a boss once it has been reached in a
+// real run: the highest Mk. seen per boss id is kept.
+
+/** {bossId: highest mk reached}. */
+export const bossesSeen = () => load().seen || {};
+
+/** Record that a boss (at mk) appeared in a ranked run. */
+export function recordBossSeen(id, mk = 1) {
+  const d = load();
+  d.seen = d.seen || {};
+  if ((d.seen[id] || 0) >= mk) return;
+  d.seen[id] = mk;
+  save(d);
+}

@@ -124,7 +124,12 @@ export class Player {
 
     // Inputs (demo mode drives itself for the pilot-select preview).
     let mx, my, shoot, focus, bombP = false, specP = false, ultP = false;
-    if (this.demo) {
+    if (this.demo && this.autopilot) {
+      // M7b attract mode: a scene-supplied pilot AI drives the ship.
+      const a = this.autopilot(this, w);
+      mx = a.mx; my = a.my; focus = !!a.focus; shoot = true;
+      bombP = !!a.bomb; specP = !!a.special; ultP = !!a.ultimate;
+    } else if (this.demo) {
       mx = Math.sin(this.t * 0.025) * 0.5;
       my = 0;
       shoot = true;

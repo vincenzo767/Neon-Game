@@ -1,0 +1,107 @@
+/* Full-screen menus (M7b): title, ranking, options, practice, results.
+   Sizes in world units via --u, like the rest of the UI. */
+
+.mscreen { position: absolute; inset: 0; --dc: var(--neon-a); text-align: center; }
+.mscreen::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, rgba(3, 5, 12, 0.35), rgba(3, 5, 12, 0.82));
+}
+.mscreen > * { position: relative; }
+
+.ms-title {
+  padding-top: calc(16 * var(--u));
+  font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: calc(20 * var(--u)); letter-spacing: 0.22em;
+  text-shadow: 0 0 calc(10 * var(--u)) var(--dc);
+}
+.ms-title span {
+  display: block; font-family: 'JetBrains Mono', monospace; font-weight: 400; font-size: calc(6.5 * var(--u));
+  letter-spacing: 0.4em; color: var(--dc); margin-top: calc(3 * var(--u));
+}
+
+.ms-list { margin: calc(18 * var(--u)) auto 0; width: calc(330 * var(--u)); display: flex; flex-direction: column; gap: calc(3 * var(--u)); }
+.ms-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: calc(5 * var(--u)) calc(10 * var(--u));
+  font-size: calc(9.5 * var(--u)); letter-spacing: 0.2em; opacity: 0.55;
+  border-left: calc(2 * var(--u)) solid transparent;
+  transition: opacity 0.12s, background 0.12s;
+}
+.ms-row.sel {
+  opacity: 1; border-left-color: var(--dc);
+  background: linear-gradient(90deg, rgba(62, 240, 255, 0.16), transparent);
+  text-shadow: 0 0 calc(6 * var(--u)) var(--dc);
+}
+.ms-row.off { opacity: 0.28; }
+.ms-row.sel.off { opacity: 0.5; }
+.ms-val { font-family: 'Orbitron', sans-serif; letter-spacing: 0.08em; color: var(--dc); }
+.ms-rowhint { margin-top: calc(10 * var(--u)); min-height: 1.4em; font-size: calc(7 * var(--u)); letter-spacing: 0.12em; opacity: 0.75; }
+.ms-foot {
+  position: absolute; left: 0; right: 0; bottom: calc(16 * var(--u));
+  font-size: calc(7 * var(--u)); letter-spacing: 0.15em; opacity: 0.8;
+}
+.ms-foot b { color: var(--dc); }
+
+/* ---------------------------------------------------------------- title */
+.title .tt-logo { padding-top: calc(70 * var(--u)); line-height: 1; }
+.title .tt-logo small { display: block; font-size: calc(7 * var(--u)); letter-spacing: 0.6em; opacity: 0.7; margin-bottom: calc(8 * var(--u)); }
+.title .tt-neon {
+  display: block; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: calc(34 * var(--u)); letter-spacing: 0.12em;
+  color: #e9fdff; text-shadow: 0 0 calc(6 * var(--u)) var(--neon-a), 0 0 calc(22 * var(--u)) var(--neon-a), 0 0 calc(44 * var(--u)) #0a6cff;
+  animation: tt-flicker 6s infinite;
+}
+.title .tt-over {
+  display: block; margin-top: calc(6 * var(--u));
+  font-family: 'Orbitron', sans-serif; font-weight: 800; font-style: italic; font-size: calc(24 * var(--u)); letter-spacing: 0.42em;
+  color: #ffe1f3; text-shadow: 0 0 calc(6 * var(--u)) var(--neon-b), 0 0 calc(20 * var(--u)) var(--neon-b);
+}
+.title .tt-tag { width: calc(320 * var(--u)); margin: calc(14 * var(--u)) auto 0; font-size: calc(6.5 * var(--u)); letter-spacing: 0.1em; line-height: 1.6; opacity: 0.6; }
+.title .title-list { width: calc(200 * var(--u)); margin-top: calc(34 * var(--u)); }
+.title .ms-row { justify-content: center; font-size: calc(11 * var(--u)); letter-spacing: 0.35em; }
+.title .tt-ver { position: absolute; left: 0; right: 0; bottom: calc(5 * var(--u)); font-size: calc(5.5 * var(--u)); letter-spacing: 0.2em; opacity: 0.4; }
+.tt-blink { animation: tt-blink 1.1s steps(2) infinite; color: #ffe066; }
+@keyframes tt-blink { 50% { opacity: 0.15; } }
+@keyframes tt-flicker {
+  0%, 18%, 22%, 62%, 64%, 100% { opacity: 1; }
+  20%, 63% { opacity: 0.55; }
+}
+
+/* -------------------------------------------------------------- ranking */
+.ranking .rk-tabs { margin-top: calc(14 * var(--u)); font-size: calc(9 * var(--u)); letter-spacing: 0.2em; color: var(--dc); }
+.ranking .rk-tabs b { color: #fff; text-shadow: 0 0 calc(6 * var(--u)) var(--dc); margin: 0 calc(6 * var(--u)); }
+.ranking .rk-tabs small { opacity: 0.6; margin-left: calc(6 * var(--u)); }
+.ranking .rk-board { margin-top: calc(10 * var(--u)); }
+.ranking .rank-table { font-size: calc(8 * var(--u)); }
+.ranking .rk-empty { margin-top: calc(8 * var(--u)); font-size: calc(7.5 * var(--u)); letter-spacing: 0.3em; opacity: 0.5; }
+
+/* -------------------------------------------------------------- options */
+.options .opt-capture {
+  position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+  background: rgba(2, 4, 10, 0.86); font-size: calc(12 * var(--u)); letter-spacing: 0.2em;
+}
+.options .opt-capture.on { display: flex; }
+.options .opt-capture b { color: #ffe066; }
+.options .opt-capture small { display: block; margin-top: calc(8 * var(--u)); font-size: 0.6em; opacity: 0.6; }
+
+/* -------------------------------------------------------------- results */
+.results .rs-score { margin-top: calc(18 * var(--u)); }
+.results .rs-score small { display: block; font-size: calc(7 * var(--u)); letter-spacing: 0.4em; opacity: 0.7; }
+.results .rs-score b {
+  display: block; font-family: 'Orbitron', sans-serif; font-size: calc(30 * var(--u)); letter-spacing: 0.05em;
+  color: #fff; text-shadow: 0 0 calc(12 * var(--u)) var(--dc);
+}
+.results .rs-rank { margin-top: calc(4 * var(--u)); color: #ffe066; font-size: calc(8 * var(--u)); letter-spacing: 0.3em; text-shadow: 0 0 calc(6 * var(--u)) #ff9a1a; }
+.results .rs-lines { width: calc(300 * var(--u)); margin: calc(16 * var(--u)) auto 0; }
+.results .rs-line {
+  display: flex; justify-content: space-between; padding: calc(3 * var(--u)) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07); font-size: calc(8.5 * var(--u)); letter-spacing: 0.15em;
+  opacity: 0; transform: translateX(calc(-8 * var(--u))); transition: opacity 0.2s, transform 0.2s;
+}
+.results .rs-line.on { opacity: 1; transform: none; }
+.results .rs-line b { font-family: 'Orbitron', sans-serif; color: var(--dc); letter-spacing: 0.05em; }
+
+/* --------------------------------------------------- pilot select badge */
+.sel-practice {
+  position: absolute; top: calc(4 * var(--u)); right: calc(8 * var(--u));
+  padding: calc(2 * var(--u)) calc(6 * var(--u)); border: 1px solid #ffe066; color: #ffe066;
+  font-size: calc(6.5 * var(--u)); letter-spacing: 0.2em;
+}

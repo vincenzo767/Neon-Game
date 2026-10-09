@@ -45,7 +45,7 @@ function vol(key, def) {
 export function attachAudio(s) {
   settings = s;
   s.onChange((key) => {
-    if (key === 'musicVolume' || key === 'sfxVolume') applyVolumes();
+    if (key === 'masterVolume' || key === 'musicVolume' || key === 'sfxVolume') applyVolumes();
   });
   const unlock = () => {
     ensureAudio();
@@ -172,12 +172,14 @@ export function applyVolumes() {
   if (!ctx) return;
   const t = ctx.currentTime;
   const m = vol('musicVolume', 0.7), s = vol('sfxVolume', 0.8);
+  const mv = vol('masterVolume', 1);
+  bus.master.gain.setTargetAtTime(mv * mv * 0.9, t, 0.05);
   bus.musicVol.gain.setTargetAtTime(m * m * 0.55, t, 0.05); // music sits ~4 dB under the sfx
   bus.sfxVol.gain.setTargetAtTime(s * s, t, 0.05);
 }
 
 /** The current slider value (0..1) for a mix bus. */
-export function volume(key) { return vol(key, key === 'musicVolume' ? 0.7 : 0.8); }
+export function volume(key) { return vol(key, { musicVolume: 0.7, sfxVolume: 0.8 }[key] ?? 1); }
 
 // ------------------------------------------------------------------ ducking
 

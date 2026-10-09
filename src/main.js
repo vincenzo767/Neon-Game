@@ -4,7 +4,7 @@ import './ui/stage.css';
 import './ui/difficulty.css';
 import './ui/boss.css';
 import { Game } from './core/Game.js';
-import { DifficultySelectScene } from './scenes/DifficultySelectScene.js';
+import { TitleScene } from './scenes/TitleScene.js';
 import { spawnEnemy, ENEMIES } from './entities/enemies/index.js';
 import { generateStage } from './stages/StageGen.js';
 import { BIOMES } from './stages/biomes.js';
@@ -25,7 +25,7 @@ function boot() {
     // Shareable runs: ?seed=ABCD1234 replays the same stage sequence.
     const seed = new URLSearchParams(location.search).get('seed');
     if (seed) game.seed = seed.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) || game.seed;
-    game.setScene(new DifficultySelectScene());
+    game.setScene(new TitleScene()); // M7b: title → attract → difficulty → pilot select
     game.start();
     // Exposed for console debugging only.
     window.__npo = game;

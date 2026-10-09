@@ -241,10 +241,17 @@ export const music = {
     this.pending = null;
     const old = this.deck;
     if (old) old.fadeOut(c, t, fill ? 0.15 : 0.6);
+    // A breakdown still running (boss WARNING) carries over to the new track.
+    const rem = this.hold ? this.hold.until - this.bar : 0;
     this.deck = deck;
     this.step = 0; this.bar = 0;
-    if (this.hold) this.hold = null;
-    this._applyLevel(c, t, 0.05);
+    if (rem > 0) {
+      this.hold.until = rem;
+      deck.setLayers(c, this.hold.layers, t, 0.05);
+    } else {
+      this.hold = null;
+      this._applyLevel(c, t, 0.05);
+    }
     this._echo(c);
     if (fill) this._crash(c, t);
   },

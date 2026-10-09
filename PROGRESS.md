@@ -13,7 +13,7 @@
 | **M4d** | World & faction pass: lore/faction data, greeble generator, faction enemy variants, 2 new biomes, intro cards + loop lines, boss visual retrofit | ✅ Done |
 | **M5** | Remaining 12 standard pilots + **Vincenzo (Legendary)** with the §4.6 firing concepts, ultimates, cut-ins | ✅ Done |
 | **M6** | Audio engine and adaptive music (per-phase layers, archetype themes, a musical identity per faction) | ✅ Done |
-| M7 | UI, scoring, polish, performance tuning: **M7a** scoring ✅ · M7b flow & UI · M7c polish & performance | ⏳ In progress |
+| M7 | UI, scoring, polish, performance tuning: **M7a** scoring ✅ · **M7b** flow & UI ✅ · M7c polish & performance | ⏳ In progress |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -505,6 +505,68 @@ All gains still pass through the difficulty score multiplier (UPDATE_01 §3).
 - **Continue and quit:** a continue starts a new credit, and quitting recorded it as a second entry (`cont: 1`). The HUD HI stays at the run best.
 - **Regression:** the M4b and six-boss suites (see the M7a changelog).
 
+## M7b — Flow and UI
+
+**Flow** (prompt §8): **Title** → (idle 20 s) **attract demo** → **ranking** pages → title. START → difficulty → pilot select → stage … → game over → **results** → pilot select.
+
+**New screens** ([src/scenes/](src/scenes/)):
+
+| Scene | What |
+|---|---|
+| [MenuScene.js](src/scenes/MenuScene.js) | Shared base: city backdrop, menu theme, a row-list helper (↑↓ choose, ◀▶ change, Z select, X/Esc back) |
+| [TitleScene.js](src/scenes/TitleScene.js) | Neon logo, lore tagline; START / PRACTICE (greyed until a boss is reached) / RANKING / OPTIONS. Starts the attract cycle after 20 s idle |
+| [AttractScene.js](src/scenes/AttractScene.js) | Demo play: a random standard pilot on a random seed and stage (Medium). An autopilot steers under the nearest enemy, dodges predicted bullet positions with inverse-square repulsion, keeps off the walls, focuses in thick fire, bombs when cornered, and fires one showcase ultimate. ~36 s, then the ranking pages; any key returns to the title. Unranked; it never unlocks anything; the player's seed is restored |
+| [RankingScene.js](src/scenes/RankingScene.js) | The M7a boards: ◀▶ per difficulty plus Legendary boards that have entries. In attract mode it pages itself |
+| [OptionsScene.js](src/scenes/OptionsScene.js) | Graphics quality, CRT, screen shake, master / music / SFX volume, **CONTROLS** (key remap) |
+| [PracticeSelectScene.js](src/scenes/PracticeSelectScene.js) + [PracticeScene.js](src/scenes/PracticeScene.js) | **Practice** for any boss reached in a run, at any Mk. reached, at a chosen difficulty |
+| [ResultsScene.js](src/scenes/ResultsScene.js) | Run summary after game over: final score, ranking place, pilot, difficulty, stage reached, time, kills, max chain, graze, bombs, ships lost, continues. Rows count in; Z skips |
+
+**Key remap:**
+- Pick an action, then press a key. The key becomes that action's primary binding and is removed from every other gameplay action, so one key never drives two.
+- Menu keys (confirm / back) keep their own bindings. Esc cancels a capture.
+- RESET TO DEFAULTS restores everything. Gamepads use the standard layout (not remappable in the UI).
+
+**Practice:**
+- **Unlocking:** a boss unlocks when it appears in a ranked run (`unlocks.seen[id] = highest Mk.`).
+- **Arena:** the fight runs on the boss faction's home biome as a two-section plan (boss → tally) on the normal arena boss path.
+- **Scoring:** practice is unranked.
+- **Exits:** the tally leads to results and then back to the boss list. Pause → quit returns to the list.
+- **Warden:** a practice kill still counts as a boss defeat for unlocking Warden. Reaching a boss already required a real run.
+
+**Existing files touched:**
+
+| File | Change |
+|---|---|
+| [main.js](src/main.js) | Boots into the title screen |
+| [scenes/DifficultySelectScene.js](src/scenes/DifficultySelectScene.js) | X/Esc back to the title |
+| [scenes/PilotSelectScene.js](src/scenes/PilotSelectScene.js) | Practice launch (+ badge); back returns to the practice list |
+| [scenes/PlayScene.js](src/scenes/PlayScene.js) | `difficultyId` / `playerOpts` overrides; run stats; game over → `endRun()` → results → `afterResults()`; `summary()` |
+| [scenes/StageScene.js](src/scenes/StageScene.js) | `makePlan()` / `nextStage()` hooks; records bosses reached; no unlocks from the attract demo |
+| [entities/Player.js](src/entities/Player.js) | `autopilot` hook for demo ships |
+| [pilots/unlocks.js](src/pilots/unlocks.js) | `bossesSeen()` / `recordBossSeen()` |
+| [core/Settings.js](src/core/Settings.js), [audio/engine.js](src/audio/engine.js) | `masterVolume` |
+| [audio/music.js](src/audio/music.js) | A WARNING breakdown that is still running carries over a track swap (it was lost when a stage started from the menu theme) |
+
+**Verified** (headless Chrome, dev server):
+- **Title:** boots to the title with PRACTICE greyed out.
+- **Ranking:** ◀▶ switches boards; back returns to the title.
+- **Options:** quality, CRT and master volume change both the settings and the master bus (80 % → 0.576).
+- **Key remap:**
+  - SHOT → Q gives `[Q, Z, J, Space]`;
+  - binding BOMB → Q removes Q from SHOT;
+  - RESET restores the defaults.
+- **Practice:**
+  - unlocking Colossus (Mk. II) and Maw shows both, with four locked rows;
+  - the Mk. cycles; pilot select shows the badge;
+  - the plan is `boss:colossus_crawler:mk2,tally` on Skyway;
+  - the kill leads to results (PRACTICE RESULTS · COLOSSUS CRAWLER MK.II), then back to the list.
+- **Difficulty select:** Esc returns to the title.
+- **Attract demo:**
+  - the autopilot moves, dodges and kills (14 kills in ~15 s, no deaths, no unlocks);
+  - it hands over to the ranking pages; a key returns to the title; the seed is restored.
+- **End of run:** game over at 123,456 → initials → RESULTS (1ST PLACE · STANDARD) → pilot select.
+- **Regression:** the M4b and six-boss suites (see the M7b changelog).
+
 ## Run
 
 ```
@@ -514,9 +576,11 @@ npm run build      # production bundle in dist/
 ```
 
 Flow right now:
-- **Pilot Select → (Z) endless procedural stages**: intro → waves → mid-boss → waves → boss → tally → next stage...
-- **(C) Test Range**: placeholder waves with a selectable bullet density.
-- From either: Pause, or Game Over → Continue / Pilot Select.
+- **Title** → START → difficulty → **Pilot Select → (Z) endless procedural stages**: intro → waves → mid-boss → waves → boss → tally → next stage...
+- **(C) on pilot select → Test Range**: placeholder waves with a selectable bullet density.
+- **Title → PRACTICE**: a single fight against any boss reached so far. **RANKING** and **OPTIONS** are also on the title.
+- Idle on the title for 20 s: attract demo → ranking pages.
+- From a run: Pause (Resume / Restart / Pilot Select / volumes), or Game Over → initials → Continue, or Pilot Select via the results screen.
 
 **Seeds:** a run is fully determined by its seed plus your inputs. The seed is shown on pilot select, in the pause menu and on the tally. Replay a run with `?seed=ABCD1234` in the URL.
 
@@ -662,9 +726,9 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 - Readability check per biome done visually (harbor water and foundry lava were toned down). It still needs a real-GPU playtest for pacing and difficulty.
 - Balance is first-pass only: DPS per pilot, ultimate charge rates, and item drop rates. Tune in M7.
 - Scoring constants (combo step, extend thresholds, NO-BOMB bonus) are first-pass; tune them with the M7c balance pass.
-- Key remap UI and the options menu are M7. Bindings are already remappable in [Settings](src/core/Settings.js).
+- **Options cover keyboard remapping only.** Gamepad buttons use the standard layout and are not remappable in the UI. The pause menu keeps only the music and SFX rows; the full options are on the title screen.
 - **Audio (M6) is tuned by meter, not by ear.** Levels, the music/sfx balance (music ~4 dB under), shot-voice loudness and the bomb's underwater sweep were set from peak readings in headless Chrome. A listening pass on real speakers is the first thing to do in M7.
-- **Only the music and SFX volumes are adjustable, from the pause menu.** There is no master volume yet, and the full options screen arrives in M7.
+- Master, music and SFX volume are in Options (M7b); the pause menu has music and SFX.
 - **Some sounds were not exercised by the automated runs:**
   - the Void Mecha slash and hand-grab sounds (Vincenzo's mecha form starts after the test windows);
   - the smallest explosion size (the test range spawns only mid-HP enemies);
@@ -684,21 +748,16 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 
 
 
-## Next steps (M7b — flow and UI, then M7c)
+## Next steps (M7c — polish and performance)
 
-Per the prompt §8 and the known issues above:
+From the known issues above:
 
-1. **M7b — flow and UI** (§8):
-   - title screen → attract demo (with the ranking boards) → difficulty → pilot select;
-   - options screen: graphics quality, CRT, shake, key remap, master/music/SFX volume;
-   - practice mode for any boss already reached;
-   - a results screen at the end of a run.
-2. **M7c — polish:**
+1. **Polish:**
    - an audio listening pass (mix levels, per-pilot shot loudness);
    - faction bullet skins and enemy weapon sounds (§4.5);
    - per-pilot flak tints, a stage-to-stage biome crossfade, faction animation traits on regular enemies;
    - a widening decision for boss hitboxes.
-3. **M7c — performance and robustness:**
+2. **Performance and robustness:**
    - a real-GPU FPS and start-up measurement (1,500+ bullets at 60 FPS);
    - a 2048-atlas fallback check;
    - WebGL context-loss handling;

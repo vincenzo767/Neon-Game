@@ -44,6 +44,7 @@ const DEFAULTS = {
   quality: 'high',
   crt: false,
   shake: 1.0, // 0..1.5 multiplier
+  masterVolume: 1.0, // M7b
   musicVolume: 0.7,
   sfxVolume: 0.8,
   keys: DEFAULT_KEY_BINDINGS,

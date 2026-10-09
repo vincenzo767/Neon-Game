@@ -24,10 +24,10 @@ export class PlayScene {
     this.g = g;
     this.world = new World(g);
     // Difficulty (chosen on the difficulty select screen) sets lives, bombs and score rate.
-    const cfg = (this.diffCfg = getDifficulty(g.difficultyId));
+    const cfg = (this.diffCfg = getDifficulty(this.difficultyId || g.difficultyId)); // M7b: attract / practice may override
     this.world.scoreMul = cfg.scoreMul;
     this.world.extends = new ExtendTracker(cfg.scoreMul); // M7a: 1UPs at score thresholds
-    this.world.setPlayer(this.def, { lives: startingReserve(cfg), bombStock: startingBombs(cfg, this.def) });
+    this.world.setPlayer(this.def, { lives: startingReserve(cfg), bombStock: startingBombs(cfg, this.def), ...(this.playerOpts || {}) });
     this.world.onEvent = (type, data) => this.onEvent(type, data);
     this.audio = new AudioDirector(this); // M6: sfx + adaptive music
     this.parallax = new Parallax(g, null);
@@ -35,6 +35,7 @@ export class PlayScene {
     this.gameOver = false;
     this.continues = 0;
     this.recorded = false;  // this credit's score is already in the ranking
+    this.run = { steps: 0, maxChain: 0 }; // M7b: run totals for the results screen
     this.entry = null;      // initials entry in progress (game over)
     this.lastRank = -1;
     this.menuIndex = 0;
@@ -142,6 +143,33 @@ export class PlayScene {
     if (inp.pressed('down')) this.menuIndex = (this.menuIndex + 1) % n;
   }
 
+  /** Run over (game over, no continue): the results screen, then pilot select (M7b). */
+  endRun() {
+    const summary = this.summary();
+    import('./ResultsScene.js').then(({ ResultsScene }) => {
+      this.g.setScene(new ResultsScene({ summary, next: () => this.afterResults() }));
+    });
+    this.leaving = true;
+  }
+
+  /** Where the results screen leads (practice returns to its boss list). */
+  afterResults() {
+    import('./PilotSelectScene.js').then(({ PilotSelectScene, rosterIndexOf }) => {
+      this.g.setScene(new PilotSelectScene({ index: rosterIndexOf(this.def) }));
+    });
+  }
+
+  /** Totals for the results screen. */
+  summary() {
+    const w = this.world, p = w.player;
+    return {
+      def: this.def, diff: this.diffCfg, seed: this.g.seed, score: w.score, hi: this.hud.hi,
+      rank: this.lastRank, stage: this.stageLabel ? this.stageLabel() : '', kills: w.kills, graze: w.graze,
+      maxChain: this.run.maxChain, bombs: p.bombsUsed, deaths: p.deaths, continues: this.continues,
+      seconds: Math.round(this.run.steps / 60), practice: !!this.practice, ranked: this.ranked !== false,
+    };
+  }
+
   pilotSelect() {
     // Lazy import breaks the PilotSelect <-> PlayScene module cycle.
     import('./PilotSelectScene.js').then(({ PilotSelectScene, rosterIndexOf }) => {
@@ -218,10 +246,10 @@ export class PlayScene {
           this.rankHtml = undefined;
           w.player.continueGame();
           this._hideOverlay();
-        } else this.pilotSelect();
+        } else this.endRun();
         return;
       }
-      if (--this.continueT <= 0) { this.pilotSelect(); return; }
+      if (--this.continueT <= 0) { this.endRun(); return; }
       this._idle();
       return;
     }
@@ -270,6 +298,8 @@ export class PlayScene {
     this.parallax.update();
     this.tick();
     w.update();
+    this.run.steps++;
+    if (w.chain > this.run.maxChain) this.run.maxChain = w.chain;
     // M7a: extends at score thresholds.
     for (let n = w.extends.check(w.score); n > 0; n--) {
       if (w.player.lives < MAX_LIVES) w.player.lives++;

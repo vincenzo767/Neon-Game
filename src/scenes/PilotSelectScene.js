@@ -10,6 +10,8 @@ import { drawPortrait } from '../ui/portraits.js';
 import { handleDevKeys } from './devKeys.js';
 import { TestRangeScene } from './TestRangeScene.js';
 import { StageScene } from './StageScene.js';
+import { PracticeScene } from './PracticeScene.js';
+import { BOSSES } from '../bosses/index.js';
 import { DifficultySelectScene } from './DifficultySelectScene.js';
 import { getDifficulty } from '../core/difficulty.js';
 import { pilotLore } from '../data/lore/pilots.js';
@@ -28,7 +30,10 @@ const TIER_STEPS = 150;
 export const rosterIndexOf = (def) => Math.max(0, ROSTER.indexOf(def));
 
 export class PilotSelectScene {
-  constructor(opts = {}) { this.index = opts.index ?? 0; }
+  constructor(opts = {}) {
+    this.index = opts.index ?? 0;
+    this.practice = opts.practice || null; // M7b: {id, mk} when launched from practice select
+  }
 
   enter(g) {
     this.g = g;
@@ -39,6 +44,10 @@ export class PilotSelectScene {
     this.t = 0;
     this.demoT = 0;
     this._buildDom();
+    if (this.practice) {
+      const b = BOSSES[this.practice.id];
+      g.hud.querySelector('.select').insertAdjacentHTML('beforeend', `<div class="sel-practice">PRACTICE · ${b.name} MK.${'I'.repeat(this.practice.mk)}</div>`);
+    }
     this._spawnTargets();
     this._select(this.index);
   }
@@ -172,7 +181,12 @@ export class PilotSelectScene {
     if (inp.pressed('down')) i = this._move(0, 1);
     if (i !== this.index) this._select(i);
 
-    if (inp.pressed('back')) { playBack(); g.setScene(new DifficultySelectScene()); return; }
+    if (inp.pressed('back')) {
+      playBack();
+      if (this.practice) import('./PracticeSelectScene.js').then(({ PracticeSelectScene }) => g.setScene(new PracticeSelectScene({ id: this.practice.id })));
+      else g.setScene(new DifficultySelectScene());
+      return;
+    }
     // Dev only: U unseals Warden without beating a boss.
     if (import.meta.env.DEV && inp.keyPressed('KeyU')) { unlock('warden'); g.setScene(new PilotSelectScene({ index: this.index })); return; }
     const launch = inp.pressed('confirm'), test = inp.pressed('special');
@@ -184,7 +198,8 @@ export class PilotSelectScene {
       } else {
         g.renderer.post.flash(...p.color, 0.5, 0.04);
         playConfirm();
-        g.setScene(launch ? new StageScene(p) : new TestRangeScene(p));
+        if (!launch) g.setScene(new TestRangeScene(p));
+        else g.setScene(this.practice ? new PracticeScene(p, this.practice) : new StageScene(p));
         return;
       }
     }

@@ -5,7 +5,7 @@ import { BIOMES } from '../stages/biomes.js';
 import { DIFFICULTIES, DEFAULT_DIFFICULTY } from '../core/difficulty.js';
 import * as P from '../patterns/index.js';
 import { handleDevKeys } from './devKeys.js';
-import { playHellWarning, playUiTick, playConfirm } from '../audio/sting.js';
+import { playHellWarning, playUiTick, playConfirm, playBack } from '../audio/sting.js';
 import { music } from '../audio/music.js';
 import { PilotSelectScene } from './PilotSelectScene.js';
 
@@ -61,7 +61,7 @@ export class DifficultySelectScene {
         <div class="diff-title">SELECT DIFFICULTY<span>RULES OF ENGAGEMENT</span></div>
         <div class="diff-list">${cards}</div>
         <div class="diff-preview">LIVE FIRE PREVIEW</div>
-        <div class="diff-hint"><b>↑↓</b> choose · <b>Z / ENTER</b> confirm</div>
+        <div class="diff-hint"><b>↑↓</b> choose · <b>Z / ENTER</b> confirm · <b>X / ESC</b> back</div>
       </div>`;
     this.cards = [...this.g.hud.querySelectorAll('.diff-card')];
   }
@@ -90,6 +90,12 @@ export class DifficultySelectScene {
     this.t++;
     if (inp.pressed('up')) this._select((this.index + n - 1) % n);
     if (inp.pressed('down')) this._select((this.index + 1) % n);
+    if (inp.pressed('back')) { // M7b: back to the title screen
+      playBack();
+      import('./TitleScene.js').then(({ TitleScene }) => g.setScene(new TitleScene()));
+      this.update = () => {};
+      return;
+    }
     if (inp.pressed('confirm')) {
       const d = DIFFICULTIES[this.index];
       g.difficultyId = d.id;
