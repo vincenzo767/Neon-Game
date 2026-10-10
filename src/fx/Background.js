@@ -261,9 +261,38 @@ export class Background {
     this.onLightning = null;
   }
 
-  setBiome(bg) { this.biome = bg; this.flash = 0; }
+  setBiome(bg) { this.biome = bg; this.flash = 0; this.fade = null; }
+
+  /**
+   * Stage-to-stage change (M7c). Same shader mode: the palette and lighting
+   * blend over `steps`. Different mode: dip the brightness, swap at the
+   * midpoint, rise back. Works on copies so the biome tables stay untouched.
+   */
+  fadeTo(bg, steps = 90) {
+    if (!this.biome || this.biome === bg) { this.setBiome(bg); return; }
+    this.fade = { from: { ...this.biome }, to: bg, t: 0, steps, same: (this.biome.mode | 0) === (bg.mode | 0) };
+  }
+
+  _stepFade() {
+    const f = this.fade;
+    const k = Math.min(1, ++f.t / f.steps);
+    const lerp = (a, b, u) => a + (b - a) * u;
+    const mix = (a, b, u) => (Array.isArray(a) ? a.map((v, i) => lerp(v, b[i], u)) : lerp(a, b, u));
+    const KEYS = ['base', 'fog', 'neonA', 'neonB', 'tilt', 'bright', 'detail'];
+    if (f.same) {
+      const out = { ...f.to };
+      for (const key of KEYS) if (f.from[key] !== undefined && f.to[key] !== undefined) out[key] = mix(f.from[key], f.to[key], k * k * (3 - 2 * k));
+      this.biome = out;
+    } else {
+      const src = k < 0.5 ? f.from : f.to;
+      const dip = Math.abs(1 - k * 2); // 1 → 0 at the swap → 1
+      this.biome = { ...src, bright: (src.bright ?? 0.55) * (0.12 + 0.88 * dip) };
+    }
+    if (k >= 1) { this.biome = f.to; this.fade = null; }
+  }
 
   update() {
+    if (this.fade) this._stepFade();
     this.scroll += this.speed;
     this.flash *= 0.86;
     // Cosmetic lightning in storm biomes (Math.random: never affects gameplay).

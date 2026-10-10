@@ -84,7 +84,7 @@ export class AudioDirector {
 
     // Enemy volleys: a soft tick when many bullets appear at once.
     const B = w.bullets.count;
-    if (B - this.bullets >= 4) sfx.play('enemyShot', { pan: 0 });
+    if (B - this.bullets >= 4) sfx.play('enemyShot', { pan: 0, style: music.deck ? music.deck.styleId : null });
     this.bullets = B;
 
     // Laser telegraphs: a charge whine for each new one.

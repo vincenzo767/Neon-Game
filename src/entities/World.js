@@ -8,6 +8,7 @@ import { Player } from './Player.js';
 import { KIND_SPLIT, splitBullet } from '../patterns/index.js';
 import { DMG_IGNORES_SHIELDS, DMG_INSTANT } from '../core/damage.js';
 import { comboMult, COMBO_WINDOW, MEDAL_START, MEDAL_STEP, MEDAL_MAX } from '../core/scoring.js';
+import { pilotDamage } from '../data/balance.js';
 
 // The gameplay world: every live object of a play session plus the API that
 // pilots, enemies and scenes use to interact (damage, cancel, beams, items).
@@ -18,6 +19,7 @@ export { GRAZE_RADIUS };
 export const COLLECT_LINE = 170;      // above this line, items auto-collect
 export const SHOT_NORMAL = 0;
 export const SHOT_FLAK = 1;           // bursts for area damage on hit/expiry (aux = radius)
+export const PIERCE_REHIT = 6;      // steps between hits of one piercing shot on the same enemy (M7c)
 
 const MAX_POWER_BONUS = 1000;
 
@@ -29,9 +31,14 @@ export class World {
     this.F = {
       glow: r.frame('glow'), core: r.frame('core'), ring: r.frame('ring'), white: r.frame('white'),
       spark: r.frame('spark'), laser: r.frame('laser'), hitbox: r.frame('hitbox'), slash: r.frame('slash'),
+      smoke: r.frame('smoke'),
       items: { P: r.frame('item_P'), B: r.frame('item_B'), S: r.frame('item_S'), L: r.frame('item_L'), M: r.frame('item_M') },
     };
     this.BF = r.bulletFrames;
+    this.FB = r.atlas.factionBullets || null; // M7c: faction bullet skins (fx/factionBullets.js)
+    this.firing = null;                      // enemy whose AI is running (its bullets wear its faction)
+    this.uidSeq = 0;
+    this.dmgScale = 1;
     this.rng = game.rng;
     this.fxRng = game.fxRng;
 
@@ -83,6 +90,7 @@ export class World {
   setScoreRaw(v) { this._score = v; }
 
   setPlayer(def, opts) {
+    this.dmgScale = pilotDamage(def.id); // M7c balance (data/balance.js)
     this.player = new Player(this, def, opts);
     return this.player;
   }
@@ -131,6 +139,8 @@ export class World {
     e.untargetable = false; e.glow = null; e.lastBomb = -1; e.onDeath = null; e.data = {};
     e.ground = false; e.f2 = null; e.rot2 = 0; e.elite = false; e.armor = 1; e.entered = false;
     e.boss = false; e.def = null; e.name = ''; e.onDamage = null; e.ctrl = null; e.flashA = 0.8;
+    e.uid = ++this.uidSeq;  // M7c: identity for the piercing re-hit cooldown
+    e.bank = 0;             // M7c: Stratos banking (cosmetic)
     Object.assign(e, props);
     e.maxHp = e.hp;
     this.spawned++;
@@ -152,6 +162,7 @@ export class World {
   /** `flags`: core/damage.js bitmask. Main bosses resolve them in e.onDamage (bosses/BossController). */
   damage(e, dmg, flags = 0) {
     if (!e.alive || e.untargetable) return;
+    dmg *= this.dmgScale;
     let armor = e.armor;
     if (e.onDamage) {
       dmg = e.onDamage(e, dmg, flags, this);
@@ -232,12 +243,14 @@ export class World {
       e.px = e.x; e.py = e.y;
       e.t++;
       if (e.flash > 0) e.flash--;
-      if (e.ai) e.ai(e, this);
+      if (e.ai) { this.firing = e; e.ai(e, this); }
+      if (e.faction && !e.boss && !e.ctrl) this._factionMotion(e);
       // Remove enemies that entered the field and then left it (or got stuck off-screen).
       const inside = e.x > -20 && e.x < WORLD_W + 20 && e.y > -20 && e.y < WORLD_H + 20;
       if (inside) e.entered = true;
       else if ((e.entered && (e.y > WORLD_H + 80 || e.y < -120 || e.x < -100 || e.x > WORLD_W + 100)) || e.t > 3600) e.alive = false;
     }
+    this.firing = null;
 
     this._steerShots();
     this._steerBullets();
@@ -400,6 +413,11 @@ export class World {
         const dx = en.x - sx, dy = en.y - sy, rr = en.r + sr;
         if (dx * dx + dy * dy >= rr * rr) continue;
         if (S.kind[i] === SHOT_FLAK) { this._flakBurst(i); consumed = true; break; }
+        // M7c: a piercing shot re-hits the same enemy at most every PIERCE_REHIT
+        // steps (it used to hit every overlapping step, so piercers did 3-8x the
+        // damage of other weapons to large targets such as bosses).
+        if (S.pierce[i] && S.hitUid[i] === en.uid && this.t - S.hitT[i] < PIERCE_REHIT) continue;
+        if (S.pierce[i]) { S.hitUid[i] = en.uid; S.hitT[i] = this.t; }
         this.damage(en, S.damage[i], S.dflags[i]);
         if (!S.pierce[i]) {
           this.explosions.hitSpark(sx, sy - 4, Math.PI / 2, [0.6, 0.9, 1]);
@@ -485,6 +503,33 @@ export class World {
     this.event('item', it.kind);
   }
 
+  /**
+   * Faction animation traits on regular enemies (UPDATE_02 §5, M7c; cosmetic):
+   * Stratos air units bank into turns, Black Tide craft leave wakes, Ironclad
+   * machines puff exhaust. Uses fxRng only (gameplay RNG untouched).
+   */
+  _factionMotion(e) {
+    const dx = e.x - e.px, dy = e.y - e.py;
+    switch (e.faction) {
+      case 'stratos':
+        if (!e.ground) e.bank = (e.bank || 0) + (Math.max(-0.35, Math.min(0.35, dx * 0.09)) - (e.bank || 0)) * 0.15;
+        break;
+      case 'blacktide':
+        if ((e.t + e.uid) % 5 === 0 && dx * dx + dy * dy > 0.2) {
+          const L = this.fxLow, k = L.spawn(this.F.ring, e.x - dx * 4, e.y - dy * 4, 0, 0, 34);
+          if (k >= 0) { L.size(k, e.r * 0.6, e.r * 2.2); L.color(k, 0.55, 0.95, 0.9, 0.2, 0.5, 0.6); L.look(k, 0.35, 1); }
+        }
+        break;
+      case 'ironclad':
+        if ((e.t + e.uid) % 11 === 0) {
+          const L = this.fxLow, R = this.fxRng;
+          const k = L.spawn(this.F.smoke, e.x + R.range(-e.r, e.r) * 0.5, e.y - e.r * 0.4, R.range(-0.2, 0.2), -0.5, 40);
+          if (k >= 0) { L.size(k, e.r * 0.5, e.r * 1.4); L.color(k, 0.45, 0.4, 0.38, 0.2, 0.18, 0.18); L.look(k, 0.45, 0); }
+        }
+        break;
+    }
+  }
+
   // ------------------------------------------------------------------ render
 
   _drawEnemy(b, e, alpha) {
@@ -496,9 +541,10 @@ export class World {
       const pulse = 0.5 + 0.3 * Math.sin(e.t * 0.2);
       b.draw(F.glow, x, y, w * 2.4, h * 2.4, 0, 1.4, 0.15, 0.2, pulse, 1);
     } else if (e.glow) b.draw(F.glow, x, y, w * 2, h * 2, 0, e.glow[0], e.glow[1], e.glow[2], 0.35, 1);
-    b.draw(e.f, x, y, w, h, e.rot, 1, 1, 1, 1, 0);
+    const rot = e.rot + (e.bank || 0); // M7c: Stratos banking
+    b.draw(e.f, x, y, w, h, rot, 1, 1, 1, 1, 0);
     if (e.f2) b.draw(e.f2, x, y, e.f2.w * e.scale, e.f2.h * e.scale, e.rot2, 1, 1, 1, 1, 0);
-    if (e.flash > 0) b.draw(e.f, x, y, w, h, e.rot, 1.5, 1.5, 1.5, e.flashA, 1);
+    if (e.flash > 0) b.draw(e.f, x, y, w, h, rot, 1.5, 1.5, 1.5, e.flashA, 1);
   }
 
   /** Ground units: drawn under foreground structures and air units. */

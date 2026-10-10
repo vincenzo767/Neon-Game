@@ -106,8 +106,19 @@ const LIB = {
     // Telegraph: a rising charge whine.
     tone(c, o, t, { type: 'sawtooth', f: 300, f2: 1800, ft: 0.6, dur: 0.65, peak: 0.04, a: 0.1, filter: { type: 'bandpass', f: 1200, f2: 4000, ft: 0.6, q: 4 }, pan: s.pan });
   },
+  // Enemy volleys speak the owning faction's weapon language (M7c, §4.5):
+  // slug thunks, needle zips, torpedo pops, Helix zaps, glass pings, void thuds.
   enemyShot(c, o, t, s) {
-    tone(c, o, t, { type: 'triangle', f: 520, f2: 320, dur: 0.05, peak: 0.025, pan: s.pan });
+    const p = s.pan || 0;
+    switch (s.style) {
+      case 'ironclad': tone(c, o, t, { type: 'square', f: 220, f2: 90, dur: 0.06, peak: 0.03, filter: { type: 'lowpass', f: 900 }, pan: p }); break;
+      case 'stratos': tone(c, o, t, { type: 'sawtooth', f: 2400, f2: 900, ft: 0.04, dur: 0.045, peak: 0.015, filter: { type: 'bandpass', f: 2600, q: 2 }, pan: p }); break;
+      case 'blacktide': tone(c, o, t, { type: 'sine', f: 300, f2: 700, ft: 0.05, dur: 0.06, peak: 0.035, pan: p }); break;
+      case 'helix': tone(c, o, t, { type: 'pulse12', f: 1500, f2: 600, ft: 0.04, dur: 0.045, peak: 0.018, pan: p }); break;
+      case 'outerstar': fm(c, o, t, { f: 1900, ratio: 1.41, index: 1.2, dur: 0.12, peak: 0.02, pan: p }); break;
+      case 'drowned': tone(c, o, t, { type: 'sine', f: 140, f2: 70, dur: 0.12, peak: 0.04, pan: p }); break;
+      default: tone(c, o, t, { type: 'triangle', f: 520, f2: 320, dur: 0.05, peak: 0.025, pan: p });
+    }
   },
 
   // ------------------------------------------------------------ items

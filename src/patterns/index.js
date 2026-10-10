@@ -1,5 +1,6 @@
 import { WORLD_W } from '../core/constants.js';
 import { COLOR_NAMES } from '../fx/sprites.js';
+import { SKINNED_SHAPES } from '../fx/factionBullets.js';
 
 // Bullet-pattern library.
 //
@@ -33,7 +34,11 @@ export function shoot(w, x, y, ang, spd, s) {
   const B = w.bullets;
   const shape = s.shape || 'orb', color = s.color || 'red', sc = s.scale || 1;
   const k = w.diff.speed;
-  const i = B.spawn(x, y, ang, spd * k, w.BF[shape][color], CI[color], s.radius ?? RADIUS[shape] * sc, sc);
+  // M7c: a regular enemy's small bullets wear its faction's shape (colour,
+  // radius and behaviour unchanged; fx/factionBullets.js).
+  const fac = w.FB && w.firing && !w.firing.boss && !w.firing.ctrl && w.firing.faction;
+  const frame = fac && SKINNED_SHAPES.has(shape) && w.FB[fac] ? w.FB[fac][color] : w.BF[shape][color];
+  const i = B.spawn(x, y, ang, spd * k, frame, CI[color], s.radius ?? RADIUS[shape] * sc, sc);
   if (i < 0) return -1;
   if (s.accel || s.angVel) B.motion(i, (s.accel || 0) * k, s.angVel || 0, (s.minSpd ?? 0) * k, (s.maxSpd ?? 99) * k);
   if (s.homing) { B.homing[i] = s.homing; B.aux[i] = s.homingTime || 60; }

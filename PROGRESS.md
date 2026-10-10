@@ -13,7 +13,7 @@
 | **M4d** | World & faction pass: lore/faction data, greeble generator, faction enemy variants, 2 new biomes, intro cards + loop lines, boss visual retrofit | ✅ Done |
 | **M5** | Remaining 12 standard pilots + **Vincenzo (Legendary)** with the §4.6 firing concepts, ultimates, cut-ins | ✅ Done |
 | **M6** | Audio engine and adaptive music (per-phase layers, archetype themes, a musical identity per faction) | ✅ Done |
-| M7 | UI, scoring, polish, performance tuning: **M7a** scoring ✅ · **M7b** flow & UI ✅ · M7c polish & performance | ⏳ In progress |
+| **M7** | UI, scoring, polish, performance tuning: **M7a** scoring ✅ · **M7b** flow & UI ✅ · **M7c** polish, robustness, performance, balance ✅ | ✅ Done |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -567,6 +567,124 @@ All gains still pass through the difficulty score multiplier (UPDATE_01 §3).
 - **End of run:** game over at 123,456 → initials → RESULTS (1ST PLACE · STANDARD) → pilot select.
 - **Regression:** the M4b and six-boss suites (see the M7b changelog).
 
+## M7c — Polish, robustness, performance, balance
+
+### Robustness
+- **WebGL context loss** (driver reset, GPU switch, tab eviction):
+  - The game freezes behind a "GRAPHICS DEVICE RESET · RESTORING…" notice; no blind play.
+  - On `webglcontextrestored`, every GL object is rebuilt in place: atlas texture, sprite batch, post passes and targets, stage and arena background shaders, and the shared fullscreen VAO.
+  - All game state is kept.
+  - The atlas lives on a CPU canvas, so re-uploading it is cheap.
+- **2048-texture fallback** (GPUs without 4096 textures):
+  - This used to fail at start-up ("Atlas full while adding b_maw").
+  - Now an overflowing atlas is rebuilt at a lower texel density (×0.85 per retry) instead. Sprites keep their world size and only get softer.
+  - Faction enemy skins and faction bullet shapes are skipped on 2048, as before.
+  - `?atlas=2048` forces the fallback for testing.
+
+### Performance
+- **Start-up, software GL: 18–21 s → ~3 s.** The atlas canvas is now CPU-backed (`willReadFrequently`).
+  - On a GPU-backed canvas the sprite draws are deferred. The faction-skin pass's single `getImageData` then paid for rasterising the entire atlas (16 s measured).
+  - Skia's CPU raster draws the same atlas in well under a second.
+  - The faction variants are also written back with one `putImageData`, on a fresh atlas row.
+- **Frame cost** (software GL; CPU side is meaningful, GPU side is emulated):
+
+  | Enemy bullets | Sim per step | Render submission per frame |
+  |---|---|---|
+  | ~700 | 1.5 ms | 0.3 ms |
+  | ~3,000 | 1.2–1.7 ms (p95 1.8) | 2.0 ms (p95 5.5) |
+  | ~5,000 | 4.4 ms (p95 spikes ~30, emulated-GPU stalls) | 3.4 ms |
+
+  The CPU budget for 1,500+ bullets at 60 FPS (16.7 ms) has plenty of headroom. Real-GPU FPS is still unmeasured here.
+- The stats overlay's renderer exposes `buildMs` (per-builder start-up times).
+
+### Audio
+- **Click fix:** every voice's envelope gain started at its default of 1 until the first automation event, so a few full-scale samples leaked at each sound's start. Found because quiet shot voices measured −1 dBFS peaks. Envelopes now start at 0.
+- **Loudness pass** (by meter: RMS on the output analyser, each sound in isolation):
+  - **Pilot shot voices** each get a `gain` trim in [audio/pilotVoices.js](src/audio/pilotVoices.js). The spread shrank from 21 dB (−26.7 … −48.2 dBFS) to 3 dB around −36 dBFS. Specials are untrimmed.
+  - **Faction music themes** each get a `gain` in [audio/themes.js](src/audio/themes.js). The spread shrank from 6 dB to 1.7 dB around −21.5 dBFS at full arrangement.
+- **Enemy volleys** now speak the owning faction's weapon language:
+  - Ironclad: slug thunks; Stratos: needle zips; Black Tide: torpedo pops;
+  - Helix: zaps; Outer Star: glass pings; Drowned Covenant: void thuds.
+
+### Visual polish
+- **Faction bullet language (UPDATE_02 §4.5)** — [fx/factionBullets.js](src/fx/factionBullets.js):
+
+  | Faction | Shape |
+  |---|---|
+  | Ironclad | slug |
+  | Stratos | needle |
+  | Black Tide | torpedo with bubble trail |
+  | Helix | jagged bolt |
+  | Outer Star | faceted shard |
+  | Drowned Covenant | void orb (dark core, coloured rim) |
+
+  - Only the shape changes. Each bullet keeps the pattern's danger colour, a dark outline, a white-hot core and its authored hitbox.
+  - Small shapes (orb, rice, kunai) from regular enemies are skinned. Big orbs and all boss fire are untouched.
+- **Faction motion traits on regular enemies (UPDATE_02 §5):**
+  - Stratos air units bank into turns;
+  - Black Tide craft leave wake rings;
+  - Ironclad machines puff exhaust.
+- **Stage-to-stage transition:** the background now fades between stages. When both stages share a background mode, the palette and lighting blend over 1.5 s; otherwise the brightness dips, the mode swaps, and the brightness rises back.
+- **Flak bursts** take the firing pilot's colour (or a `flakTint`). Bruno stays orange; Oduya, Rufus and Warden are cool.
+
+### Balance
+- **Piercing re-hit cooldown** (`World.PIERCE_REHIT = 6`): a piercing shot used to damage a large target on every step it overlapped it.
+  - Kairo, Tess, Sera and Cass measured ~430 boss DPS, against ~50–150 for everyone else.
+  - Now a piercing shot hits the same enemy at most once per 6 steps.
+  - Small enemies are unaffected.
+- **Pilot damage multipliers** ([data/balance.js](src/data/balance.js), applied in `World.damage`; instant flags unaffected). Method: tier-4 DPS over 8 s of fire against a large target 180 units ahead (normal and focus) and a line of six small targets (wave). Outliers were pulled about halfway to the median:
+  - NOVA-7 ×1.35, Holt ×1.2, Pike ×1.15, Aiko ×1.1;
+  - Dax ×0.9, Bruno ×0.85;
+  - Rufus measured 51–148 across runs (random guns), so he stays untrimmed;
+  - Vincenzo is excluded.
+- **Final boss-DPS spread** across the 16 standard pilots: ~70–124 (was 52–455).
+
+  | Pilot | single | focus | wave |
+  |---|---|---|---|
+  | kairo | 102 | 60 | 38 |
+  | mira | 68 | 93 | 67 |
+  | bruno | 125 | 119 | 85 |
+  | tess | 117 | 20 | 0 (short range by design) |
+  | oduya | 97 | 62 | 68 |
+  | lin | 79 | 80 | 47 |
+  | dax | 122 | 84 | 52 |
+  | sera | 108 | 75 | 43 |
+  | nova | 70 | 6 (focus = hack) | 69 |
+  | rufus | 51–137 (random) | 54–148 | 20–25 |
+  | aiko | 79 | 50 | 42 |
+  | pike | 58 | 82 | 12 |
+  | zuri | 73 | 58 | 44 |
+  | cass | 97 | 86 | 31 |
+  | holt | 75 | 41 | 40 |
+  | warden | 53 | 94 | 40 |
+
+### Not done (decisions or real hardware needed)
+- **Boss hitbox widening.** The retrofit hulls are 50–72 % of the field width, but the collision circles are still the M4c radii (44–58). Widening them changes boss balance (UPDATE_02 kept bosses logic-only), so it's left for an explicit decision.
+- **A by-ear listening pass, a real-GPU FPS measurement and a human playtest** are all impossible in this environment.
+
+**Existing files touched:**
+
+| File | Change |
+|---|---|
+| [core/gl/Renderer.js](src/core/gl/Renderer.js), [Atlas.js](src/core/gl/Atlas.js), [SpriteBatch.js](src/core/gl/SpriteBatch.js), [glUtil.js](src/core/gl/glUtil.js), [fx/PostFX.js](src/fx/PostFX.js), [fx/Background.js](src/fx/Background.js), [bosses/ArenaBackground.js](src/bosses/ArenaBackground.js) | `initGL()` re-runnable GL setup; context-loss handling; CPU atlas; texel-scale retry; `newRow()`; build timings; background `fadeTo()` |
+| [core/Game.js](src/core/Game.js) | Frozen while the context is lost; faction bullet builder |
+| [entities/World.js](src/entities/World.js), [entities/BulletSystem.js](src/entities/BulletSystem.js) | Pierce re-hit cooldown; damage multiplier; `firing` shooter mark; faction motion; pilot-coloured flak |
+| [patterns/index.js](src/patterns/index.js) | `shoot()` picks the faction shape (frame only) |
+| [fx/factionSkins.js](src/fx/factionSkins.js) | Single write-back |
+| [scenes/StageScene.js](src/scenes/StageScene.js) | Stage fade |
+| [audio/synth.js](src/audio/synth.js), [sfx.js](src/audio/sfx.js), [music.js](src/audio/music.js), [pilotVoices.js](src/audio/pilotVoices.js), [themes.js](src/audio/themes.js), [director.js](src/audio/director.js) | Click fix, loudness trims, faction enemy volleys, test handle |
+| [style.css](src/style.css) | Context-lost notice |
+
+No boss data (HP, phases, patterns, damage flags, hitboxes) changed. No renames.
+
+**Verified** (headless Chrome, software GL):
+- **Context loss mid-boss** (`WEBGL_lose_context`): frozen with the notice → restored, and the Hive fight continues correctly rendered (screenshot).
+- **Start-up:** default boots in ~3 s (4096, 80.5 % full, 411 sprites). `?atlas=2048` boots at texel ×0.85 (78 % full, 249 sprites), where it previously failed; a stage and the Hive fight then play and render correctly on it.
+- **Faction bullets:** for each of the six factions, 100 % of regular-enemy bullets wore the faction shape (69–88 bullets each). Screenshots checked for readability. Stratos units banked; wake and exhaust particles spawned.
+- **Stage fade:** the background dips 0.43 → 0.10, swaps mode 0 → 3 at the bottom, then rises to 0.70.
+- **Loudness:** shot voices −35.0 … −37.9 dBFS RMS; music −20.2 … −21.9 dBFS.
+- **Regression:** the M4b suite passes, and all six bosses run every phase to the tally on Extreme (final build).
+
 ## Run
 
 ```
@@ -581,6 +699,8 @@ Flow right now:
 - **Title → PRACTICE**: a single fight against any boss reached so far. **RANKING** and **OPTIONS** are also on the title.
 - Idle on the title for 20 s: attract demo → ranking pages.
 - From a run: Pause (Resume / Restart / Pilot Select / volumes), or Game Over → initials → Continue, or Pilot Select via the results screen.
+
+**Atlas fallback test:** `?atlas=2048` forces the small-GPU texture path (M7c).
 
 **Seeds:** a run is fully determined by its seed plus your inputs. The seed is shown on pilot select, in the pause menu and on the tally. Replay a run with `?seed=ABCD1234` in the URL.
 
@@ -702,63 +822,38 @@ Dev keys (test range): `1–4` bullet density · `T` CRT · `G` quality · `H` s
 
 ## Known issues / notes
 
+**Needs real hardware or a human** (impossible in this headless, software-GL environment):
+- **Real-GPU frame rate and start-up.** CPU cost is measured (see M7c), but GPU fill-rate with 1,500+ bullets, bloom and the arena shaders is not.
+- **A by-ear audio pass.** All levels are set by meter (M7c loudness pass). Check:
+  - the music/sfx balance (music ~4 dB under);
+  - the bomb's underwater sweep;
+  - per-faction enemy volley ticks;
+  - Vincenzo's cathedral tail.
+- **A human playtest for difficulty and pacing:** boss phase HP, Hell / Mk. III density (peak ~1,040 bullets in the Maw's Hell Mk. III desperation phase), item drop rates, ultimate charge rates.
+- **Bright effects to eyeball on a real GPU:** bloom on the Titan's ceramic armour, and Lin's Forest of Light pillars. All bullets are cleared during the pillars, so readability isn't at stake.
+
+**Design decisions left open:**
+- **Boss hitboxes** are the M4c radii (44–58) while the retrofit hulls are 50–72 % of the field width, so shots pass over outer wings, treads and tentacles. Widening them is a boss-balance change.
+- **Pilot balance is measured, not played.** See the M7c table and [data/balance.js](src/data/balance.js). Mechanics the DPS harness can't capture:
+  - NOVA-7's hacked allies, Zuri's charged Solar Lance, Lin's turrets, Aiko's bullet grinding;
+  - Cass's ±5-step beat window;
+  - Rufus's random guns (his numbers swing run to run).
+  - Vincenzo is meant to dominate.
+- **Scoring constants** (combo step, extend thresholds, NO-BOMB bonus) in [core/scoring.js](src/core/scoring.js) are first-pass.
+
+**Known gaps:**
 - The mid-boss is still the M3 Gatekeeper (UPDATE_01 only redesigns main bosses).
-- Boss balance is first-pass: phase HP, pattern rates and Hell/Mk. III density were tuned only in headless runs (peaks: ~1,040 bullets in the Maw's Hell Mk. III desperation phase). Needs a real-GPU playtest.
-- **Boss hitboxes are unchanged by the M4d retrofit** (visuals only, as UPDATE_02 required). The hulls are now 50–72% of the field width, but the collision circles are the M4c radii (44–58), so shots pass over the outer wings, treads and tentacles. Widening them is a balance change, left for an explicit decision.
-- **Enemy bullet language (§4.5) isn't applied yet:**
-  - slugs, needles, torpedoes, crystal shards and void orbs per faction;
-  - M4d only recoloured enemies, and bullet sprites still come from the M3 shape × colour set;
-  - natural home: M7 polish, or a bullet-skin pass keyed on the shooter's `e.faction`.
-- Bloom on the Titan's ceramic armour is the brightest of the six. Check it on a real GPU.
-- Start-up under software GL is ~7 s, because the 4096 atlas is rasterised by the CPU. Real-GPU start-up isn't measured yet. On GPUs without 4096 textures the atlas falls back to 2048: hulls are drawn at lower resolution and enemies keep their base colours.
-- **Pilot balance is first-pass.** The 13 new pilots were tuned only in the headless test range, with no real-GPU playtest. Watch for:
-  - NOVA-7's hack lock time;
-  - Lin's turret cap;
-  - Dax's heat ramp;
-  - Cass's beat window (±5 steps);
-  - how dominant Vincenzo is (he's meant to be).
-- **Lin's Forest of Light pillars are very bright.** All bullets are cleared while they're up, so readability isn't affected, but they could be toned down.
-- **Software-GL start-up is now ~21 s** (the 4096 atlas plus 13 more vehicles, many glow strokes). Real-GPU start-up isn't measured yet.
-- **On a 2048 atlas the art is drawn smaller**, but the extra M5 art has not been checked against that fallback for running out of atlas space.
-- **Flak bursts are orange for every pilot.** World's shared `SHOT_FLAK` burst colour is orange, so Oduya's mortars, Rufus' bolts and Warden's slugs pop orange (§4.5 prefers cool player colours). This could become a per-shot tint in M7.
-- Faction animation traits (§5) on regular enemies, such as banking, wake trails and visor glows, are only covered by the recolour and drop shadow. Per-enemy animation states are M7 polish.
-- Stage-to-stage biome change is an instant swap behind the tally overlay (no crossfade yet).
-- Readability check per biome done visually (harbor water and foundry lava were toned down). It still needs a real-GPU playtest for pacing and difficulty.
-- Balance is first-pass only: DPS per pilot, ultimate charge rates, and item drop rates. Tune in M7.
-- Scoring constants (combo step, extend thresholds, NO-BOMB bonus) are first-pass; tune them with the M7c balance pass.
-- **Options cover keyboard remapping only.** Gamepad buttons use the standard layout and are not remappable in the UI. The pause menu keeps only the music and SFX rows; the full options are on the title screen.
-- **Audio (M6) is tuned by meter, not by ear.** Levels, the music/sfx balance (music ~4 dB under), shot-voice loudness and the bomb's underwater sweep were set from peak readings in headless Chrome. A listening pass on real speakers is the first thing to do in M7.
-- Master, music and SFX volume are in Options (M7b); the pause menu has music and SFX.
-- **Some sounds were not exercised by the automated runs:**
-  - the Void Mecha slash and hand-grab sounds (Vincenzo's mecha form starts after the test windows);
-  - the smallest explosion size (the test range spawns only mid-HP enemies);
-  - game-over and continue stingers on a real defeat.
-  They're wired through the same paths that were tested.
-- Enemy fire has only a soft, throttled per-volley tick, so faction-specific weapon sounds (§4.5 firing language) are not there yet. This pairs naturally with the enemy bullet-skin pass.
-- Software GL runs at ~5 FPS, so the look-ahead scheduler stretched to its 0.35 s ceiling in tests. On a normal machine it stays at 0.12 s, which means music layer changes land within a beat.
-- WebGL context loss isn't handled yet (M7).
-- Verified in headless Chrome (software GL), with no runtime errors:
-  - each pilot: select, shot, focus, special, ultimate + cut-in, bomb, pause → pilot select
-  - game-over → continue flow
-  - M3: all 7 biomes and all 21 enemy types render
-  - a full stage, intro → waves → mid-boss → boss → tally → stage 2, completes (auto-kill fast-forward)
-  - the same seed produces identical stages, and a different seed differs
+- Faction bullet shapes and faction skins are skipped on the 2048-atlas fallback, so enemies there keep their base look.
+- Faction motion traits cover Stratos banking, Black Tide wakes and Ironclad exhaust. Helix visor glows, Outer Star shimmer and Drowned fade-ins aren't done.
+- Gamepad buttons aren't remappable in the UI (keyboard is).
+- **Sounds not exercised by the automated runs:** the Void Mecha slash and grab, the smallest explosion size, and the game-over stinger on a real defeat. They're wired through tested paths.
+- Software GL runs at ~5 FPS, so headless tests drop key taps and need retries. The test scripts in the scratchpad handle this; it isn't a game issue.
 
-  Real-GPU FPS hasn't been measured in this environment.
+## Next steps (after M7)
 
-
-
-## Next steps (M7c — polish and performance)
-
-From the known issues above:
-
-1. **Polish:**
-   - an audio listening pass (mix levels, per-pilot shot loudness);
-   - faction bullet skins and enemy weapon sounds (§4.5);
-   - per-pilot flak tints, a stage-to-stage biome crossfade, faction animation traits on regular enemies;
-   - a widening decision for boss hitboxes.
-2. **Performance and robustness:**
-   - a real-GPU FPS and start-up measurement (1,500+ bullets at 60 FPS);
-   - a 2048-atlas fallback check;
-   - WebGL context-loss handling;
-   - a balance pass for the 17 pilots and the boss phase HP.
+All milestones M1–M7 are complete. In priority order:
+1. Real-GPU playtest: frame rate at 1,500+ bullets, start-up time, a listening pass, and difficulty pacing per difficulty.
+2. Decide on boss hitbox widening (see Known issues), then re-tune boss phase HP if needed.
+3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
+4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
+5. Gamepad remapping UI; remaining faction motion traits.

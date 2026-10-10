@@ -37,6 +37,9 @@ export class BulletSystem {
     this.pierce = new Uint8Array(capacity);
     this.kind = new Uint8Array(capacity);
     this.dflags = new Uint8Array(capacity); // damage flags (core/damage.js)
+    // M7c: last enemy a piercing shot hit, and when (re-hit cooldown).
+    this.hitUid = new Int32Array(capacity);
+    this.hitT = new Int32Array(capacity);
     this.ref = new Array(capacity).fill(null); // kind-specific spec (e.g. split child pattern)
     this.spawnedTotal = 0;
     /** Optional callback(i) when a bullet reaches maxAge (before removal). */
@@ -74,6 +77,7 @@ export class BulletSystem {
     this.kind[i] = 0;
     this.dflags[i] = 0;
     this.ref[i] = null;
+    this.hitUid[i] = 0;
     this.spawnedTotal++;
     return i;
   }
@@ -153,6 +157,7 @@ export class BulletSystem {
     this.maxAge[i] = this.maxAge[j]; this.homing[i] = this.homing[j];
     this.aux[i] = this.aux[j]; this.pierce[i] = this.pierce[j]; this.kind[i] = this.kind[j];
     this.dflags[i] = this.dflags[j];
+    this.hitUid[i] = this.hitUid[j]; this.hitT[i] = this.hitT[j];
     this.ref[i] = this.ref[j];
   }
 

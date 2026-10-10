@@ -9,6 +9,7 @@ import { PILOT_SPRITES } from '../pilots/index.js';
 import { buildEnemySprites } from '../entities/enemies/index.js';
 import { buildBossSprites } from '../bosses/art.js';
 import { buildFactionSkins } from '../fx/factionSkins.js';
+import { buildFactionBullets } from '../fx/factionBullets.js';
 
 // Top-level engine object: owns subsystems and runs the fixed-step loop.
 //
@@ -24,7 +25,7 @@ export class Game {
     this.settings = new Settings();
     this.input = new Input(this.settings);
     this.camera = new Camera(this.settings);
-    this.renderer = new Renderer(canvas, stage, this.settings, [...PILOT_SPRITES, buildEnemySprites, buildBossSprites, buildFactionSkins]);
+    this.renderer = new Renderer(canvas, stage, this.settings, [...PILOT_SPRITES, buildEnemySprites, buildBossSprites, buildFactionSkins, buildFactionBullets]);
     this.hud = hud;
     this.debug = new DebugOverlay(debug, this);
 

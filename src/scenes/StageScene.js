@@ -64,7 +64,9 @@ export class StageScene extends PlayScene {
     music.setStage(this.factions.main.id); // M6: the owning faction's musical identity
     this.upperLevels = false;
     w.factionOf = (def) => this.factions.resolve(def, this.upperLevels);
-    g.renderer.background.setBiome(this.plan.biome.bg);
+    // M7c: later stages fade in from the previous one (the first one cuts in).
+    if (index > this.startStage) g.renderer.background.fadeTo(this.plan.biome.bg, 90);
+    else g.renderer.background.setBiome(this.plan.biome.bg);
     this.parallax.setStyle(this.plan.biome);
     w.bullets.clearAll();
     w.clearLasers();
