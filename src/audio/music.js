@@ -59,7 +59,7 @@ class Deck {
     this.bpm = st.bpm * (spec.desperation ? 1.08 : 1);
     this.motif = parseMotif(st.motif);
     this.out = c.createGain();
-    this.out.gain.value = 1;
+    this.out.gain.value = base.gain || 1; // M7c loudness trim per style (themes.js)
     this.out.connect(bus.musicIn);
     this.gains = {};
     for (const l of LAYERS) {

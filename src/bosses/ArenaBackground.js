@@ -387,6 +387,8 @@ export class ArenaBackground {
     this.program = compileProgram(gl, FULLSCREEN_VS, FS, 'arena-background');
   }
 
+  initGL() { this.program = compileProgram(this.gl, FULLSCREEN_VS, FS, 'arena-background'); }
+
   /** Same signature as Background.render, reading state from that Background. */
   render(src, width, height, time, alpha, shakeU = 0, shakeV = 0) {
     const gl = this.gl, p = this.program, b = src.biome;

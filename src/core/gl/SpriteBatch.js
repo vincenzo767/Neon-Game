@@ -56,6 +56,14 @@ export class SpriteBatch {
     this.count = 0;
     this.drawCalls = 0;
     this.instances = 0;
+    this.viewX = 0;
+    this.viewY = 0;
+    this.initGL();
+  }
+
+  /** Create the GL objects (again after a context loss, M7c). */
+  initGL() {
+    const gl = this.gl;
     this.program = compileProgram(gl, VS, FS, 'sprite');
 
     this.vao = gl.createVertexArray();
@@ -80,9 +88,6 @@ export class SpriteBatch {
     attr(3, 4, 8);
     attr(4, 2, 12);
     gl.bindVertexArray(null);
-
-    this.viewX = 0;
-    this.viewY = 0;
   }
 
   /** Begin a run of sprites. Camera offset in world units. */

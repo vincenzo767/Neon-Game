@@ -7,11 +7,17 @@ import { SPRITE_PX } from '../constants.js';
 const PAD = 4; // texels of empty border per sprite (prevents mip/filter bleed)
 
 export class Atlas {
-  constructor(size = 2048) {
+  /** @param texelScale resolution multiplier (< 1 when a small GPU atlas overflowed; M7c) */
+  constructor(size = 2048, texelScale = 1) {
     this.size = size;
+    this.texelScale = texelScale;
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.canvas.height = size;
-    this.ctx = this.canvas.getContext('2d');
+    // CPU-backed (M7c): every sprite is drawn once at start-up and then read
+    // back (faction skins) and uploaded. On a GPU-backed canvas the draws are
+    // deferred and the first readback pays for rasterising the whole atlas
+    // (~16 s under software GL); Skia's CPU raster does it in well under 1 s.
+    this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
     this.frames = [];          // by id
     this.byName = new Map();   // name -> frame
     this.cx = 0;
@@ -25,7 +31,8 @@ export class Atlas {
    * @param {object} [opt] { inset: true } samples only the interior (solid fills)
    */
   add(name, w, h, drawFn, opt = {}) {
-    const scale = opt.scale || SPRITE_PX;
+    // `exact`: the caller already works in this atlas's texels (faction skins).
+    const scale = (opt.scale || SPRITE_PX) * (opt.exact ? 1 : this.texelScale);
     const pw = Math.ceil(w * scale);
     const ph = Math.ceil(h * scale);
     const bw = pw + PAD * 2;
@@ -74,6 +81,17 @@ export class Atlas {
   }
 
   has(name) { return this.byName.has(name); }
+
+  /** Close the current row so following sprites start on a fresh one. */
+  newRow() {
+    if (this.cx === 0) return;
+    this.cx = 0;
+    this.cy += this.rowH;
+    this.rowH = 0;
+  }
+
+  /** Fraction of the atlas height in use (M7c: fallback headroom check). */
+  get fill() { return (this.cy + this.rowH) / this.size; }
 
   upload(gl) {
     const tex = gl.createTexture();

@@ -11,6 +11,7 @@
 //          degree (may be negative or ≥ 7 for other octaves), '-' to hold
 //          the previous note, '.' for a rest.
 //   boss: overrides for the archetype boss theme (same leitmotif, harder).
+//   gain: loudness trim (M7c: measured RMS at full arrangement evened to ~-21.5 dBFS).
 //
 // Layers (what the intensity system turns on and off):
 //   pad → bass → drums → arp → lead → perc
@@ -39,7 +40,7 @@ const LOCRIAN = [0, 1, 3, 5, 6, 8, 10];
 export const STYLES = {
   // Precinct 9 — the player's own theme: menus, prototype boss, fallback.
   precinct: {
-    name: 'PRECINCT 9 · SYNTHWAVE PURSUIT',
+    name: 'PRECINCT 9 · SYNTHWAVE PURSUIT', gain: 1.11,
     bpm: 112, root: 45, scale: AEOLIAN, swing: 0,
     prog: [0, 5, 2, 6], seventh: true,
     drums: {
@@ -63,7 +64,7 @@ export const STYLES = {
   // Ironclad Brotherhood — industrial foundry metal: phrygian, distorted
   // chug bass, anvil clanks, power chords. Treads and pistons.
   ironclad: {
-    name: 'IRONCLAD · FOUNDRY INDUSTRIAL',
+    name: 'IRONCLAD · FOUNDRY INDUSTRIAL', gain: 0.82,
     bpm: 136, root: 40, scale: PHRYGIAN, swing: 0,
     prog: [0, 0, 1, 0, 0, 0, 5, 1], power: true,
     drums: {
@@ -87,7 +88,7 @@ export const STYLES = {
   // Stratos Cartel — liquid drum & bass in the sky-lanes: bright lydian,
   // two-step breaks, reese bass, fast airy arps.
   stratos: {
-    name: 'STRATOS · SKY-LANE DRUM & BASS',
+    name: 'STRATOS · SKY-LANE DRUM & BASS', gain: 0.99,
     bpm: 174, root: 41, scale: LYDIAN, swing: 0,
     prog: [0, 1, 5, 4], seventh: true,
     drums: {
@@ -111,7 +112,7 @@ export const STYLES = {
   // Black Tide — a pirate shanty run through a synth rig: swung dorian,
   // reed "accordion" lead, oom-pah off-beats, foghorn swells, bubbles.
   blacktide: {
-    name: 'BLACK TIDE · SALT-SYNTH SHANTY',
+    name: 'BLACK TIDE · SALT-SYNTH SHANTY', gain: 1.66,
     bpm: 124, root: 38, scale: DORIAN, swing: 0.35,
     prog: [0, 3, 0, 6], seventh: false,
     drums: {
@@ -135,7 +136,7 @@ export const STYLES = {
   // Helix Dynamics — cold corporate electro: harmonic minor, a precise
   // 16th sequencer bass, gated organ pads, glitchy data blips.
   helix: {
-    name: 'HELIX DYNAMICS · CORPORATE ELECTRO',
+    name: 'HELIX DYNAMICS · CORPORATE ELECTRO', gain: 0.82,
     bpm: 150, root: 45, scale: HARMONIC_MINOR, swing: 0,
     prog: [0, 3, 4, 0, 5, 3, 4, 4], seventh: false,
     drums: {
@@ -159,7 +160,7 @@ export const STYLES = {
   // Choir of the Outer Star — alien hymn: whole-tone harmony, FM glass
   // bells, gliding theremin lead, 5-against-4 crystal percussion.
   outerstar: {
-    name: 'OUTER STAR · CRYSTAL HYMN',
+    name: 'OUTER STAR · CRYSTAL HYMN', gain: 0.89,
     bpm: 104, root: 48, scale: WHOLE_TONE, swing: 0,
     prog: [0, 1, 0, 3], seventh: false,
     drums: {
@@ -183,7 +184,7 @@ export const STYLES = {
   // Drowned Covenant — sunken requiem: locrian, a slow heartbeat, choir
   // formant pads, bell tolls, a brown-noise undertow.
   drowned: {
-    name: 'DROWNED COVENANT · SUNKEN REQUIEM',
+    name: 'DROWNED COVENANT · SUNKEN REQUIEM', gain: 1.04,
     bpm: 78, root: 35, scale: LOCRIAN, swing: 0,
     prog: [0, 0, 1, 4], seventh: false,
     drums: {

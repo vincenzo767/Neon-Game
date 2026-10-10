@@ -105,3 +105,10 @@ body {
   font-size: 14px;
   line-height: 1.5;
 }
+
+/* M7c: WebGL context lost → frozen frame with a notice until it's restored. */
+#stage.gl-lost::after {
+  content: 'GRAPHICS DEVICE RESET · RESTORING…';
+  position: absolute; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
+  background: rgba(2, 4, 10, 0.85); color: #3ef0ff; letter-spacing: 0.25em; font-size: calc(10 * var(--u));
+}

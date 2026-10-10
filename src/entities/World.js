@@ -329,15 +329,19 @@ export class World {
     const S = this.shots, x = S.x[i], y = S.y[i], r = S.aux[i] || 24;
     this.damageCircle(x, y, r, S.damage[i], S.dflags[i]);
     const H = this.fxHigh, R = this.fxRng;
+    // M7c: bursts wear the firing pilot's colour (UPDATE_02 §4.5 prefers cool
+    // player colours); a pilot may set `flakTint`. Bruno's orange is his own.
+    const def = this.player && this.player.def;
+    const [cr, cg, cb] = (def && (def.flakTint || def.color)) || [1, 0.55, 0.2];
     let k = H.spawn(this.F.glow, x, y, 0, 0, 8);
-    if (k >= 0) { H.size(k, r * 1.6, r * 2.2); H.color(k, 2, 1.1, 0.4, 1.2, 0.3, 0.05); H.look(k, 0.7, 1); }
+    if (k >= 0) { H.size(k, r * 1.6, r * 2.2); H.color(k, cr * 2, cg * 2, cb * 2, cr * 0.6, cg * 0.6, cb * 0.6); H.look(k, 0.7, 1); }
     k = H.spawn(this.F.ring, x, y, 0, 0, 9);
-    if (k >= 0) { H.size(k, r * 0.5, r * 2.2); H.color(k, 1.6, 0.9, 0.4); H.look(k, 0.5, 1); }
+    if (k >= 0) { H.size(k, r * 0.5, r * 2.2); H.color(k, cr * 1.6, cg * 1.6, cb * 1.6); H.look(k, 0.5, 1); }
     for (let n = 0; n < 3; n++) {
       const a = R.angle(), sp = R.range(1, 3.5);
       k = H.spawn(this.F.spark, x, y, Math.cos(a) * sp, Math.sin(a) * sp, R.range(8, 14));
       if (k < 0) break;
-      H.size(k, 3); H.color(k, 2, 1.4, 0.6, 1, 0.3, 0); H.phys(k, 0.9); H.look(k, 1, 1, FADE_OUT, 0.4);
+      H.size(k, 3); H.color(k, 0.8 + cr * 1.2, 0.8 + cg * 1.2, 0.8 + cb * 1.2, cr * 0.5, cg * 0.5, cb * 0.5); H.phys(k, 0.9); H.look(k, 1, 1, FADE_OUT, 0.4);
     }
   }
 

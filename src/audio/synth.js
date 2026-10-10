@@ -57,6 +57,10 @@ function sends(c, node, send) {
  */
 export function envelope(c, t, { peak = 0.3, a = 0.005, dur = 0.2, sus = 0, rel = 0.08 }) {
   const g = c.createGain(), gg = g.gain;
+  // The intrinsic value must be 0: before the first automation event takes
+  // hold the gain sits at its default of 1, which let a few full-scale
+  // samples of every voice through (audible clicks; found in M7c).
+  gg.value = 0;
   gg.setValueAtTime(0.0001, t);
   gg.linearRampToValueAtTime(peak, t + a);
   if (sus > 0) {

@@ -75,6 +75,8 @@ void main() {
 }`;
 
 let emptyVao = null;
+/** Forget the cached VAO (it belonged to a lost WebGL context). */
+export function resetFullscreenVao() { emptyVao = null; }
 export function drawFullscreen(gl) {
   if (!emptyVao) emptyVao = gl.createVertexArray();
   gl.bindVertexArray(emptyVao);

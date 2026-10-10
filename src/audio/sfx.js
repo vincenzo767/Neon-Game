@@ -21,6 +21,20 @@ const LIMIT = {
   enemyShot: [0.05, 1], grab: [0.08, 2],
 };
 
+/** Per-pilot output: one persistent gain node per voice (its loudness trim, M7c). */
+const outs = new Map();
+function voiceOut(c, v) {
+  if (!v.gain || v.gain === 1) return bus.sfxIn;
+  let g = outs.get(v);
+  if (!g || g.context !== c) {
+    g = c.createGain();
+    g.gain.value = v.gain;
+    g.connect(bus.sfxIn);
+    outs.set(v, g);
+  }
+  return g;
+}
+
 const last = new Map();
 const burst = new Map();
 
@@ -280,7 +294,7 @@ export const sfx = {
     if (now - prev < v.gap) return;
     last.set('shot', now);
     stats.played.shot = (stats.played.shot || 0) + 1;
-    v.shot(c, bus.sfxIn, now + 0.005, s);
+    v.shot(c, voiceOut(c, v), now + 0.005, s);
   },
 
   special(def) {
@@ -288,7 +302,7 @@ export const sfx = {
     if (!c || c.state !== 'running') return;
     const v = PILOT_VOICES[def.id] || DEFAULT_VOICE;
     stats.played.special = (stats.played.special || 0) + 1;
-    v.special(c, bus.sfxIn, c.currentTime + 0.005);
+    v.special(c, bus.sfxIn, c.currentTime + 0.005); // the gain trim is for the shot voice only
   },
 
   pitchOf(def) { return (PILOT_VOICES[def.id] || DEFAULT_VOICE).pitch; },

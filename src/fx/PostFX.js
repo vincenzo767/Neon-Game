@@ -158,11 +158,7 @@ export class PostFX {
   constructor(gl, hdr) {
     this.gl = gl;
     this.hdr = hdr;
-    this.bright = compileProgram(gl, FULLSCREEN_VS, BRIGHT_FS, 'bright');
-    this.blur = compileProgram(gl, FULLSCREEN_VS, BLUR_FS, 'blur');
-    this.copy = compileProgram(gl, FULLSCREEN_VS, COPY_FS, 'copy');
-    this.composite = compileProgram(gl, FULLSCREEN_VS, COMPOSITE_FS, 'composite');
-    this.targets = null;
+    this.initGL();
 
     // Live effect state.
     this.waves = [];
@@ -177,6 +173,16 @@ export class PostFX {
     this.time = 0;
     this.bloomStrength = 1;
     this.crt = false;
+  }
+
+  /** Compile the passes; after a context loss the old targets are simply dropped (M7c). */
+  initGL() {
+    const gl = this.gl;
+    this.bright = compileProgram(gl, FULLSCREEN_VS, BRIGHT_FS, 'bright');
+    this.blur = compileProgram(gl, FULLSCREEN_VS, BLUR_FS, 'blur');
+    this.copy = compileProgram(gl, FULLSCREEN_VS, COPY_FS, 'copy');
+    this.composite = compileProgram(gl, FULLSCREEN_VS, COMPOSITE_FS, 'composite');
+    this.targets = null;
   }
 
   resize(w, h) {

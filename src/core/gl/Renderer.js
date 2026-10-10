@@ -4,6 +4,7 @@ import { PostFX } from '../../fx/PostFX.js';
 import { Background } from '../../fx/Background.js';
 import { buildSprites } from '../../fx/sprites.js';
 import { WORLD_W, WORLD_H } from '../constants.js';
+import { resetFullscreenVao } from './glUtil.js';
 
 // Owns the WebGL2 context, canvas sizing (3:4 letterbox), the sprite atlas,
 // the batcher, the background and the post-processing chain.
@@ -28,10 +29,21 @@ export class Renderer {
     const hdr = !!gl.getExtension('EXT_color_buffer_float');
     // Update 02: 4096² when the GPU allows it (screen-dominating boss art and
     // faction enemy variants); content builders scale down on a 2048 atlas.
-    this.atlas = new Atlas(gl.getParameter(gl.MAX_TEXTURE_SIZE) >= 4096 ? 4096 : 2048);
-    const { bulletFrames } = buildSprites(this.atlas);
-    this.bulletFrames = bulletFrames;
-    for (const build of spriteBuilders) build(this.atlas);
+    // `?atlas=2048` forces the small-GPU fallback (M7c test aid).
+    const forced = Number(new URLSearchParams(location.search).get('atlas')) || 0;
+    const max = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    const size = forced === 2048 || max < 4096 ? 2048 : 4096;
+    // M7c: if the content doesn't fit (small GPUs), rebuild the whole atlas at
+    // a lower texel density. Sprites keep their world size, only get softer.
+    for (let texel = 1; ; texel *= 0.85) {
+      try {
+        this._buildAtlas(size, texel, spriteBuilders);
+        break;
+      } catch (err) {
+        if (!/Atlas full/.test(err.message) || texel < 0.4) throw err;
+        console.warn(`[atlas] ${size}² full at texel scale ${texel.toFixed(2)}; retrying smaller`);
+      }
+    }
     this.frames = this.atlas.frames;
     this.texture = this.atlas.upload(gl);
 
@@ -43,7 +55,48 @@ export class Renderer {
     this.cssH = 0;
     this.resize();
     window.addEventListener('resize', () => this.resize());
+    // M7c: survive a WebGL context loss (driver reset, GPU switch, tab
+    // eviction). The atlas lives on a CPU canvas, so everything can be rebuilt.
+    this.lost = false;
+    this.restores = 0;
+    canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault(); // ask the browser to restore it
+      this.lost = true;
+      stage.classList.add('gl-lost');
+    });
+    canvas.addEventListener('webglcontextrestored', () => this.restoreGL());
     settings.onChange((key) => { if (key === 'quality') this.resize(); });
+  }
+
+  /** Draw every sprite into a fresh atlas (timings kept for the stats overlay). */
+  _buildAtlas(size, texel, spriteBuilders) {
+    this.atlas = new Atlas(size, texel);
+    this.buildMs = {};
+    let t0 = performance.now();
+    const { bulletFrames } = buildSprites(this.atlas);
+    this.buildMs.core = Math.round(performance.now() - t0);
+    this.bulletFrames = bulletFrames;
+    for (const build of spriteBuilders) {
+      t0 = performance.now();
+      build(this.atlas);
+      const k = build.name || 'builder'; // pilot builders all share the name 'sprites'
+      this.buildMs[k] = (this.buildMs[k] || 0) + Math.round(performance.now() - t0);
+    }
+  }
+
+  /** Rebuild every GL object on the restored context, keeping all game state. */
+  restoreGL() {
+    const gl = this.gl;
+    resetFullscreenVao();
+    this.post.hdr = !!gl.getExtension('EXT_color_buffer_float');
+    this.texture = this.atlas.upload(gl);
+    this.batch.initGL();
+    this.post.initGL();
+    this.background.initGL();
+    this.post.resize(this.canvas.width, this.canvas.height);
+    this.lost = false;
+    this.restores++;
+    this.stage.classList.remove('gl-lost');
   }
 
   frame(name) { return this.atlas.get(name); }

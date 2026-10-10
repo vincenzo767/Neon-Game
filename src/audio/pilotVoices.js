@@ -5,6 +5,7 @@
 //   gap                    min seconds between shot sounds (volley cadence)
 //   special(c, out, t, s)  the special's activation sound
 //   pitch                  base Hz used by the generic ultimate / bomb colour
+//   gain                   loudness trim (M7c: measured RMS evened to ~-36 dBFS)
 //
 // Shot sounds sit low in the mix (they repeat ~10×/s): short, mostly
 // filtered, never sub-heavy so explosions and the music keep the bottom end.
@@ -16,7 +17,7 @@ const ECHO = { echo: 0.12 };
 export const PILOT_VOICES = {
   // Rail lances: a bright, fast descending zap with a crack.
   kairo: {
-    gap: 0.075, pitch: 880,
+    gap: 0.075, pitch: 880, gain: 1.62,
     shot(c, o, t, s) {
       tone(c, o, t, { type: 'sawtooth', f: s.focus ? 2400 : 1900, f2: 300, ft: 0.07, dur: 0.08, peak: 0.05, filter: { type: 'bandpass', f: 2600, q: 1.2 }, pan: s.pan });
       noise(c, o, t, { dur: 0.02, peak: 0.03, filter: { type: 'highpass', f: 6000 }, pan: s.pan });
@@ -28,7 +29,7 @@ export const PILOT_VOICES = {
   },
   // Light needles: a soft glassy tick with a homing "seek" shimmer.
   mira: {
-    gap: 0.09, pitch: 1320,
+    gap: 0.09, pitch: 1320, gain: 1.46,
     shot(c, o, t, s) {
       fm(c, o, t, { f: s.focus ? 1760 : 1320, ratio: 2, index: 1.2, dur: 0.07, peak: 0.04, a: 0.002, pan: s.pan });
     },
@@ -38,7 +39,7 @@ export const PILOT_VOICES = {
   },
   // Flak spread: a punchy low "chunk" of a heavy autocannon.
   bruno: {
-    gap: 0.11, pitch: 220,
+    gap: 0.11, pitch: 220, gain: 0.54,
     shot(c, o, t, s) {
       tone(c, o, t, { type: 'square', f: 180, f2: 70, ft: 0.06, dur: 0.08, peak: 0.07, filter: { type: 'lowpass', f: 1200 }, pan: s.pan });
       noise(c, o, t, { dur: 0.05, peak: 0.07, filter: { type: 'lowpass', f: 2500 }, pan: s.pan });
@@ -50,7 +51,7 @@ export const PILOT_VOICES = {
   },
   // Wire blades: a short metallic "shing".
   tess: {
-    gap: 0.08, pitch: 1500,
+    gap: 0.08, pitch: 1500, gain: 3.05,
     shot(c, o, t, s) {
       noise(c, o, t, { dur: 0.06, peak: 0.05, filter: { type: 'bandpass', f: s.focus ? 7000 : 5200, f2: 3000, ft: 0.05, q: 4 }, pan: s.pan });
       metal(c, o, t, { f: 900, bp: 8000, dur: 0.05, peak: 0.02, q: 2, pan: s.pan });
@@ -62,7 +63,7 @@ export const PILOT_VOICES = {
   },
   // Plasma mortars: a hollow "thoonk" launch.
   oduya: {
-    gap: 0.14, pitch: 330,
+    gap: 0.14, pitch: 330, gain: 0.5,
     shot(c, o, t, s) {
       tone(c, o, t, { type: 'sine', f: 520, f2: 130, ft: 0.09, dur: 0.12, peak: 0.1, pan: s.pan });
       noise(c, o, t, { dur: 0.04, peak: 0.04, filter: { type: 'bandpass', f: 900, q: 2 }, pan: s.pan });
@@ -74,7 +75,7 @@ export const PILOT_VOICES = {
   },
   // Seed spread: a soft wooden pluck, like a seed pod popping.
   lin: {
-    gap: 0.1, pitch: 660,
+    gap: 0.1, pitch: 660, gain: 0.88,
     shot(c, o, t, s) {
       tone(c, o, t, { type: 'triangle', f: s.focus ? 990 : 740, f2: 520, ft: 0.03, dur: 0.07, peak: 0.07, pan: s.pan });
       noise(c, o, t, { dur: 0.015, peak: 0.03, filter: { type: 'bandpass', f: 2200, q: 3 }, pan: s.pan });
@@ -85,7 +86,7 @@ export const PILOT_VOICES = {
   },
   // Overclock cannons: the pitch climbs with engine heat.
   dax: {
-    gap: 0.065, pitch: 300,
+    gap: 0.065, pitch: 300, gain: 0.66,
     shot(c, o, t, s) {
       const heat = Math.min(1, ((s.p && (s.p.ps.nova ? 100 : s.p.ps.heat)) || 0) / 100);
       tone(c, o, t, { type: 'square', f: 260 + heat * 340, f2: 110, ft: 0.05, dur: 0.06, peak: 0.05, drive: 2, filter: { type: 'lowpass', f: 1800 + heat * 2000 }, pan: s.pan });
@@ -97,7 +98,7 @@ export const PILOT_VOICES = {
   },
   // Frost shards: brittle crystalline ticks.
   sera: {
-    gap: 0.09, pitch: 2200,
+    gap: 0.09, pitch: 2200, gain: 1.33,
     shot(c, o, t, s) {
       fm(c, o, t, { f: s.focus ? 2600 : 2100, ratio: 3.7, index: 1.5, dur: 0.06, peak: 0.035, a: 0.001, pan: s.pan });
       noise(c, o, t, { dur: 0.03, peak: 0.02, filter: { type: 'highpass', f: 8000 }, pan: s.pan });
@@ -109,7 +110,7 @@ export const PILOT_VOICES = {
   },
   // Packet stream: digital bit-crushed chirps.
   nova: {
-    gap: 0.08, pitch: 1000,
+    gap: 0.08, pitch: 1000, gain: 4,
     shot(c, o, t, s) {
       tone(c, o, t, { type: 'pulse12', f: s.focus ? 1600 : 1200, f2: 2400, ft: 0.03, dur: 0.045, peak: 0.035, pan: s.pan });
       tone(c, o, t + 0.025, { type: 'pulse12', f: 800, dur: 0.02, peak: 0.02, pan: s.pan });
@@ -121,7 +122,7 @@ export const PILOT_VOICES = {
   },
   // Scrap hopper: junky, clanky, a bit random.
   rufus: {
-    gap: 0.1, pitch: 400,
+    gap: 0.1, pitch: 400, gain: 2.4,
     shot(c, o, t, s) {
       const r = Math.random();
       metal(c, o, t, { f: 200 + r * 300, bp: 2000 + r * 3000, dur: 0.07, peak: 0.04, q: 3, pan: s.pan });
@@ -133,7 +134,7 @@ export const PILOT_VOICES = {
   },
   // Rotor streams: a chopping whump.
   aiko: {
-    gap: 0.085, pitch: 500,
+    gap: 0.085, pitch: 500, gain: 1.43,
     shot(c, o, t, s) {
       noise(c, o, t, { dur: 0.05, peak: 0.06, filter: { type: 'bandpass', f: s.focus ? 1500 : 1000, q: 3 }, pan: s.pan });
       tone(c, o, t, { type: 'triangle', f: 420, f2: 260, dur: 0.05, peak: 0.04, pan: s.pan });
@@ -144,7 +145,7 @@ export const PILOT_VOICES = {
   },
   // Bastion cannons: big, slow, booming.
   pike: {
-    gap: 0.16, pitch: 160,
+    gap: 0.16, pitch: 160, gain: 0.34,
     shot(c, o, t, s) {
       kick(c, o, t, { f0: 180, f1: 60, dur: 0.12, peak: 0.16, click: 0.08 });
       noise(c, o, t, { dur: 0.08, peak: 0.06, filter: { type: 'lowpass', f: 1800 }, pan: s.pan });
@@ -155,7 +156,7 @@ export const PILOT_VOICES = {
   },
   // Solar darts: warm, airy, translucent.
   zuri: {
-    gap: 0.09, pitch: 1100,
+    gap: 0.09, pitch: 1100, gain: 1.16,
     shot(c, o, t, s) {
       tone(c, o, t, { type: 'sine', f: s.focus ? 1400 : 1100, f2: 1700, ft: 0.05, dur: 0.07, peak: 0.04, pan: s.pan, send: ECHO });
     },
@@ -165,7 +166,7 @@ export const PILOT_VOICES = {
   },
   // Sonic rings: a "wub"; the downbeat volley is a real bass drop (see sfx.js).
   cass: {
-    gap: 0.11, pitch: 128,
+    gap: 0.11, pitch: 128, gain: 0.76,
     shot(c, o, t, s) {
       tone(c, o, t, { type: 'sawtooth', f: s.focus ? 330 : 220, dur: 0.1, peak: 0.06, filter: { type: 'lowpass', f: 300, f2: 2400, ft: 0.05, q: 8 }, pan: s.pan });
     },
@@ -176,7 +177,7 @@ export const PILOT_VOICES = {
   },
   // Split fire: two slightly detuned blips, left and right.
   holt: {
-    gap: 0.08, pitch: 700,
+    gap: 0.08, pitch: 700, gain: 1.46,
     shot(c, o, t, s) {
       tone(c, o, t, { type: 'square', f: 700, f2: 420, dur: 0.05, peak: 0.03, filter: { type: 'lowpass', f: 2600 }, pan: -0.5 });
       tone(c, o, t + 0.012, { type: 'square', f: 712, f2: 428, dur: 0.05, peak: 0.03, filter: { type: 'lowpass', f: 2600 }, pan: 0.5 });
@@ -187,7 +188,7 @@ export const PILOT_VOICES = {
   },
   // Adaptive verdict: a gavel-like knock with a judge's echo.
   warden: {
-    gap: 0.1, pitch: 440,
+    gap: 0.1, pitch: 440, gain: 0.87,
     shot(c, o, t, s) {
       tone(c, o, t, { type: 'triangle', f: 560, f2: 280, ft: 0.03, dur: 0.06, peak: 0.07, pan: s.pan });
       noise(c, o, t, { dur: 0.02, peak: 0.04, filter: { type: 'bandpass', f: 1800, q: 3 }, pan: s.pan });
@@ -201,7 +202,7 @@ export const PILOT_VOICES = {
   },
   // Holy bullets: a choir-tinged bright chime, ever so faintly heavenly.
   vincenzo: {
-    gap: 0.07, pitch: 587,
+    gap: 0.07, pitch: 587, gain: 0.98,
     shot(c, o, t, s) {
       fm(c, o, t, { f: s.focus ? 1174 : 880, ratio: 2, index: 0.8, dur: 0.1, peak: 0.035, a: 0.002, pan: s.pan, send: { rev: 0.2 } });
     },

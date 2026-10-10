@@ -190,3 +190,10 @@ function LAYER_STYLE_OF(ctrl) {
   const fac = factionForArchetype(ctrl.archetype);
   return (fac && FACTION_STYLE[fac.id]) || LAYER_STYLE[ctrl.archetype] || 'precinct';
 }
+
+// Debug / test handle (M7c loudness measurements): the sfx library and the
+// music engine next to the engine's own handle.
+if (typeof window !== 'undefined' && window.__npoAudio) {
+  window.__npoAudio.sfx = sfx;
+  window.__npoAudio.music = music;
+}

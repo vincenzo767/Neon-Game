@@ -85,8 +85,12 @@ export function buildFactionSkins(atlas) {
   const y0 = Math.floor(Math.min(...frames.map((f) => f.v0)) * S);
   const y1 = Math.ceil(Math.max(...frames.map((f) => f.v1)) * S);
   const band = atlas.ctx.getImageData(0, y0, S, y1 - y0).data;
-  const tmp = document.createElement('canvas');
-  const tctx = tmp.getContext('2d', { willReadFrequently: true });
+  // M7c: build every variant on the CPU, reserve its atlas slot, then write
+  // them all back with ONE putImageData (was ~126 canvas→canvas uploads,
+  // ~20 s of start-up under software GL). Variants start on a fresh atlas
+  // row so the write-back band holds nothing else.
+  atlas.newRow();
+  const out = [];
   for (const f of frames) {
     const sx = Math.round(f.u0 * S), sy = Math.round(f.v0 * S) - y0;
     const tw = Math.round((f.u1 - f.u0) * S), th = Math.round((f.v1 - f.v0) * S);
@@ -96,11 +100,21 @@ export function buildFactionSkins(atlas) {
       const img = new ImageData(new Uint8ClampedArray(base), tw, th);
       recolor(img, fac);
       if (BIG.has(f.name)) greebleOnto(img, tw, th, f, fac, `${f.name}@${fac.id}`);
-      tmp.width = tw; tmp.height = th;
-      tctx.putImageData(img, 0, 0);
-      atlas.add(`${f.name}@${fac.id}`, f.w, f.h, (ctx, w, h) => ctx.drawImage(tmp, 0, 0, w, h), { scale: tw / f.w });
+      // Reserve the slot (nothing drawn); the frame's u0/v0 give its texel origin.
+      const fr = atlas.add(`${f.name}@${fac.id}`, f.w, f.h, () => {}, { scale: tw / f.w, exact: true });
+      out.push([fr, img]);
     }
   }
+  if (!out.length) return;
+  const by0 = Math.round(out[0][0].v0 * S);
+  let by1 = by0;
+  for (const [fr, img] of out) by1 = Math.max(by1, Math.round(fr.v0 * S) + img.height);
+  const dst = new ImageData(S, by1 - by0), D = dst.data;
+  for (const [fr, img] of out) {
+    const x = Math.round(fr.u0 * S), y = Math.round(fr.v0 * S) - by0, w = img.width;
+    for (let r = 0; r < img.height; r++) D.set(img.data.subarray(r * w * 4, (r + 1) * w * 4), ((y + r) * S + x) * 4);
+  }
+  atlas.ctx.putImageData(dst, 0, by0);
 }
 
 /**

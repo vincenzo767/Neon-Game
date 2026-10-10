@@ -240,6 +240,16 @@ export class Background {
   constructor(gl) {
     this.gl = gl;
     this.program = compileProgram(gl, FULLSCREEN_VS, FS, 'background');
+    this._initState();
+  }
+
+  /** Recompile after a WebGL context loss (M7c). */
+  initGL() {
+    this.program = compileProgram(this.gl, FULLSCREEN_VS, FS, 'background');
+    if (this.arenaBg) this.arenaBg.initGL();
+  }
+
+  _initState() {
     this.scroll = 0;
     this.speed = 0.012; // blocks per step
     this.flash = 0;     // lightning (storm mode)

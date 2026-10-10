@@ -63,6 +63,8 @@ export class Game {
     const t0 = performance.now();
     let dt = (now - this.last) / 1000;
     this.last = now;
+    // M7c: while the WebGL context is lost the game is frozen (no blind play).
+    if (this.renderer.lost) { this.acc = 0; return; }
     if (dt > 0.25) dt = 0.25; // tab was hidden; don't spiral
     this.time += dt;
     this.acc += dt;
