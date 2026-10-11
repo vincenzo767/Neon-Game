@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "art:kairo": "node tools/process-kairo.mjs"
+    "art:kairo": "node tools/process-art.mjs kairo",
+    "art:mira": "node tools/process-art.mjs mira"
   },
   "devDependencies": {
     "sharp": "^0.35.5",
