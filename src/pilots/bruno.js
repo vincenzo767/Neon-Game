@@ -1,13 +1,42 @@
 import { WORLD_W, WORLD_H } from '../core/constants.js';
 import { mirrorPath, chrome, outline, glowDot, drawBolt, neonLines } from '../fx/art.js';
 import { SHOT_FLAK } from '../entities/World.js';
+import { brunoArt } from './brunoArt.js';
+import { renderShots, flakBurst, muzzleFlash, buildSprites as buildFxSprites } from './brunoFx.js';
 
-// BRUNO HAGEN — IRONHOUND (armored gunship)
+// BRUNO HAGEN — IRONHOUND (heavy mecha)
 // Wide flak airbursts · Focus: heavy cannon shells · Special: brace mode
 // Bomb: Flak Barrage · Ultimate: Carpet-Bomb Run
+//
+// BRUNO ART TEST: the hand-made mecha art (brunoArt.js) replaces drawShip()
+// when it loads; drawShip() stays as the automatic fallback. The flak fan
+// leaves the two big cannons and the siege shells the two long barrels; the
+// feet never fire. FX are violet outside, orange inside (fx_reference.png).
 
 const ORANGE = [1.0, 0.55, 0.15];
+const VIOLET = [0.75, 0.3, 1.0];
 const UP = -Math.PI / 2;
+
+/** Big explosion (bomb, ultimate, Brace): the airburst look at scale s, with the blast's shockwave and shake. */
+function boom(w, x, y, s) {
+  flakBurst(w, x, y, 46 * s);
+  w.r.post.shockwave(x, y, 0.012 * s, 0.012 + 0.004 * s, 0.12 + 0.1 * s);
+  w.r.post.heat(0.25 * s);
+  w.g.camera.addTrauma(0.12 * s);
+}
+
+const REF = 170; // arm shells cross the old shell paths this far ahead (typical engagement range)
+
+/**
+ * Fire from a muzzle at (mx, my) (offsets from the player) so the shell
+ * crosses the point the old shot (from ox, oy at angle a) reached REF ahead,
+ * at the same moment. Returns [angle, speed].
+ */
+function aimFrom(mx, my, ox, oy, a, speed) {
+  const tx = ox + Math.cos(a) * REF, ty = oy + Math.sin(a) * REF;
+  const dist = Math.hypot(tx - mx, ty - my);
+  return [Math.atan2(ty - my, tx - mx), speed * dist / REF];
+}
 
 const ARMOR = (ctx, x0, x1) => chrome(ctx, x0, x1, '#16180f', '#555a3a', '#b0b28a');
 
@@ -78,7 +107,7 @@ function drawBomber(ctx, w, h) {
   const cx = w / 2;
   mirrorPath(ctx, cx, [0, 2, 5, 10, 6, 26, 44, 40, 44, 46, 8, 44, 6, 60, 16, 66, 16, 69, 0, 68]);
   ctx.fillStyle = chrome(ctx, 0, w, '#101208', '#3b3f2a', '#80846a'); ctx.fill(); outline(ctx, 1.2);
-  for (const s of [-1, 1]) for (const ex of [16, 30]) glowDot(ctx, cx + s * ex, 45, 3, 'rgba(255,150,50,1)');
+  for (const s of [-1, 1]) for (const ex of [16, 30]) glowDot(ctx, cx + s * ex, 45, 3, 'rgba(190,110,255,1)');
   ctx.fillStyle = '#ffb040'; ctx.fillRect(cx - 3, 12, 6, 3);
 }
 
@@ -96,22 +125,26 @@ export default {
   id: 'bruno',
   name: 'BRUNO HAGEN',
   vehicle: 'IRONHOUND',
-  role: 'Armored Gunship',
-  bio: 'Twenty years on riot detail and two rebuilt knees. Bruno doesn\'t dodge so much as lean into the storm and fill the sky with flak until it stops.',
-  color: ORANGE,
-  css: '#ff9a3a',
+  role: 'Heavy Mecha',
+  bio: 'Twenty years on riot detail and two rebuilt knees. Bruno flies the Ironhound, a grey and red mecha with a double cannon on each arm. He doesn\'t dodge so much as lean into the storm and fill the sky with flak until it stops.',
+  color: VIOLET,
+  css: '#b46cff',
+  // Art test: the Ironhound's paint (grey armour, red plates) + violet energy.
+  palette: { armour: '#a9abbd', frame: '#2e3038', plating: '#d6283a', energy: '#b46cff' },
   stats: { speed: 2, power: 5, range: 2, bomb: 4 },
   speed: { normal: 3.6, focus: 1.6 },
   hitbox: 3.0,
   bombStock: 4,
   engines: [[-6, 24], [6, 24]],
-  engineColor: [1.0, 0.6, 0.3],
+  engineColor: [0.8, 0.45, 1.0],
   optionSprite: 'b_pod',
-  portrait: { skin: '#a96c4b', hair: '#3a2b22', style: 'buzz', eyes: 'eyes', iris: '#8aa0b0', accent: 'beard' },
+  // Procedural fallback, matched to pilot_portrait.jpg (white side-shaved hair, scarred eye, white vest).
+  portrait: { skin: '#7a4a32', hair: '#e4e2da', style: 'buzz', eyes: 'eyes', iris: '#8a8f96', accent: 'scar', suit: '#d8d8d2' },
   weapons: {
-    main: 'Flak Spread — wide airburst shells, area damage',
-    focus: 'Siege Cannon — heavy high-yield shells',
+    main: 'Flak Spread — wide airburst shells from the two big arm cannons',
+    focus: 'Siege Cannon — heavy high-yield shells from the long barrels',
   },
+  art: brunoArt,
   special: {
     name: 'BRACE',
     desc: 'Lock armour plating: absorbs one lethal hit',
@@ -128,7 +161,7 @@ export default {
       w.cancelAll();
       if (t % 3 === 0) {
         const [x, y] = burstTarget(w);
-        w.explosions.blast(x, y, 0.9, ORANGE);
+        boom(w, x, y, 0.9);
         w.damageCircle(x, y, 55, 7);
       }
     },
@@ -151,7 +184,7 @@ export default {
       for (const d of p.ps.drops) {
         d.y += 0.6;
         if (--d.t === 0) {
-          w.explosions.blast(d.x, d.y, 1.2, ORANGE);
+          boom(w, d.x, d.y, 1.2);
           w.damageCircle(d.x, d.y, 60, 9);
         }
       }
@@ -166,6 +199,20 @@ export default {
     atlas.add('b_flak', 10, 10, drawFlak, { scale: 3 });
     atlas.add('b_shell', 16, 7, drawShell, { scale: 3 });
     atlas.add('b_bomber', 92, 70, drawBomber, { scale: 2 });
+    brunoArt.buildSprites(atlas);
+    buildFxSprites(atlas);
+  },
+
+  // Hand-made art hooks (each returns false without the art → procedural look).
+  renderShip: (p, b, x, y, a) => brunoArt.renderMecha(p, b, x, y, a),
+  exhaust: brunoArt.exhaust,
+  renderShots,
+  flakBurst,
+
+  update(p) {
+    brunoArt.animate(p);
+    // Brace: the arms pull in around the body while the plating is locked.
+    if (p.ps.brace) p.ps.fold += (1 - p.ps.fold) * 0.5;
   },
 
   init(p, w) {
@@ -185,8 +232,8 @@ export default {
     p.speedMul = 1;
     p.invuln = 90;
     w.cancelCircle(p.x, p.y, 130);
-    w.explosions.blast(p.x, p.y, 0.8, ORANGE);
-    w.r.post.flash(1, 0.6, 0.2, 0.3, 0.05);
+    boom(w, p.x, p.y, 0.8);
+    w.r.post.flash(0.75, 0.3, 1, 0.3, 0.05);
     w.g.camera.addTrauma(0.4);
     w.event('brace');
     return true;
@@ -195,22 +242,35 @@ export default {
   optionLayout(p) {
     const t = p.tier;
     if (t < 2) return [];
-    if (p.focus) return t >= 4 ? [[-16, -2], [16, -2], [-26, 6], [26, 6]] : [[-16, -2], [16, -2]];
-    return t >= 4 ? [[-26, 8], [26, 8], [-38, 18], [38, 18]] : [[-26, 8], [26, 8]];
+    // Art test (approved): the pods fly beside the arm cannons (they used to
+    // sit at ±26, right over them at the 90-unit mecha size).
+    if (p.focus) return t >= 4 ? [[-36, -2], [36, -2], [-48, 6], [48, 6]] : [[-36, -2], [36, -2]];
+    return t >= 4 ? [[-40, 8], [40, 8], [-52, 18], [52, 18]] : [[-40, 8], [40, 8]];
   },
 
   fire(p, w) {
     if (p.fireCd > 0) return;
-    const t = p.tier, S = w.shots, R = w.rng;
+    const t = p.tier, S = w.shots, R = w.rng, ps = p.ps;
+    // Art test (approved): every shell leaves an arm muzzle (never the feet) and
+    // is aimed at the exact point where the old centre shell burst, arriving at
+    // the same moment (aimFrom), so burst positions, damage and fuse are unchanged.
+    // The middle shell of an odd count alternates sides each volley.
+    ps.flip = -(ps.flip || 1);
+    const side = (k, n) => (k * 2 < n - 1 ? -1 : k * 2 > n - 1 ? 1 : ps.flip);
+    const used = new Set();
     if (p.focus) {
       p.fireCd = 10;
       const n = 1 + (t >> 1);
       for (let k = 0; k < n; k++) {
-        const i = w.shot(p.x + (k - (n - 1) / 2) * 8, p.y - 22, UP, 12, p.ps.fShell, 4.5, 6);
+        const name = side(k, n) < 0 ? 'barrelL' : 'barrelR', [mx, my] = brunoArt.anchor(name);
+        const [a, sp] = aimFrom(mx, my, (k - (n - 1) / 2) * 8, -22, UP, 12);
+        const i = w.shot(p.x + mx, p.y + my, a, sp, ps.fShell, 4.5, 6);
         if (i >= 0) S.behave(i, 4.5, 34, 0, 0, SHOT_FLAK, 34);
+        used.add(name);
       }
+      for (const name of used) { const [fx, fy] = brunoArt.animatedAnchor(p, name); muzzleFlash(p, w, fx, fy, 24, name.endsWith('L') ? -1 : 1); }
       for (const o of p.options) {
-        const i = w.shot(o.x, o.y - 8, UP, 12, p.ps.fShell, 2.5, 6);
+        const i = w.shot(o.x, o.y - 8, UP, 12, ps.fShell, 2.5, 6);
         if (i >= 0) S.behave(i, 2.5, 30, 0, 0, SHOT_FLAK, 26);
       }
       w.g.camera.kick(0, 1.2);
@@ -220,10 +280,15 @@ export default {
     const n = 3 + t * 2;
     const spread = 0.5 + 0.08 * t;
     for (let k = 0; k < n; k++) {
-      const a = UP + (k / (n - 1) - 0.5) * spread;
-      const i = w.shot(p.x, p.y - 18, a, 9 + R.range(-0.6, 0.6), p.ps.fFlak, 1.6, 5);
-      if (i >= 0) S.behave(i, 1.6, 20 + t * 2 + R.int(0, 4), 0, 0, SHOT_FLAK, 20);
+      const a0 = UP + (k / (n - 1) - 0.5) * spread;
+      const sp0 = 9 + R.range(-0.6, 0.6), fuse = 20 + t * 2 + R.int(0, 4);
+      const name = side(k, n) < 0 ? 'cannonL' : 'cannonR', [mx, my] = brunoArt.anchor(name);
+      const [a, sp] = aimFrom(mx, my, 0, -18, a0, sp0);
+      const i = w.shot(p.x + mx, p.y + my, a, sp, ps.fFlak, 1.6, 5);
+      if (i >= 0) S.behave(i, 1.6, fuse, 0, 0, SHOT_FLAK, 20);
+      used.add(name);
     }
+    for (const name of used) { const [fx, fy] = brunoArt.animatedAnchor(p, name); muzzleFlash(p, w, fx, fy, 20, name.endsWith('L') ? -1 : 1); }
     for (const o of p.options) {
       const i = w.shot(o.x, o.y - 8, UP, 10, p.ps.fFlak, 1.4, 5);
       if (i >= 0) S.behave(i, 1.4, 26, 0, 0, SHOT_FLAK, 20);
@@ -234,8 +299,11 @@ export default {
     if (!p.ps.brace) return;
     const F = p.F, pulse = 0.75 + 0.25 * Math.sin(p.t * 0.25);
     const ending = p.specialT < 60 && (p.t >> 2) & 1;
-    b.draw(F.ring, x, y, 64 * pulse, 64 * pulse, 0, 2, 1.1, 0.3, ending ? 0.3 : 0.7, 1);
-    b.draw(F.glow, x, y, 70, 70, 0, 1, 0.5, 0.1, 0.25, 1);
+    // Violet shell outside, orange glow inside (sized for the 90-unit mecha).
+    const s = brunoArt.hasArt() ? 1.5 : 1;
+    b.draw(F.ring, x, y, 64 * s * pulse, 64 * s * pulse, 0, 1.4, 0.55, 2.2, ending ? 0.3 : 0.7, 1);
+    b.draw(F.glow, x, y, 80 * s, 80 * s, 0, 0.75, 0.3, 1, 0.22, 1);
+    b.draw(F.glow, x, y, 34 * s, 34 * s, 0, 1, 0.5, 0.1, 0.25, 1);
   },
 
   renderFx(p, b, alpha) {
@@ -243,11 +311,12 @@ export default {
     const F = p.F;
     for (const d of p.ps.drops) {
       b.draw(p.ps.fShell, d.x, d.y, 14, 7, Math.PI / 2, 0.5, 0.5, 0.5, 1, 0);
-      b.draw(F.glow, d.x, d.y, 26, 26, 0, 2, 0.6, 0.1, (d.t & 2) ? 0.6 : 0.2, 1);
+      b.draw(F.glow, d.x, d.y, 30, 30, 0, 0.9, 0.35, 1.5, (d.t & 2) ? 0.5 : 0.18, 1);
+      b.draw(F.glow, d.x, d.y, 14, 14, 0, 2, 0.6, 0.1, (d.t & 2) ? 0.6 : 0.2, 1);
     }
     for (const bm of p.ps.bombers) {
       const y = bm.py + (bm.y - bm.py) * alpha;
-      b.draw(F.glow, bm.x, y + 34, 50, 50, 0, 1, 0.5, 0.2, 0.5, 1);
+      b.draw(F.glow, bm.x, y + 34, 50, 50, 0, 0.75, 0.3, 1, 0.5, 1);
       b.draw(p.ps.fBomber, bm.x, y, 92, 70, 0, 1, 1, 1, 1, 0);
     }
   },

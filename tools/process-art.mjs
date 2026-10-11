@@ -61,7 +61,7 @@ function hasRealAlpha({ data }) {
  * pixels within `tol` of the edge colour (and dark, reddish glow pixels),
  * then feather the cut by `feather` px.
  */
-function removeBackground(img, tol = 16, feather = 1.5, maxGrad = 10, glowRule = CFG.glowRule) {
+function removeBackground(img, holes = [], tol = 16, feather = 1.5, maxGrad = 10, glowRule = CFG.glowRule) {
   const { data, w, h } = img;
   // Local contrast: backgrounds and baked glows are smooth; line art and dark
   // armour panels are not, so the fill stops at the silhouette's outline even
@@ -94,6 +94,8 @@ function removeBackground(img, tol = 16, feather = 1.5, maxGrad = 10, glowRule =
   const bg = new Uint8Array(w * h);
   const stack = [];
   for (const p of edge) if (!bg[p] && bgLike(p)) { bg[p] = 1; stack.push(p); }
+  // Enclosed background (gaps the edge fill can't reach), seeded from the config.
+  for (const [x, y] of holes) { const p = y * w + x; if (!bg[p] && bgLike(p)) { bg[p] = 1; stack.push(p); } }
   while (stack.length) {
     const p = stack.pop(), x = p % w, y = (p / w) | 0;
     for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1]) {
@@ -203,7 +205,7 @@ async function processBack(srcFile, label = 'back') {
   const img = await raw(srcFile);
   const before = await fromRaw({ ...img, data: Buffer.from(img.data) }).png().toBuffer();
   let removed = false;
-  if (!hasRealAlpha(img)) { removeBackground(img); removed = true; }
+  if (!hasRealAlpha(img)) { removeBackground(img, label === 'back' ? CFG.holes : []); removed = true; }
   cleanAlpha(img);
   const box = alphaBox(img);
   const trimmed = await fromRaw(img).extract(box).png().toBuffer();
@@ -247,7 +249,7 @@ async function main() {
 
   // 5. Front view (select preview, cut-in) and portrait.
   const frontRaw = await raw(path.join(SRC, CFG.front));
-  if (!hasRealAlpha(frontRaw)) { removeBackground(frontRaw); log(`${CFG.front}: no transparency → background removed by flood fill`); }
+  if (!hasRealAlpha(frontRaw)) { removeBackground(frontRaw, CFG.frontHoles); log(`${CFG.front}: no transparency → background removed by flood fill`); }
   const front = cleanAlpha(frontRaw);
   const fbox = alphaBox(front);
   const ftrim = await fromRaw(front).extract(fbox).png().toBuffer();

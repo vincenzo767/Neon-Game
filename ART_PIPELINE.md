@@ -83,6 +83,7 @@ screenshots/<id>/                          test-range captures for review
    - the layer split plan.
 3. **Process.**
    - Add the pilot to `tools/art.config.mjs`: folder, file names, `glowRule`, and anchor estimates in source pixels.
+   - If an enclosed gap in the art stays opaque (the edge fill can't reach it), add a seed pixel to `holes` (back view) or `frontHoles` (front view), as for Bruno's backpack frame.
    - Add an npm script (`"art:<id>": "node tools/process-art.mjs <id>"`) and run it.
    - Check `screenshots/<id>/process/*_before_after.png`. `--demo-bgremoval` exercises the fallback.
 4. **Layer masks.**
@@ -94,6 +95,8 @@ screenshots/<id>/                          test-range captures for review
    - Write `src/pilots/<id>Art.js` (see `miraArt.js`): `createMechaArt({ id, pal, defaults, flames, nozzles, exhaust, wingAnchors })` and `createMechaFx(art, { body, lanceLen })`.
    - In the pilot definition, set `art: <id>Art`, call `buildSprites` from `sprites()` and `animate` from `update()`, and wire the hooks (section 7).
    - Tag every shot's `shots.aux`: the tier for lances, `SHARD_TAG` for option shots.
+   - Flak pilots (`SHOT_FLAK`) use `aux` as the burst radius, so they can't tag it. Draw them by frame instead and style the bursts with the `flakBurst(w, x, y, r)` hook (see `brunoFx.js`).
+   - A pilot with no chest gun fires from its arm guns. Aim each shot so it crosses the old shot's path at about 170 units ahead (see `aimFrom` in `bruno.js`), then check DPS with `tools/dps.mjs <id>`.
 7. **Test range.**
    - `?test=<id>` works for any pilot whose definition has `art` (`PilotArtTestScene`).
    - Use F9 to drag the anchors onto the art, then **COPY JSON** → paste into `<id>.anchors.json`.
@@ -114,7 +117,7 @@ The script uses `sharp`, a dev dependency.
 | `--demo-bgremoval` | Bake the sprite onto a dark/red background, remove it, and save a before/after. |
 
 What the script does to the back view, in order:
-1. If it has no real alpha, flood-fill the background from the edges. The fill stops at line-art contrast and, if `glowRule` is on, also removes dark red glow. The cut is then feathered by about 1.5 px.
+1. If it has no real alpha, flood-fill the background from the edges (and from any `holes` seeds). The fill stops at line-art contrast and, if `glowRule` is on, also removes dark red glow. The cut is then feathered by about 1.5 px.
 2. Zero the colour under transparent pixels and snap alpha ≥ 250 to 255.
 3. Trim to the alpha bounding box.
 4. Resize to 360 / 180 px tall and add a 6 / 3 px border.

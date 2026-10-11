@@ -6,6 +6,8 @@
 // portrait   pilot portrait
 // glowRule   background removal also strips dark red baked glow (off when the
 //            art has dark warm shading it would eat, e.g. Mira's gold)
+// holes      optional [x, y] seeds (back source pixels) for enclosed background
+//            gaps the edge flood fill can't reach (frontHoles: same for `front`)
 // anchors    estimates in `back` source pixels; written to <id>.anchors.json
 //            only on first run or with --reset-anchors (F9 edits survive)
 
@@ -50,6 +52,26 @@ export const PILOT_ART = {
       packR: [535, 1315],
       footL: [400, 1255],      // gold skirt plates: foot flames
       footR: [615, 1255],
+    },
+  },
+  bruno: {
+    folder: 'Bruno Hagen',
+    back: 'top_down_main.jpg',
+    front: 'top_down_front.png',
+    portrait: 'pilot_portrait.jpg',
+    glowRule: false,           // dark red armour panels
+    holes: [[511, 1315]],      // enclosed gap inside the backpack's H-frame
+    anchors: {
+      hitbox: [511, 930],      // chest centre: lands on player.x/y
+      head: [511, 1080],
+      cannonL: [80, 757],      // wide-bore cannon muzzles: flak fan
+      cannonR: [942, 757],
+      barrelL: [110, 497],     // long-barrel muzzles: siege shells
+      barrelR: [912, 497],
+      podL: [250, 1478],       // shoulder-pod vents: wide back plumes
+      podR: [772, 1478],
+      packL: [415, 1430],      // backpack struts: smaller flames
+      packR: [607, 1430],
     },
   },
 };

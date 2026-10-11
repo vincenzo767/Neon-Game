@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "pilot": "bruno",
+  "space": "bruno_back@2x.png pixels, origin top-left (1x = half)",
+  "image": {
+    "w": 255,
+    "h": 372,
+    "artH": 360,
+    "pad": 6
+  },
+  "anchors": {
+    "hitbox": [127.5, 229.1],
+    "head": [127.5, 266.4],
+    "cannonL": [20.4, 186.1],
+    "cannonR": [234.6, 186.1],
+    "barrelL": [27.9, 121.5],
+    "barrelR": [227.1, 121.5],
+    "podL": [62.6, 365.3],
+    "podR": [192.3, 365.3],
+    "packL": [103.6, 353.3],
+    "packR": [151.3, 353.3]
+  }
+}

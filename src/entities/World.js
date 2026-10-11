@@ -342,10 +342,11 @@ export class World {
   _flakBurst(i) {
     const S = this.shots, x = S.x[i], y = S.y[i], r = S.aux[i] || 24;
     this.damageCircle(x, y, r, S.damage[i], S.dflags[i]);
+    const def = this.player && this.player.def;
+    if (def && def.flakBurst) { def.flakBurst(this, x, y, r, i); return; } // pilot-styled burst FX (cosmetic)
     const H = this.fxHigh, R = this.fxRng;
     // M7c: bursts wear the firing pilot's colour (UPDATE_02 §4.5 prefers cool
-    // player colours); a pilot may set `flakTint`. Bruno's orange is his own.
-    const def = this.player && this.player.def;
+    // player colours); a pilot may set `flakTint`.
     const [cr, cg, cb] = (def && (def.flakTint || def.color)) || [1, 0.55, 0.2];
     let k = H.spawn(this.F.glow, x, y, 0, 0, 8);
     if (k >= 0) { H.size(k, r * 1.6, r * 2.2); H.color(k, cr * 2, cg * 2, cb * 2, cr * 0.6, cg * 0.6, cb * 0.6); H.look(k, 0.7, 1); }
