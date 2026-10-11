@@ -84,3 +84,48 @@ Same method as Kairo and Mira: feathered polygons plus the exact alpha complemen
 
 - **Option pods and bombers** stay procedural (recoloured if you pick 1A); nothing in the art covers them.
 - **Data update (step 5).** The role "Armored Gunship" becomes "Heavy Mecha". The bio mentions the grey and red Ironhound mecha. The fallback portrait is matched to the painting (fur hat, white hair, no beard, scarred eye).
+
+## Decisions at the Step 1 checkpoint (approved by the owner)
+
+1. **Colour.** Follow the FX sheet: violet on the outside, orange on the inside, for every shot, muzzle flash, burst and explosion. The UI colour became violet too, to match the mecha.
+2. **Firing.** Recommended option (no answer needed): the flak fan from the two big cannons, the siege shells from the two long barrels. No feet ever fire.
+3. **Option pods: A.** Moved out beside the cannons. The mecha stays 90 units tall.
+4. **Thrusters.** Recommended option: wide plumes from the shoulder pods, smaller flames from the backpack struts.
+
+## Steps 2–6: results
+
+- **Processing.** `npm run art:bruno` (`tools/art.config.mjs`, `glowRule: false`).
+  - The black-background sprite and front view are cut out automatically (`screenshots/bruno/process/`).
+  - The gap inside the backpack's H-frame is enclosed, so the edge fill couldn't reach it. A new `holes` setting seeds it.
+  - Sprite exports: 255×372 @2x and 128×186 @1x, with outline variants. Front view: 406×600. Portrait: 432×540 / 240×300 (from a 736×920 crop).
+- **Anchors** (`bruno.anchors.json`, @2x): `cannonL/R`, `barrelL/R`, `podL/R`, `packL/R`, `head`, `hitbox`.
+- **Layers** (`bruno.layers.json`): each side is the double cannon, fist and forearm, plus the shoulder pod. Pivot at the shoulder.
+- **Code.**
+  - `src/pilots/brunoArt.js`: config on the shared `art/mechaArt.js`.
+  - `src/pilots/brunoFx.js`: Bruno's own shell, airburst and muzzle-flash FX. Flak shots use `shots.aux` as their burst radius, so shells are told apart by frame.
+  - World has a new opt-in `flakBurst` hook (cosmetic; the burst damage is unchanged).
+- **Aiming.** Each shell crosses the old shell's path 170 units ahead, at the same moment. Aiming at the old burst points (about 220 ahead) lost a fifth of the boss DPS, because the cannons are 54 units apart.
+- **DPS** (`tools/dps.mjs bruno`, before → after):
+
+  | Mode | Boss | Small | Line |
+  |---|---|---|---|
+  | Shot T1 | 50 → 50 | 10 → 10 | 60 → 77 |
+  | Shot T2 | 88 → 87 | 30 → 14 | 116 → 96 |
+  | Shot T3 | 88 → 88 | 30 → 30 | 122 → 137 |
+  | Shot T4 | 125 → 125 | 30 → 30 | 181 → 161 |
+  | Focus T1 | 23 → 23 | 22 → 22 | 0 → 45 |
+  | Focus T2–T3 | 71 → 71 | 70 → 45 | 140 → 140 |
+  | Focus T4 | 119 → 119 | 93 → 68 | 190 → 234 |
+
+  - Boss DPS is identical.
+  - The small-target focus drop comes from the moved pods: with the old pod positions it is identical (70, 93).
+  - Shot T2 small is a near miss: the second shell passes 18.8 units from the target centre against a 19-unit hit range.
+  - Total sweep coverage is within a few percent, except shot T1 (−16 %). Close to the mecha the centre gets less, because the shells start from the arms.
+- **Frame rate.** In the 1,500-bullet storm, about 46 FPS with art versus about 49 with the procedural ship (Intel HD 5500, headless).
+- **Test range.** `?test=bruno`. Screenshots are in `screenshots/bruno/`:
+  - `06_focus_beam` shows the siege shells (he has no beam);
+  - `07_dash` shows Brace (his special).
+- **Known gaps.**
+  - The option pods and the bombers are still procedural.
+  - The fallback portrait has no fur hat.
+  - Without art (`?noart`), shots still leave the arm-cannon positions, so gameplay is the same either way.
