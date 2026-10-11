@@ -119,11 +119,11 @@ The front view is cleaned, trimmed and resized. The portrait gets a 4:5 crop fro
   "version": 1,
   "pilot": "kairo",
   "space": "kairo_back@2x.png pixels, origin top-left (1x = half)",
-  "image": { "w": 240, "h": 372, "artH": 360, "pad": 6 },
+  "image": { "w": 228, "h": 372, "artH": 360, "pad": 6 },
   "anchors": {
-    "hitbox": [119.8, 135.3],
-    "rifleL": [32, 150.7],
-    "rifleR": [207.6, 150.7]
+    "hitbox": [114, 193.5],
+    "gunL": [85.8, 8.7],
+    "gunR": [142.1, 8.7]
   }
 }
 ```
@@ -142,12 +142,12 @@ The `anchors` block above is cut down; Kairo's real file has more entries (see t
 
 | Name | Use | Gameplay? |
 |---|---|---|
-| `hitbox` | torso centre, placed on `player.x/y` | visual placement only |
-| `rifleL/R` | lance origins | **yes**: shot spawn points |
-| `wingL/R` | tier-4 extra lance origins | **yes** |
-| `capL/R` | focus-beam origin (midpoint) + charge-orb feeders | **yes** (beam start) |
+| `hitbox` | chest centre, placed on `player.x/y` | visual placement only |
+| `gunL/R` | twin forward barrel tips: main lance origins | **yes**: shot spawn points |
+| `rifleL/R` | long rifle tips: tier-4 extra lance origins (move with the wing layers) | **yes** |
+| `beam` | focus-beam origin + charge orb | **yes** (beam start) |
 | `packL/R` | wide back-thruster plumes + nozzle glow | no |
-| `footL/R`, `calfL/R` | leg thruster flames, exhaust | no |
+| `footL/R`, `calfL/R` | foot thruster flames + binder vents, exhaust | no |
 | `head` | reference | no |
 
 **Fallback copy.** Keep a built-in copy (`DEFAULT_ANCHORS` in `kairoArt.js`) in sync with the JSON. Gameplay anchors must not depend on whether the file loaded.

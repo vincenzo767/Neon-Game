@@ -1,5 +1,5 @@
 import { FADE_OUT } from '../fx/Particles.js';
-import { LOOK, PAL, kairoFrames, animatedAnchor } from './kairoArt.js';
+import { LOOK, PAL, kairoFrames } from './kairoArt.js';
 
 // Lance body colour: kept below the bloom's white clip so it stays cyan-blue.
 const LANCE = [0.25, 0.85, 1.45];
@@ -80,17 +80,10 @@ export function renderBeam(p, b, bm) {
   }
 }
 
-/** Charge orb with crosshair rings at the beam origin (drawn over the mecha). */
+/** Charge orb with crosshair rings at the beam origin (the central spike; drawn over the mecha). */
 export function renderChargeOrb(p, b, bm) {
   const fx = kairoFrames().fx, F = p.F, t = p.t, wv = bm.w, x = bm.x0, y = bm.y0;
   const pulse = 0.85 + 0.15 * Math.sin(t * 0.7);
-  // Feeder glows from the two backpack caps into the orb.
-  for (const name of ['capL', 'capR']) {
-    const [cx, cy] = animatedAnchor(p, name);
-    const len = Math.hypot(x - cx, y - cy), a = Math.atan2(y - cy, x - cx);
-    b.draw(F.laser, (cx + x) / 2, (cy + y) / 2, len, 4, a, PAL.cyan[0], PAL.cyan[1], PAL.cyan[2], 0.7, 1);
-    b.draw(F.glow, cx, cy, 12, 12, 0, PAL.cyan[0], PAL.cyan[1], PAL.cyan[2], 0.8, 1);
-  }
   const o = 12 + wv * 0.8; // orb diameter: ~17 at tier 1, ~22 at tier 4
   b.draw(F.glow, x, y, o * 2.6 * pulse, o * 2.6 * pulse, 0, PAL.blue[0], PAL.blue[1], PAL.blue[2], 0.45 * LOOK.glowMul, 1);
   b.draw(F.core, x, y, o * 0.75 * pulse, o * 0.75 * pulse, 0, 1.6, 1.8, 2, 0.9, 1);

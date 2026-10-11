@@ -23,15 +23,15 @@ export const SIZES = [90, 68, 80];
 // Built-in copy of kairo.anchors.json: used when the file can't be loaded, so
 // shot origins (gameplay) never depend on whether the art loaded.
 const DEFAULT_ANCHORS = {
-  image: { w: 240, h: 372, artH: 360, pad: 6 },
+  image: { w: 228, h: 372, artH: 360, pad: 6 },
   anchors: {
-    hitbox: [119.8, 135.3], head: [119.8, 67.2],
-    rifleL: [32, 150.7], rifleR: [207.6, 150.7],
-    capL: [89.5, 56.1], capR: [148.3, 56.1],
-    wingL: [28.3, 7.2], wingR: [211.4, 7.2],
-    footL: [89.5, 328.9], footR: [150.1, 328.9],
-    calfL: [87.6, 262.1], calfR: [149.5, 262.1],
-    packL: [89.5, 156.9], packR: [148.3, 156.9],
+    hitbox: [114, 193.5], head: [114, 263.9],
+    gunL: [85.8, 8.7], gunR: [142.1, 8.7],
+    rifleL: [12.3, 48], rifleR: [216.1, 48],
+    beam: [114, 14.2],
+    packL: [99.6, 314.8], packR: [128.3, 314.8],
+    footL: [84.6, 312.4], footR: [143.3, 312.4],
+    calfL: [52.6, 308], calfR: [175.3, 308],
   },
 };
 
@@ -325,7 +325,8 @@ export function renderMecha(p, b, x, y, a) {
 
   // Thruster flames under the feet (drawn first: the feet cover the roots).
   const thr = p.ps.thr || 1;
-  const flame = (name, len, wid, i) => {
+  // hot: how much white core / cyan the flame gets (wide back plumes stay mostly blue).
+  const flame = (name, len, wid, i, hot = 1) => {
     const an = A.anchors[name];
     const fl = 0.88 + 0.12 * Math.sin(p.t * 2.3 + i * 1.7) + 0.06 * Math.sin(p.t * 5.1 + i);
     const L = len * fl * fsz, Wd = wid * fsz;
@@ -334,15 +335,15 @@ export function renderMecha(p, b, x, y, a) {
     const at = (d) => [fx + ux * d, fy + uy * d];
     let [cx, cy] = at(L * 0.5);
     b.draw(K.fx.flame, cx, cy, Wd * 1.7, L * 1.15, rot, PAL.blue[0], PAL.blue[1], PAL.blue[2], 0.75 * a, 1);
-    b.draw(K.fx.flame, cx, cy, Wd, L, rot, PAL.cyan[0], PAL.cyan[1], PAL.cyan[2], 0.9 * a, 1);
+    b.draw(K.fx.flame, cx, cy, Wd, L, rot, PAL.cyan[0], PAL.cyan[1], PAL.cyan[2], 0.9 * a * hot, 1);
     [cx, cy] = at(L * 0.25);
-    b.draw(K.fx.flame, cx, cy, Wd * 0.45, L * 0.5, rot, PAL.core[0], PAL.core[1], PAL.core[2], a, 1);
-    b.draw(F.glow, fx, fy + 1, Wd * 2.6, Wd * 2.6, 0, PAL.blue[0], PAL.blue[1], PAL.blue[2], 0.45 * a, 1);
+    b.draw(K.fx.flame, cx, cy, Wd * 0.45 * hot, L * 0.5, rot, PAL.core[0], PAL.core[1], PAL.core[2], a * hot, 1);
+    b.draw(F.glow, fx, fy + 1, Wd * 2.6, Wd * 2.6, 0, PAL.blue[0], PAL.blue[1], PAL.blue[2], 0.45 * a * hot, 1);
   };
   // Main back thrusters: wide blue plumes from the backpack nozzles, washing
   // down behind the legs (the body covers their roots).
-  flame('packL', 26 * thr, 15, 4);
-  flame('packR', 26 * thr, 15, 5);
+  flame('packL', 24 * thr, 16, 4, 0.35);
+  flame('packR', 24 * thr, 16, 5, 0.35);
   flame('footL', 12 * thr, 7, 0);
   flame('footR', 12 * thr, 7, 1);
 
@@ -369,8 +370,8 @@ export function renderMecha(p, b, x, y, a) {
   for (const [name, i] of [['packL', 0], ['packR', 1]]) {
     const an = A.anchors[name], [nx, ny] = place(an[0] - hb[0], an[1] - hb[1]);
     const fl = 0.85 + 0.15 * Math.sin(p.t * 1.9 + i * 2.1), gw = 16 * fsz * fl * (0.8 + thr * 0.2);
-    b.draw(F.glow, nx, ny + 2 * fsz, gw * 1.5, gw, 0, PAL.blue[0], PAL.blue[1], PAL.blue[2], 0.55 * a, 1);
-    b.draw(F.glow, nx, ny + 2 * fsz, gw * 0.7, gw * 0.45, 0, PAL.cyan[0], PAL.cyan[1], PAL.cyan[2], 0.8 * a, 1);
+    b.draw(F.glow, nx, ny + 2 * fsz, gw * 1.5, gw, 0, PAL.blue[0], PAL.blue[1], PAL.blue[2], 0.35 * a, 1);
+    b.draw(F.glow, nx, ny + 2 * fsz, gw * 0.7, gw * 0.45, 0, PAL.cyan[0], PAL.cyan[1], PAL.cyan[2], 0.35 * a, 1);
   }
 
   // Small calf-vent flames + glows (painted red vents stay visible).

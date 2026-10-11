@@ -72,14 +72,14 @@ function drawPod(ctx, w, h) {
 
 function railSprite(ctx, w, h) { drawBolt(ctx, w, h, 'rgba(90,240,255,0.9)'); }
 
-// Art test (approved gameplay change): lances leave from the rifles (and the
-// wing tips at tier 4) instead of the nose. Each lance is aimed at the point
+// Art test (approved gameplay change): lances leave from the twin forward
+// barrels (and the rifle tips at tier 4) instead of the nose. Each lance is aimed at the point
 // its old counterpart reached REF units ahead, so the covered area matches.
 // Old pattern per side s = ±1: [x, y, outward angle, damage, from tier].
 const LANCES = [
-  { from: 'rifle', ox: 4, oy: -20, d: 0, dmg: 1.2, tier: 1 },
-  { from: 'rifle', ox: 10, oy: -10, d: 0.07, dmg: 0.9, tier: 2 },
-  { from: 'wing', ox: 16, oy: -4, d: 0.16, dmg: 0.8, tier: 4 },
+  { from: 'gun', ox: 4, oy: -20, d: 0, dmg: 1.2, tier: 1 },
+  { from: 'gun', ox: 10, oy: -10, d: 0.07, dmg: 0.9, tier: 2 },
+  { from: 'rifle', ox: 16, oy: -4, d: 0.16, dmg: 0.8, tier: 4 },
 ];
 const REF = 240;
 
@@ -246,10 +246,10 @@ export default {
   fire(p, w) {
     const t = p.tier, S = w.shots, rail = p.ps.fRail;
     if (p.focus) {
-      // Continuous piercing beam from the red backpack caps, re-declared every step.
+      // Continuous piercing beam from the central spike, re-declared every step.
       const width = 5 + t * 2;
-      const [lx, ly] = anchor('capL'), [rx] = anchor('capR');
-      const bm = w.beam(p.x + (lx + rx) / 2, p.y + ly, p.x + (lx + rx) / 2, -20, width, 0.2 + 0.06 * t, CYAN);
+      const [bx, by] = anchor('beam');
+      const bm = w.beam(p.x + bx, p.y + by, p.x + bx, -20, width, 0.2 + 0.06 * t, CYAN);
       bm.skin = 'kairo';
       p.ps.beam = bm;
     }
@@ -269,7 +269,7 @@ export default {
         const tx = s * L.ox + Math.tan(s * L.d) * (L.oy + REF); // where the old lance was REF ahead
         shoot(p.x + mx, p.y + my, UP + Math.atan2(tx - mx, my + REF), L.dmg, LANCE_R[t - 1], t);
         const [fx, fy] = animatedAnchor(p, name);
-        muzzleFlash(p, w, fx, fy, L.from === 'wing' ? 20 : 26);
+        muzzleFlash(p, w, fx, fy, L.from === 'rifle' ? 20 : 26);
       }
     }
   },
