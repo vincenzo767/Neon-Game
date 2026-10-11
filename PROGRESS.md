@@ -16,6 +16,7 @@
 | **M7** | UI, scoring, polish, performance tuning: **M7a** scoring ✅ · **M7b** flow & UI ✅ · **M7c** polish, robustness, performance, balance ✅ | ✅ Done |
 | **Art test** | Hand-made art for Kairo Vance (Stormlance), the vertical slice for the 16 other pilots (branch `art/kairo-test`; first version merged in PR #1, later fixes pending) | ✅ Approved |
 | **Art: Mira** | Hand-made art for Mira Solenne (Halo Sprite) on the shared art modules (branch `art/mira-test`, not merged) | ✅ Approved |
+| **Art textures** | Per-pilot art textures, so pilot art no longer fills the shared atlas (branch `art/pilot-textures`, on top of `art/mira-test`) | ✅ Done |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -762,7 +763,20 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Mira%20Solenne/A
 - **Ultimate.** Prism Lattice reflections keep their original look.
 - **Frame rate.** In the 1,500-bullet storm, normal fire averages about 49–50 FPS versus about 52 before (Intel HD 5500).
 
-**Atlas budget.** With two art pilots the 4096 atlas is 93 % full (96 % in the test range). Each pilot adds about 3 %, so per-pilot art loading is needed before many more pilots get art.
+**Atlas budget.** This was fixed on `art/pilot-textures` (next section). With two art pilots the shared atlas had reached 93 %.
+
+## Per-pilot art textures (branch `art/pilot-textures`)
+
+Pilot art no longer lives in the shared 4096 atlas.
+- **How it works.** Each pilot with art gets its own small texture (1024²), built the first time the pilot is drawn ([art/mechaArt.js](src/pilots/art/mechaArt.js) `ensureArt`). [SpriteBatch](src/core/gl/SpriteBatch.js) switches textures when a frame carries `frame.tex`; main-atlas sprites batch as before.
+- **Shared atlas.** Back to **81 %** full (it was 93 % with Kairo and Mira), the same as before any pilot art. There is room for every pilot.
+- **Verified** (Chrome, Intel HD 5500):
+  - Pilot select builds Kairo's and Mira's textures on demand and reuses them when you scroll back.
+  - Pilots without art are unaffected.
+  - Both pilots redraw correctly after a forced WebGL context loss and restore.
+  - `?atlas=2048` works.
+  - About 3 draw calls per frame instead of 1.
+  - DPS is unchanged and `vite build` passes.
 
 ## Run
 
@@ -938,6 +952,4 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
-6. Pilot art: merge `art/mira-test` (approved).
-   - Next, add per-pilot art loading so the shared atlas doesn't overflow.
-   - Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 15 pilots.
+6. Pilot art: merge `art/pilot-textures` (it contains `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 15 pilots.

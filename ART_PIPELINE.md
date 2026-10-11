@@ -196,10 +196,13 @@ The `poly` arrays above are cut down; real polygons have many more points.
 
 **Motion limits.** Keep slides ≤ the seam and rotations within ±0.05 rad. Anything bigger shows double edges.
 
-**Atlas cost.** The split runs at atlas-build time (`splitLayers` in `art/mechaArt.js`). Each pilot adds one full frame plus a body and one per layer. The game builds only the outlined variant; the test range (`?test=<id>`) also builds the plain one for the O toggle.
-- **Budget warning.** With Kairo and Mira the 4096 atlas is **93 % full** (96 % in the test range).
-- Each pilot adds about 3 %, so the remaining pilots won't all fit in the shared atlas.
-- Before adding more than one or two more, load only the selected pilot's art (or give pilot art its own texture).
+**Per-pilot textures.** A pilot's art never goes into the shared atlas, so any number of pilots can have art.
+- The split (`splitLayers` in `art/mechaArt.js`) runs the first time the pilot is drawn (`ensureArt`).
+- It produces the pilot's own small texture: 1024² (2048² if the art doesn't fit), plain and outline variants.
+- Frames from that texture carry `frame.tex`. `SpriteBatch` switches textures automatically, adding about 2 extra draw calls per frame.
+- The frames are appended to the renderer's frame list, so particles can use them (afterimages).
+- The texture is re-uploaded after a WebGL context restore.
+- With Kairo and Mira, the shared 4096 atlas stays at 81 %, the same as before any pilot art.
 - On the 4096 atlas, Kairo takes about 7 % of the space.
 - `main` already falls back to 0.85 texel scale on the 2048 atlas.
 

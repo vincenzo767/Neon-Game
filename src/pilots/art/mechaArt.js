@@ -1,12 +1,15 @@
 import { pilotArt } from '../../core/pilotArt.js';
+import { Atlas } from '../../core/gl/Atlas.js';
 import { FADE_OUT } from '../../fx/Particles.js';
 
 // Hand-made mecha art for a pilot (ART_PIPELINE.md). One instance per pilot:
 //
 //   const art = createMechaArt({ id: 'kairo', defaults, pal, flames, ... });
 //
-// The sprite is split at atlas-build time into a body and two wing layers
-// with feathered masks (public/assets/pilots/<id>/<id>.layers.json). All
+// The sprite is split into a body and two wing layers with feathered masks
+// (public/assets/pilots/<id>/<id>.layers.json). The layers live in the
+// pilot's own small texture, built the first time the pilot is drawn, so
+// pilot art never fills the shared atlas (SpriteBatch switches textures). All
 // motion is code-driven from player state. Everything here is visual except
 // `anchor()`, which also places the pilot's real shot origins.
 // Coordinates in the JSON files are @2x image pixels (<id>.anchors.json).
@@ -25,11 +28,7 @@ import { FADE_OUT } from '../../fx/Particles.js';
 //   size        default height in world units
 
 export const SIZES = [90, 68, 80];
-
-// Atlas budget: the game only draws the outlined sprite, so the plain variant
-// is built only in the art test range (?test=<id>), where O toggles it.
-const VARIANTS = typeof location !== 'undefined' && new URLSearchParams(location.search).has('test')
-  ? ['plain', 'outline'] : ['outline'];
+const VARIANTS = ['plain', 'outline'];
 
 // ---------------------------------------------------- atlas: FX textures
 // White alpha shapes, tinted per draw; built once per atlas, shared by pilots.
@@ -249,7 +248,9 @@ export function createMechaArt(cfg) {
     glowMul: 1,            // shot / beam outer-glow strength multiplier
     debug: false,          // F9 overlay (anchors, hitbox, layer outlines)
   };
-  const K = { fx: null, art: null }; // atlas frames (rebuilt with the atlas)
+  // fx: shared FX frames (main atlas); art: per-variant layer frames in the
+  // pilot's own texture (atlas/own/restores track it); failed: no art.
+  const K = { fx: null, art: null, atlas: null, own: null, restores: 0, failed: false };
 
   const anchorData = () => pilotArt(id)?.anchors || defaults;
   /** World units per @2x image pixel at the current size. */
@@ -262,35 +263,66 @@ export function createMechaArt(cfg) {
     return [(p[0] - h[0]) * k, (p[1] - h[1]) * k];
   }
 
-  /** Atlas builder (part of the pilot's `sprites`). */
+  /** Atlas builder (part of the pilot's `sprites`): shared FX textures only. */
   function buildSprites(atlas) {
     K.fx = fxTextures(atlas);
-    K.art = null;
-    const art = pilotArt(id);
-    if (!art || !art.layers) return;
-    try {
-      // 2x art on a 4096 atlas; half texel density on the 2048 fallback.
-      const scale = atlas.size >= 4096 ? 1 : 0.5;
-      const A = anchorData();
-      const sets = {};
-      for (const variant of VARIANTS) {
-        const img = art.images[variant === 'outline' ? 'outline2x' : 'back2x'];
-        const parts = splitLayers(img, art.layers, A.image.w);
-        const set = {};
-        set.full = { frame: atlas.add(`${id}_mecha_${variant}`, A.image.w, A.image.h, (c, w, h) => c.drawImage(img, 0, 0, w, h), { scale }), box: { x: 0, y: 0, w: A.image.w, h: A.image.h } };
-        for (const [name, p] of Object.entries(parts)) {
-          set[name] = {
-            frame: atlas.add(`${id}_${name}_${variant}`, p.box.w, p.box.h, (c, w, h) => c.drawImage(p.canvas, 0, 0, w, h), { scale }),
-            box: p.box, pivot: p.pivot,
-          };
-        }
-        sets[variant] = set;
+  }
+
+  /**
+   * The pilot's art texture, built on first use (split layers → own small
+   * atlas → GPU). Its frames are appended to the renderer's frame list, so
+   * particles can use them too (afterimages). Re-uploaded after a WebGL
+   * context restore. Returns null without art (procedural fallback).
+   */
+  function ensureArt(r) {
+    if (K.failed || !r) return K.art;
+    if (K.art) {
+      if (K.restores !== r.restores) {
+        const tex = K.atlas.upload(r.gl);
+        for (const fr of K.own) fr.tex = tex;
+        K.restores = r.restores;
       }
+      return K.art;
+    }
+    const art = pilotArt(id);
+    if (!art || !art.layers) { K.failed = true; return null; }
+    try {
+      const A = anchorData();
+      let atlas = null, sets = null;
+      for (const size of [1024, 2048]) {
+        try {
+          atlas = new Atlas(size, 1);
+          sets = {};
+          for (const variant of VARIANTS) {
+            const img = art.images[variant === 'outline' ? 'outline2x' : 'back2x'];
+            const parts = splitLayers(img, art.layers, A.image.w);
+            const set = {};
+            set.full = { frame: atlas.add(`${id}_mecha_${variant}`, A.image.w, A.image.h, (c, w, h) => c.drawImage(img, 0, 0, w, h), { scale: 1 }), box: { x: 0, y: 0, w: A.image.w, h: A.image.h } };
+            for (const [name, p] of Object.entries(parts)) {
+              set[name] = {
+                frame: atlas.add(`${id}_${name}_${variant}`, p.box.w, p.box.h, (c, w, h) => c.drawImage(p.canvas, 0, 0, w, h), { scale: 1 }),
+                box: p.box, pivot: p.pivot,
+              };
+            }
+            sets[variant] = set;
+          }
+          break;
+        } catch (err) {
+          if (!/Atlas full/.test(err.message) || size === 2048) throw err;
+        }
+      }
+      const tex = atlas.upload(r.gl);
+      K.own = atlas.frames;
+      for (const fr of K.own) { fr.tex = tex; fr.id = r.frames.length; r.frames.push(fr); }
+      K.atlas = atlas;
+      K.restores = r.restores;
       K.art = sets;
     } catch (err) {
-      console.warn(`[art] ${id}: layer split failed, using procedural sprites`, err);
+      console.warn(`[art] ${id}: art texture failed, using procedural sprites`, err);
+      K.failed = true;
       K.art = null;
     }
+    return K.art;
   }
 
   // ---------------------------------------------------------- animation
@@ -325,7 +357,8 @@ export function createMechaArt(cfg) {
    * draws the procedural sprite).
    */
   function renderMecha(p, b, x, y, a) {
-    const set = K.art && (K.art[LOOK.outline ? 'outline' : 'plain'] || K.art.outline);
+    const arts = ensureArt(p.w.r);
+    const set = arts && (arts[LOOK.outline ? 'outline' : 'plain'] || arts.outline);
     if (!set) return false;
     const A = anchorData(), hb = A.anchors.hitbox, k = unitsPerPx(), F = p.F;
     const bob = Math.sin(p.t * 0.07) * 0.8;
@@ -423,7 +456,7 @@ export function createMechaArt(cfg) {
 
   /** Exhaust particles at the thruster anchors. Returns false without art (default engines). */
   function exhaust(p, w) {
-    if (!K.art) return false;
+    if (!ensureArt(w.r)) return false;
     const H = w.fxHigh, R = w.fxRng, F = p.F, thr = p.ps.thr || 1, fsz = LOOK.size / 68;
     for (const name of exhaustAt) {
       const [ax, ay] = anchor(name);
@@ -438,7 +471,7 @@ export function createMechaArt(cfg) {
 
   /** Spawn a fading tinted afterimage of the whole mecha (dash, specials). */
   function afterimage(p, w, life = 16, alpha = 0.5, tint = null) {
-    if (!K.art) return false;
+    if (!ensureArt(w.r)) return false;
     const full = (K.art[LOOK.outline ? 'outline' : 'plain'] || K.art.outline).full, A = anchorData(), k = unitsPerPx(), hb = A.anchors.hitbox;
     const H = w.fxHigh, i = H.spawn(full.frame, p.x + (A.image.w / 2 - hb[0]) * k, p.y + (A.image.h / 2 - hb[1]) * k, 0, 0, life);
     if (i >= 0) {
@@ -453,6 +486,7 @@ export function createMechaArt(cfg) {
   return {
     id, pal, LOOK, SIZES,
     frames: () => K,
+    ensureArt,
     anchorData, unitsPerPx, anchor, animatedAnchor,
     buildSprites, animate, renderMecha, exhaust, afterimage,
     hasArt: () => !!K.art,
