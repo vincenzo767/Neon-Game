@@ -298,6 +298,7 @@ export class Player {
   }
 
   _exhaust() {
+    if (this.def.exhaust && this.def.exhaust(this, this.w)) return; // pilot art places its own thrusters
     const H = this.w.fxHigh, R = this.w.fxRng, c = this.def.engineColor, F = this.F;
     for (const [ex, ey] of this.def.engines) {
       const i = H.spawn(F.glow, this.x + ex, this.y + ey, R.range(-0.2, 0.2), R.range(2.5, 4), R.range(7, 12));
@@ -334,6 +335,11 @@ export class Player {
     // Ship (tier variant), banking squash, invulnerability blink.
     let a = this.alpha;
     if (this.invuln > 0 && this.bombT === 0 && this.ultT === 0 && (this.t >> 2) & 1) a *= 0.35;
+    // Hand-made pilot art draws the vehicle + engines itself (false = use the procedural sprite).
+    if (def.renderShip && def.renderShip(this, b, x, y, a, alpha)) {
+      if (def.renderAbove) def.renderAbove(this, b, x, y, alpha);
+      return;
+    }
     const f = this.frames[this.tier - 1];
     const squash = 1 - Math.abs(this.bank) * 0.18;
     b.draw(f, x, y, f.w * squash, f.h, this.bank * 0.06, 1, 1, 1, a, 0);

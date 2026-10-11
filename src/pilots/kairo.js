@@ -1,10 +1,14 @@
 import { WORLD_W, WORLD_H } from '../core/constants.js';
 import { mirrorPath, chrome, neonLines, outline, canopy, glowDot, drawBolt } from '../fx/art.js';
 import { FADE_OUT } from '../fx/Particles.js';
+import { LOOK, PAL, anchorData, unitsPerPx, kairoFrames, buildKairoSprites, renderMecha, animate, exhaust } from './kairoArt.js';
 
 // KAIRO VANCE — STORMLANCE (interceptor)
 // Piercing rail lasers · Focus: continuous rail beam · Special: phase-dash
 // Bomb: Arc Cascade · Ultimate: Orbital Rail Strike Grid
+//
+// KAIRO ART TEST: the hand-made mecha art (kairoArt.js) replaces drawShip()
+// when it loads; drawShip() stays as the automatic fallback.
 
 const CYAN = [0.3, 0.95, 1.0];
 const UP = -Math.PI / 2;
@@ -108,7 +112,16 @@ export default {
     update(p, w) {
       p.x = Math.min(WORLD_W - 12, Math.max(12, p.x + p.ps.dvx));
       p.y = Math.min(WORLD_H - 18, Math.max(22, p.y + p.ps.dvy));
-      const H = w.fxHigh, f = p.frames[p.tier - 1];
+      const H = w.fxHigh, art = kairoFrames().art;
+      if (art) {
+        // 3-4 fading blue afterimages of the mecha.
+        if (p.specialT % 3 !== 0) return;
+        const full = art[LOOK.outline ? 'outline' : 'plain'].full, A = anchorData(), k = unitsPerPx(), hb = A.anchors.hitbox;
+        const i = H.spawn(full.frame, p.x + (A.image.w / 2 - hb[0]) * k, p.y + (A.image.h / 2 - hb[1]) * k, 0, 0, 16);
+        if (i >= 0) { H.size(i, A.image.w * k); H.color(i, 0.35, 0.9, 2.2, 0.15, 0.3, 1.4); H.look(i, 0.5, 1, FADE_OUT); }
+        return;
+      }
+      const f = p.frames[p.tier - 1];
       const i = H.spawn(f, p.x, p.y, 0, 0, 14);
       if (i >= 0) { H.size(i, f.w); H.color(i, 0.4, 1.4, 2); H.look(i, 0.45, 1, FADE_OUT); }
     },
@@ -173,6 +186,27 @@ export default {
     for (let t = 1; t <= 4; t++) atlas.add(`ship_kairo_${t}`, 44, 52, (c, w, h) => drawShip(c, w, h, t), { scale: 3 });
     atlas.add('k_pod', 10, 16, drawPod, { scale: 3 });
     atlas.add('k_rail', 30, 5, railSprite, { scale: 3 });
+    buildKairoSprites(atlas);
+  },
+
+  // Hand-made art hooks (each returns false without the art → procedural look).
+  renderShip: (p, b, x, y, a) => renderMecha(p, b, x, y, a),
+  exhaust,
+
+  renderBelow(p, b) {
+    // Phase-dash: curved ribbon trail through the recent dash path.
+    const tr = p.ps.trail;
+    if (!tr || tr.length < 2 || !kairoFrames().art) return;
+    const F = p.F, n = tr.length;
+    for (let k = 1; k < n; k++) {
+      const [x0, y0] = tr[k - 1], [x1, y1] = tr[k];
+      const len = Math.hypot(x1 - x0, y1 - y0);
+      if (len < 0.5) continue;
+      const f = k / n, ang = Math.atan2(y1 - y0, x1 - x0), mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+      // Soft stretched glows (tapered ends) so overlapping segments don't band.
+      b.draw(F.glow, mx, my, len * 2.2 + 8, 8 + 20 * f, ang, PAL.blue[0], PAL.blue[1], PAL.blue[2], 0.22 * f, 1);
+      b.draw(F.glow, mx, my, len * 2 + 4, 3 + 6 * f, ang, PAL.cyan[0], PAL.cyan[1], PAL.cyan[2], 0.4 * f, 1);
+    }
   },
 
   init(p, w) {
@@ -182,6 +216,7 @@ export default {
 
   update(p) {
     if (p.ps.phase > 0) p.ps.phase--;
+    animate(p);
   },
 
   optionLayout(p) {

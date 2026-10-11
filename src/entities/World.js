@@ -128,6 +128,7 @@ export class World {
     const b = this._beamPool.pop() || {};
     b.x0 = x0; b.y0 = y0; b.x1 = x1; b.y1 = y1;
     b.w = width; b.dmg = damage; b.rgb = rgb; b.add = add; b.flags = flags;
+    b.skin = null; // set by a pilot that draws this beam itself (hand-made art FX)
     this.beams.push(b);
     return b;
   }
@@ -402,6 +403,7 @@ export class World {
       if (en.alive && !en.untargetable) eg.insertAABB(e, en.x - en.r, en.y - en.r, en.x + en.r, en.y + en.r);
     }
     const S = this.shots;
+    const spark = p && p.def.hitSpark; // pilot-styled impact FX (cosmetic)
     let i = 0;
     while (i < S.count) {
       const sx = S.x[i], sy = S.y[i], sr = S.radius[i];
@@ -420,11 +422,13 @@ export class World {
         if (S.pierce[i]) { S.hitUid[i] = en.uid; S.hitT[i] = this.t; }
         this.damage(en, S.damage[i], S.dflags[i]);
         if (!S.pierce[i]) {
-          this.explosions.hitSpark(sx, sy - 4, Math.PI / 2, [0.6, 0.9, 1]);
+          if (spark) spark(this, sx, sy - 4, Math.PI / 2);
+          else this.explosions.hitSpark(sx, sy - 4, Math.PI / 2, [0.6, 0.9, 1]);
           consumed = true;
           break;
         } else if ((this.t + i) % 4 === 0) {
-          this.explosions.hitSpark(sx, sy, S.ang[i] + Math.PI, [0.6, 0.9, 1]);
+          if (spark) spark(this, sx, sy, S.ang[i] + Math.PI);
+          else this.explosions.hitSpark(sx, sy, S.ang[i] + Math.PI, [0.6, 0.9, 1]);
         }
       }
       if (consumed) S.remove(i); else i++;
@@ -437,7 +441,11 @@ export class World {
         if (!e.alive || e.untargetable || e.y < -10) continue;
         if (segDist2(e.x, e.y, b.x0, b.y0, b.x1, b.y1) < (b.w * 0.5 + e.r) ** 2) {
           this.damage(e, b.dmg, b.flags);
-          if ((this.t & 3) === 0) this.explosions.hitSpark(e.x + this.fxRng.range(-6, 6), e.y + e.r * 0.6, Math.PI / 2, b.rgb);
+          if ((this.t & 3) === 0) {
+            const hx = e.x + this.fxRng.range(-6, 6), hy = e.y + e.r * 0.6;
+            if (b.skin && spark) spark(this, hx, hy, Math.PI / 2);
+            else this.explosions.hitSpark(hx, hy, Math.PI / 2, b.rgb);
+          }
         }
       }
     }
@@ -592,9 +600,12 @@ export class World {
     }
 
     // Player shots stay translucent so enemy bullets always read on top.
-    this.shots.render(b, frames, alpha, F.glow, { glowAlpha: 0, alpha: 0.5, add: 1 });
+    const pd = this.player && this.player.def;
+    if (pd && pd.renderShots) pd.renderShots(this.player, b, alpha, this.shots);
+    else this.shots.render(b, frames, alpha, F.glow, { glowAlpha: 0, alpha: 0.5, add: 1 });
 
     for (const bm of this.beams) {
+      if (bm.skin) continue; // drawn by its pilot
       const dx = bm.x1 - bm.x0, dy = bm.y1 - bm.y0;
       const len = Math.hypot(dx, dy), ang = Math.atan2(dy, dx);
       const mx = (bm.x0 + bm.x1) / 2, my = (bm.y0 + bm.y1) / 2;

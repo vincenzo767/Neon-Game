@@ -297,6 +297,31 @@ async function main() {
   } else log('kairo.anchors.json kept (use --reset-anchors to regenerate)');
 
   if (args.has('--demo-bgremoval')) await demoBgRemoval(log);
+  await previewOverlay(log);
+}
+
+/** Anchor + layer-mask overlay on the @2x sprite (screenshots/kairo/process/overlay.png). */
+async function previewOverlay(log) {
+  const lf = path.join(OUT, 'kairo.layers.json'), af = path.join(OUT, 'kairo.anchors.json');
+  if (!fs.existsSync(lf) || !fs.existsSync(af)) return;
+  const layers = JSON.parse(fs.readFileSync(lf, 'utf8')), anchors = JSON.parse(fs.readFileSync(af, 'utf8')).anchors;
+  const K = 2, img = path.join(OUT, 'kairo_back@2x.png');
+  const m = await sharp(img).metadata();
+  const cols = { wingL: '#38f', wingR: '#f3a' };
+  let svg = '';
+  for (const [k, L] of Object.entries(layers.layers)) {
+    svg += `<polygon points="${L.poly.map(([x, y]) => `${x * K},${y * K}`).join(' ')}" fill="${cols[k] || '#ff0'}" fill-opacity="0.18" stroke="${cols[k] || '#ff0'}" stroke-width="1.5"/>`;
+    svg += `<circle cx="${L.pivot[0] * K}" cy="${L.pivot[1] * K}" r="4" fill="none" stroke="#fff" stroke-width="1.5"/>`;
+  }
+  for (const [k, [x, y]] of Object.entries(anchors)) {
+    svg += `<circle cx="${x * K}" cy="${y * K}" r="3.5" fill="#0f0" stroke="#000"/><text x="${x * K + 5}" y="${y * K - 4}" fill="#0f0" font-size="10" font-family="monospace" stroke="#000" stroke-width="2" paint-order="stroke">${k}</text>`;
+  }
+  const W = m.width * K, H = m.height * K;
+  await sharp(checker(W, H)).composite([
+    { input: await sharp(img).resize(W, H).toBuffer() },
+    { input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">${svg}</svg>`) },
+  ]).png().toFile(path.join(PREVIEW, 'overlay.png'));
+  log('anchor/layer overlay → screenshots/kairo/process/overlay.png');
 }
 
 /** Prove the no-transparency path: bake the sprite onto a dark background with
