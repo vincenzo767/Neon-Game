@@ -119,3 +119,8 @@ matches the brief's "wing-binder with rifle".
 - **Front view.** Hidden RGB zeroed, then trimmed. `kairo_front@2x.png` is 360×600; `@1x` is 180×300.
 - **Portrait.** A 4:5 crop from the top: `kairo_portrait.jpg` (432×540) and `kairo_portrait_sm.jpg` (240×300).
 - **Anchors.** `kairo.anchors.json` uses @2x pixels. The script only rewrites it with `--reset-anchors`, so corrections pasted from the F9 editor survive re-processing.
+
+## Decisions at the Step 6 checkpoint (approved by the owner)
+
+- **Back thrusters.** Wide blue plumes and nozzle glow come from the backpack nozzles (`packL/R`), in addition to the foot and calf flames.
+- **Size.** The default is **90 units tall** (`LOOK.size`). The test range still cycles 90 / 68 / 80. Anchor-based shot origins scale with size; DPS was re-measured at 90 and is unchanged.

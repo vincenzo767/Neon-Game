@@ -14,6 +14,7 @@
 | **M5** | Remaining 12 standard pilots + **Vincenzo (Legendary)** with the §4.6 firing concepts, ultimates, cut-ins | ✅ Done |
 | **M6** | Audio engine and adaptive music (per-phase layers, archetype themes, a musical identity per faction) | ✅ Done |
 | **M7** | UI, scoring, polish, performance tuning: **M7a** scoring ✅ · **M7b** flow & UI ✅ · **M7c** polish, robustness, performance, balance ✅ | ✅ Done |
+| **Art test** | Hand-made art for Kairo Vance (Stormlance), the vertical slice for the 16 other pilots (branch `art/kairo-test`, not merged) | ✅ Approved |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -685,6 +686,58 @@ No boss data (HP, phases, patterns, damage flags, hitboxes) changed. No renames.
 - **Loudness:** shot voices −35.0 … −37.9 dBFS RMS; music −20.2 … −21.9 dBFS.
 - **Regression:** the M4b suite passes, and all six bosses run every phase to the tally on Extreme (final build).
 
+## Art test — Kairo Vance (branch `art/kairo-test`)
+
+Brief: [KAIRO_ART_TEST.md](src/pilot%20concept%20art/Kairo%20Vance/KAIRO_ART_TEST.md). Decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Kairo%20Vance/ASSET_NOTES.md). How to repeat it for the other pilots: [ART_PIPELINE.md](ART_PIPELINE.md).
+
+The branch stays unmerged until the owner says so.
+
+**What changed for Kairo**
+- **In-game vehicle.** The hand-made Stormlance mecha replaces the procedural ship.
+  - It is split into three layers: body plus two wing-binders with rifles. At rest the layers rebuild the original within 1.7/255.
+  - Motion is all code-driven: banking tilt and squash, idle bob and wing breathing, a wing flare in focus, and a fold plus afterimages and a ribbon trail in phase-dash.
+  - The default size is **90 units tall** (the owner's choice). The hitbox is unchanged (2.4).
+- **Thrusters.** Wide blue plumes and nozzle glow come from the backpack, plus foot and calf flames. The painted red vents are kept. Flame size follows state: idle, moving, moving up, dash.
+- **Weapons (approved gameplay change).**
+  - Lances fire from the rifles, and the tier-4 extras from the wing tips. Each is aimed where the old shot reached 240 units ahead.
+  - The focus beam starts at the backpack caps.
+  - `tools/dps.mjs` shows boss, single-target and wave DPS within ±1 of `main` at every tier; focus is identical.
+- **FX**, rebuilt in code from the FX sheet:
+  - diamond-tipped lances whose bright core is exactly the hit area (r = 4 / 4.5 / 5 / 6 by tier), inside a semi-transparent glow;
+  - tier-4 ring pulses;
+  - the focus beam with a solid core, travelling rings and a charge orb;
+  - 2× muzzle flares and bigger hit sparks.
+  - The glow dims automatically as enemy bullets fill the screen.
+- **UI.**
+  - The painted portrait is used everywhere portraits appear.
+  - The select card shows the front-view mecha preview.
+  - The ultimate cut-in uses the art layout: speed lines, the mecha behind, and the portrait sliding in.
+  - Kairo is now described as an *Interceptor Mecha*, with a white, gunmetal and red palette and blue energy.
+- **Fallback.** If the art fails to load (or with `?noart`), the procedural ship is used. Gameplay is identical either way: the shot origins come from built-in anchors.
+
+**Engine hooks (opt-in; pilots without them are unchanged)**
+- `renderShip`, `exhaust`, `renderShots`, `hitSpark`, and beam `.skin`. See [ART_PIPELINE.md](ART_PIPELINE.md) §7.
+- [core/pilotArt.js](src/core/pilotArt.js) preloads the art before the atlas is built, so `main.js` boot is now async.
+
+**Tools**
+- `npm run art:kairo` runs [tools/process-kairo.mjs](tools/process-kairo.mjs).
+- [tools/dps.mjs](tools/dps.mjs) is a headless DPS harness for any pilot.
+- `?test=kairo` opens the Kairo test range.
+  - Keys: 1–4 tier · E dummies · B 1,500-bullet storm · Y invincible · R size · O outline · Q clear · F9 anchor editor with COPY JSON.
+  - Sliders adjust shot width and glow.
+
+**Verified** (headless Chrome on an Intel HD 5500, D3D11):
+- the screenshots in [screenshots/kairo/](screenshots/kairo/);
+- the `?noart` fallback and the `?atlas=2048` mode;
+- `vite build`.
+
+**Frame rate.** With 1,500 bullets while firing, the branch averages about 49 FPS on this GPU and `main` about 48 (same within noise). Neither holds a solid 60 here; without firing, both do.
+
+**Known gaps**
+- The rifles' painted muzzles point backward, so lances leave from the rifles' forward ends, level with the torso.
+- The tier-3+ option pods are still procedural.
+- On the 2048 atlas, `main` already drops to 0.85 texel scale.
+
 ## Run
 
 ```
@@ -696,6 +749,8 @@ npm run build      # production bundle in dist/
 Flow right now:
 - **Title** → START → difficulty → **Pilot Select → (Z) endless procedural stages**: intro → waves → mid-boss → waves → boss → tally → next stage...
 - **(C) on pilot select → Test Range**: placeholder waves with a selectable bullet density.
+- **`?test=kairo`**: Kairo art test range (see *Art test* above). Kairo's art is also live in the normal flow: pick him on pilot select.
+- **`?noart`**: skip hand-made pilot art (procedural fallback).
 - **Title → PRACTICE**: a single fight against any boss reached so far. **RANKING** and **OPTIONS** are also on the title.
 - Idle on the title for 20 s: attract demo → ranking pages.
 - From a run: Pause (Resume / Restart / Pilot Select / volumes), or Game Over → initials → Continue, or Pilot Select via the results screen.
@@ -857,3 +912,4 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
+6. Pilot art: after the owner merges `art/kairo-test`, follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 16 pilots.

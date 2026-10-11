@@ -12,13 +12,13 @@ import { FADE_OUT } from '../fx/Particles.js';
 
 /** Tunables (the test range changes these live). */
 export const LOOK = {
-  size: 68,            // mecha height in world units (test range cycles SIZES)
+  size: 90,            // mecha height in world units (owner's pick; test range cycles SIZES)
   outline: true,       // use the dark-outline sprite variant
   widthMul: 1,         // shot / beam visual width multiplier
   glowMul: 1,          // shot / beam outer-glow strength multiplier
   debug: false,        // F9 overlay (anchors, hitbox, layer outlines)
 };
-export const SIZES = [68, 80, 90];
+export const SIZES = [90, 68, 80];
 
 // Built-in copy of kairo.anchors.json: used when the file can't be loaded, so
 // shot origins (gameplay) never depend on whether the art loaded.
@@ -339,6 +339,10 @@ export function renderMecha(p, b, x, y, a) {
     b.draw(K.fx.flame, cx, cy, Wd * 0.45, L * 0.5, rot, PAL.core[0], PAL.core[1], PAL.core[2], a, 1);
     b.draw(F.glow, fx, fy + 1, Wd * 2.6, Wd * 2.6, 0, PAL.blue[0], PAL.blue[1], PAL.blue[2], 0.45 * a, 1);
   };
+  // Main back thrusters: wide blue plumes from the backpack nozzles, washing
+  // down behind the legs (the body covers their roots).
+  flame('packL', 26 * thr, 15, 4);
+  flame('packR', 26 * thr, 15, 5);
   flame('footL', 12 * thr, 7, 0);
   flame('footR', 12 * thr, 7, 1);
 
@@ -360,6 +364,14 @@ export function renderMecha(p, b, x, y, a) {
   const L = wingPose(p, -1), R = wingPose(p, 1);
   drawPart(set.wingL, L.ox, L.rot);
   drawPart(set.wingR, R.ox, R.rot);
+
+  // Backpack nozzle glow on top of the art, so the back thrusters read as lit.
+  for (const [name, i] of [['packL', 0], ['packR', 1]]) {
+    const an = A.anchors[name], [nx, ny] = place(an[0] - hb[0], an[1] - hb[1]);
+    const fl = 0.85 + 0.15 * Math.sin(p.t * 1.9 + i * 2.1), gw = 16 * fsz * fl * (0.8 + thr * 0.2);
+    b.draw(F.glow, nx, ny + 2 * fsz, gw * 1.5, gw, 0, PAL.blue[0], PAL.blue[1], PAL.blue[2], 0.55 * a, 1);
+    b.draw(F.glow, nx, ny + 2 * fsz, gw * 0.7, gw * 0.45, 0, PAL.cyan[0], PAL.cyan[1], PAL.cyan[2], 0.8 * a, 1);
+  }
 
   // Small calf-vent flames + glows (painted red vents stay visible).
   flame('calfL', 5 * Math.min(thr, 1.6), 3.5, 2);
@@ -395,7 +407,7 @@ export function animatedAnchor(p, name) {
 export function exhaust(p, w) {
   if (!K.art) return false;
   const H = w.fxHigh, R = w.fxRng, F = p.F, thr = p.ps.thr || 1, fsz = LOOK.size / 68;
-  for (const name of ['footL', 'footR']) {
+  for (const name of ['packL', 'packR', 'footL', 'footR']) {
     const [ax, ay] = anchor(name);
     const i = H.spawn(F.glow, p.x + ax + R.range(-1, 1), p.y + ay + 4 * fsz, R.range(-0.2, 0.2), R.range(2.5, 4) * (0.8 + thr * 0.25), R.range(6, 10));
     if (i < 0) return true;
