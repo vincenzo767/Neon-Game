@@ -1,0 +1,31 @@
+/* KAIRO ART TEST range (?test=kairo): tuning panel + F9 anchor editor. */
+
+.kt-panel {
+  position: absolute; top: calc(92 * var(--u)); left: calc(8 * var(--u)); width: calc(230 * var(--u));
+  background: rgba(3, 4, 12, 0.72); border-left: 2px solid #4ff0ff; padding: calc(4 * var(--u)) calc(6 * var(--u));
+  font-size: calc(6.5 * var(--u)); letter-spacing: 0.06em; pointer-events: auto; z-index: 5;
+}
+.kt-row { display: flex; align-items: center; gap: calc(4 * var(--u)); margin: calc(2 * var(--u)) 0; }
+.kt-row input[type=range] { flex: 1; height: calc(8 * var(--u)); accent-color: #4ff0ff; }
+.kt-fps { color: #4ff0ff; font-size: calc(8 * var(--u)); }
+.kt-state { color: #bfefff; }
+.kt-keys { opacity: 0.7; margin-top: calc(3 * var(--u)); line-height: 1.4; }
+
+.kt-debug { position: absolute; inset: 0; display: none; pointer-events: auto; cursor: crosshair; z-index: 4; }
+.kt-debug.show { display: block; }
+.kt-labels i {
+  position: absolute; transform: translate(calc(5 * var(--u)), -50%); font-style: normal;
+  font-size: calc(5.5 * var(--u)); color: #8f8; text-shadow: 0 0 2px #000, 0 0 3px #000; white-space: nowrap; pointer-events: none;
+}
+.kt-debug-bar {
+  position: absolute; right: calc(8 * var(--u)); top: calc(92 * var(--u)); display: flex; flex-direction: column; align-items: flex-end;
+  gap: calc(3 * var(--u)); font-size: calc(6 * var(--u)); color: #bfefff; max-width: calc(170 * var(--u)); text-align: right;
+}
+.kt-copy {
+  font: inherit; font-size: calc(7 * var(--u)); letter-spacing: 0.12em; color: #031018; background: #4ff0ff;
+  border: 0; padding: calc(3 * var(--u)) calc(8 * var(--u)); cursor: pointer;
+}
+.kt-json {
+  position: absolute; right: calc(8 * var(--u)); top: calc(130 * var(--u)); width: calc(150 * var(--u)); height: calc(150 * var(--u));
+  font: calc(4.6 * var(--u)) / 1.3 'JetBrains Mono', monospace; color: #bfefff; background: rgba(3, 4, 12, 0.8); border: 1px solid #4ff0ff55;
+}
