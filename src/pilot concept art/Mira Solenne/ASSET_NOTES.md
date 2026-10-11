@@ -101,3 +101,7 @@ Same method as Kairo: feathered polygons plus the exact alpha complement for the
 - **Known gaps.**
   - The option drones are still the procedural gold orbs.
   - The portrait's white background turns pinkish under the card's colour grade.
+
+## Wrap-up
+
+Approved by the owner after the Step 6 checkpoint. The branch `art/mira-test` stays unmerged until the owner says so.

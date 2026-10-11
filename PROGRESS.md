@@ -15,7 +15,7 @@
 | **M6** | Audio engine and adaptive music (per-phase layers, archetype themes, a musical identity per faction) | ✅ Done |
 | **M7** | UI, scoring, polish, performance tuning: **M7a** scoring ✅ · **M7b** flow & UI ✅ · **M7c** polish, robustness, performance, balance ✅ | ✅ Done |
 | **Art test** | Hand-made art for Kairo Vance (Stormlance), the vertical slice for the 16 other pilots (branch `art/kairo-test`; first version merged in PR #1, later fixes pending) | ✅ Approved |
-| **Art: Mira** | Hand-made art for Mira Solenne (Halo Sprite) on the shared art modules (branch `art/mira-test`, not merged) | 🔍 In review |
+| **Art: Mira** | Hand-made art for Mira Solenne (Halo Sprite) on the shared art modules (branch `art/mira-test`, not merged) | ✅ Approved |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -938,6 +938,6 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
-6. Pilot art: review and merge `art/mira-test`.
+6. Pilot art: merge `art/mira-test` (approved).
    - Next, add per-pilot art loading so the shared atlas doesn't overflow.
    - Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 15 pilots.
