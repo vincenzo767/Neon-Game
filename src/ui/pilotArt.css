@@ -1,0 +1,64 @@
+/* Hand-made pilot art (KAIRO_ART_TEST): select-card vehicle preview and the
+   art cut-in. Only used for pilots that have art loaded (core/pilotArt.js). */
+
+/* ---------------------------------------------------- select: vehicle preview */
+
+.sel-mecha {
+  position: absolute; right: calc(-2 * var(--u)); top: calc(-16 * var(--u));
+  height: calc(164 * var(--u)); aspect-ratio: 3 / 5;
+  pointer-events: none; display: none;
+}
+.sel-mecha.show { display: block; }
+.sel-mecha img {
+  height: 100%; width: auto; display: block;
+  filter: drop-shadow(0 0 calc(6 * var(--u)) rgba(80, 200, 255, 0.55));
+  animation: mechaBob 3.2s ease-in-out infinite;
+}
+/* Thruster glow under the feet. */
+.sel-mecha::after {
+  content: ''; position: absolute; left: 30%; right: 30%; bottom: calc(-6 * var(--u)); height: calc(26 * var(--u));
+  background: radial-gradient(ellipse at 30% 20%, rgba(200, 245, 255, 0.95), rgba(70, 170, 255, 0.55) 30%, transparent 62%),
+              radial-gradient(ellipse at 70% 20%, rgba(200, 245, 255, 0.95), rgba(70, 170, 255, 0.55) 30%, transparent 62%);
+  mix-blend-mode: screen; filter: blur(calc(1.5 * var(--u)));
+  animation: mechaThrust 0.16s steps(2) infinite alternate, mechaBob 3.2s ease-in-out infinite;
+}
+@keyframes mechaBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(calc(-4 * var(--u))); } }
+@keyframes mechaThrust { from { opacity: 0.75; } to { opacity: 1; } }
+
+/* ------------------------------------------------------------- art cut-in */
+
+.cutin.art .cutin-band { padding-left: 12%; gap: 0; overflow: hidden; }
+/* Speed lines streaking across the band. */
+.cutin.art .cutin-lines {
+  position: absolute; inset: 0; transform: skewY(8deg);
+  background: repeating-linear-gradient(0deg,
+    transparent 0 calc(5 * var(--u)), rgba(90, 210, 255, 0.0) calc(5 * var(--u)),
+    rgba(150, 230, 255, 0.95) calc(5.6 * var(--u)), transparent calc(6.4 * var(--u)) calc(11 * var(--u)));
+  background-size: 100% calc(23 * var(--u));
+  -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 18%, transparent 18% 26%, #000 26% 52%, transparent 52% 61%);
+  mask-image: repeating-linear-gradient(90deg, #000 0 18%, transparent 18% 26%, #000 26% 52%, transparent 52% 61%);
+  animation: cutinLines 0.22s linear infinite;
+  mix-blend-mode: screen; opacity: 1;
+}
+@keyframes cutinLines { from { background-position: 0 0; -webkit-mask-position: 0 0; mask-position: 0 0; } to { background-position: 0 0; -webkit-mask-position: 160% 0; mask-position: 160% 0; } }
+/* The mecha (front view) large behind the pilot. */
+.cutin.art .cutin-mecha {
+  position: absolute; right: 12%; top: -45%; height: 190%; width: auto;
+  transform: skewY(8deg); opacity: 0.85;
+  filter: drop-shadow(0 0 calc(10 * var(--u)) rgba(80, 200, 255, 0.8));
+  animation: cutinMecha var(--ms, 1.3s) cubic-bezier(.2, .9, .3, 1) forwards;
+}
+@keyframes cutinMecha { 0% { transform: skewY(8deg) translateX(30%) scale(1.15); opacity: 0; } 18% { opacity: 0.85; } 100% { transform: skewY(8deg) translateX(-8%) scale(1); opacity: 0.85; } }
+/* The portrait slides in from the side. */
+.cutin.art .cutin-portrait {
+  position: relative; height: 118%; aspect-ratio: 4 / 5; flex: none;
+  transform: skewY(8deg); border: 2px solid var(--pc); box-shadow: 0 0 calc(14 * var(--u)) var(--pc);
+  overflow: hidden; z-index: 1;
+  animation: cutinPortrait var(--ms, 1.3s) cubic-bezier(.15, .95, .3, 1) forwards;
+}
+.cutin.art .cutin-portrait canvas { display: block; width: 100%; height: 100%; }
+@keyframes cutinPortrait { 0% { transform: skewY(8deg) translateX(-160%); } 16% { transform: skewY(8deg) translateX(0); } 100% { transform: skewY(8deg) translateX(4%); } }
+.cutin.art .cutin-text { position: relative; z-index: 1; padding-left: calc(10 * var(--u)); }
+.cutin.art .cutin-text small, .cutin.art .cutin-text b {
+  text-shadow: 0 0 calc(3 * var(--u)) #000, 0 0 calc(8 * var(--u)) #000, 0 0 calc(10 * var(--u)) var(--pc);
+}

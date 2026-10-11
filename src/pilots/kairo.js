@@ -4,7 +4,7 @@ import { FADE_OUT } from '../fx/Particles.js';
 import { LOOK, PAL, anchor, anchorData, unitsPerPx, kairoFrames, animatedAnchor, buildKairoSprites, renderMecha, animate, exhaust } from './kairoArt.js';
 import { LANCE_R, SHARD_TAG, renderShots, renderBeam, renderChargeOrb, muzzleFlash, hitSpark } from './kairoFx.js';
 
-// KAIRO VANCE — STORMLANCE (interceptor)
+// KAIRO VANCE — STORMLANCE (interceptor mecha)
 // Piercing rail lasers · Focus: continuous rail beam · Special: phase-dash
 // Bomb: Arc Cascade · Ultimate: Orbital Rail Strike Grid
 //
@@ -91,10 +91,12 @@ export default {
   id: 'kairo',
   name: 'KAIRO VANCE',
   vehicle: 'STORMLANCE',
-  role: 'Interceptor',
-  bio: 'Precinct 9\'s fastest pursuit pilot. Kairo flew syndicate courier runs before he flipped, and he still treats every red light as a suggestion.',
-  color: CYAN,
+  role: 'Interceptor Mecha',
+  bio: 'Precinct 9\'s fastest pursuit pilot, flying the Stormlance: a white and gunmetal interceptor mecha with red armour and twin rail rifles. Kairo flew syndicate courier runs before he flipped, and he still treats every red light as a suggestion.',
+  color: CYAN,           // blue rail energy (shots, UI accent)
   css: '#4ff0ff',
+  // Art test: the Stormlance's paint (white armour, gunmetal frame, red plating) + blue energy.
+  palette: { armour: '#f2f4f8', frame: '#1c2030', plating: '#e0182a', energy: '#4ff0ff' },
   stats: { speed: 5, power: 3, range: 5, bomb: 2 },
   speed: { normal: 5.2, focus: 2.1 },
   hitbox: 2.4,
@@ -102,10 +104,11 @@ export default {
   engines: [[-3, 24], [3, 24]],
   engineColor: [0.4, 0.8, 1.0],
   optionSprite: 'k_pod',
-  portrait: { skin: '#d6a07a', hair: '#1a2233', style: 'spiky', eyes: 'visor', accent: 'earpiece' },
+  // Procedural fallback, matched to pilot_portrait.jpg (dark navy hair, brown eyes, blue jacket).
+  portrait: { skin: '#e0ae86', hair: '#14202e', iris: '#6a4424', style: 'spiky', eyes: 'eyes', suit: '#24407a' },
   weapons: {
-    main: 'Rail Lances — piercing rails that punch through every target in line',
-    focus: 'Rail Beam — continuous piercing laser',
+    main: 'Rail Lances — twin rail rifles fire piercing lances that punch through every target in line',
+    focus: 'Rail Beam — continuous piercing laser from the backpack emitters',
   },
   special: {
     name: 'PHASE DASH',
