@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "art:kairo": "node tools/process-art.mjs kairo",
-    "art:mira": "node tools/process-art.mjs mira"
+    "art:mira": "node tools/process-art.mjs mira",
+    "art:bruno": "node tools/process-art.mjs bruno"
   },
   "devDependencies": {
     "sharp": "^0.35.5",

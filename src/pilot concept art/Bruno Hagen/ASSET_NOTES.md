@@ -1,4 +1,4 @@
-﻿# Bruno Hagen — Asset Notes (Step 1)
+# Bruno Hagen — Asset Notes (Step 1)
 
 Pilot: **Bruno Hagen**, vehicle **IRONHOUND**. Built the same way as Kairo and
 Mira (see `ART_PIPELINE.md`, `../Kairo Vance/ASSET_NOTES.md` and
