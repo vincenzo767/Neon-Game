@@ -73,3 +73,31 @@ Same method as Kairo: feathered polygons plus the exact alpha complement for the
 
 - **Drones.** Mira's option drones are still the procedural gold orbs; nothing in the art covers them.
 - **Data update (step 5).** The role "Drone Ship" becomes "Drone Mecha". The bio describes the Halo Sprite as a white and gold mecha. The fallback portrait is matched to the painting (red eyes, ash-blonde hair, violet outfit, no halo).
+
+## Decisions at the Step 1 checkpoint (approved by the owner)
+
+1. **Needle fan from the chest gun.** No feet ever fire.
+2. **Arm guns: option A.** From tier 3 the outermost pair of needles leaves from the arm guns, aimed where the old outer needles were 240 units ahead. The needles still home.
+3. **Thrusters.** Gold/amber: wide back plumes from the vent fins and centre exhaust, plus foot flames at the gold skirt plates.
+4. **Size.** 90 units tall. The hitbox is unchanged (2.6).
+
+## Steps 2–6: results
+
+- **Processing.** `npm run art:mira`, which is `node tools/process-art.mjs mira` with the settings in `tools/art.config.mjs` (`glowRule: false`).
+  - The black-background JPEG sprite and front view are cut out automatically (see `screenshots/mira/process/`).
+  - Sprite exports: 249×372 @2x and 125×186 @1x, with outline variants.
+  - Front view: 391×600. Portrait: 432×540 / 240×300.
+- **Anchors** (`mira.anchors.json`, @2x): `gun` (chest gun), `armL/R` (arm guns), `ventL/R` and `packL/R` (back thrusters), `footL/R`, `head`, `hitbox`.
+- **Layers** (`mira.layers.json`): each side is an arm blade with its gun, plus the shoulder and vent fin. Pivot at the shoulder.
+- **Code.** `src/pilots/miraArt.js` (config on the shared `art/mechaArt.js` + `art/mechaFx.js`). In `mira.js`:
+  - firing from `gun` and `armL/R`;
+  - every shot tagged in `shots.aux`;
+  - drone shots drawn as shards;
+  - the Prism Lattice reflections keep their generic look.
+- **Data.** The role is "Drone Mecha". The bio mentions the white and gold mecha. The palette is added. The fallback portrait has red eyes, ash-blonde hair and a violet suit (no halo).
+- **DPS** (`tools/dps.mjs mira`): identical to the original code at every tier, normal fire and focus.
+- **Frame rate.** In the 1,500-bullet storm, normal fire averages about 49–50 FPS versus about 52 before (Intel HD 5500, headless). That is about 2–3 FPS for the art and FX.
+- **Test range.** `?test=mira`. Screenshots are in `screenshots/mira/`: `07_dash` shows the shield orbs (her special), and `06_focus_beam` shows the focus needle stream (she has no beam).
+- **Known gaps.**
+  - The option drones are still the procedural gold orbs.
+  - The portrait's white background turns pinkish under the card's colour grade.

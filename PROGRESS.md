@@ -14,7 +14,8 @@
 | **M5** | Remaining 12 standard pilots + **Vincenzo (Legendary)** with the §4.6 firing concepts, ultimates, cut-ins | ✅ Done |
 | **M6** | Audio engine and adaptive music (per-phase layers, archetype themes, a musical identity per faction) | ✅ Done |
 | **M7** | UI, scoring, polish, performance tuning: **M7a** scoring ✅ · **M7b** flow & UI ✅ · **M7c** polish, robustness, performance, balance ✅ | ✅ Done |
-| **Art test** | Hand-made art for Kairo Vance (Stormlance), the vertical slice for the 16 other pilots (branch `art/kairo-test`, not merged) | ✅ Approved |
+| **Art test** | Hand-made art for Kairo Vance (Stormlance), the vertical slice for the 16 other pilots (branch `art/kairo-test`, merged) | ✅ Approved |
+| **Art: Mira** | Hand-made art for Mira Solenne (Halo Sprite) on the shared art modules (branch `art/mira-test`, not merged) | 🔍 In review |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -720,7 +721,7 @@ The branch stays unmerged until the owner says so.
 - [core/pilotArt.js](src/core/pilotArt.js) preloads the art before the atlas is built, so `main.js` boot is now async.
 
 **Tools**
-- `npm run art:kairo` runs [tools/process-kairo.mjs](tools/process-kairo.mjs).
+- `npm run art:kairo` runs [tools/process-art.mjs](tools/process-art.mjs) with the Kairo settings in [tools/art.config.mjs](tools/art.config.mjs).
 - [tools/dps.mjs](tools/dps.mjs) is a headless DPS harness for any pilot.
 - `?test=kairo` opens the Kairo test range.
   - Keys: 1–4 tier · E dummies · B 1,500-bullet storm · Y invincible · R size · O outline · Q clear · F9 anchor editor with COPY JSON.
@@ -737,6 +738,32 @@ The branch stays unmerged until the owner says so.
 - The tier-3+ option pods are still procedural.
 - On the 2048 atlas, `main` already drops to 0.85 texel scale.
 
+## Art: Mira Solenne (branch `art/mira-test`)
+
+Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Mira%20Solenne/ASSET_NOTES.md).
+
+**Shared art code.** Kairo's art code became shared modules, so every later pilot is a config:
+- [art/mechaArt.js](src/pilots/art/mechaArt.js) handles sprite layers, animation, thrusters and anchors.
+- [art/mechaFx.js](src/pilots/art/mechaFx.js) handles lances, shards, beam, orb, flares and sparks.
+- [tools/process-art.mjs](tools/process-art.mjs) `<id>` processes the art, with settings in [tools/art.config.mjs](tools/art.config.mjs).
+- `?test=<id>` opens the test range for any pilot with art.
+- Kairo is unchanged by the move: his processed files are byte-identical, his DPS is identical, and the screenshots match.
+
+**Mira**
+- **Art.** The black-background JPEG sprite and front view are cut out automatically. The in-game mecha is 90 units tall and flies feet-first.
+- **Layers.** Each side is an arm blade with its gun, plus the shoulder and vent fin.
+- **Firing (approved).** The homing needle fan leaves from the chest gun. From tier 3 the two arm guns fire the outermost pair. **The feet never fire.**
+- **DPS** is identical to before at every tier, normal fire and focus (the needles home).
+- **FX.** Gold/amber, from `fx_reference.png`:
+  - needle lances whose bright core equals the hit area (r = 5), with tier-4 ring pulses;
+  - gold shards for drone shots, muzzle flares and hit sparks;
+  - wide gold back plumes from the vent fins and centre exhaust, plus foot flames.
+- **UI.** Painted portrait, front-view select preview, art cut-in. The role is "Drone Mecha". The fallback portrait now matches the painting.
+- **Ultimate.** Prism Lattice reflections keep their original look.
+- **Frame rate.** In the 1,500-bullet storm, normal fire averages about 49–50 FPS versus about 52 before (Intel HD 5500).
+
+**Atlas budget.** With two art pilots the 4096 atlas is 93 % full (96 % in the test range). Each pilot adds about 3 %, so per-pilot art loading is needed before many more pilots get art.
+
 ## Run
 
 ```
@@ -748,7 +775,7 @@ npm run build      # production bundle in dist/
 Flow right now:
 - **Title** → START → difficulty → **Pilot Select → (Z) endless procedural stages**: intro → waves → mid-boss → waves → boss → tally → next stage...
 - **(C) on pilot select → Test Range**: placeholder waves with a selectable bullet density.
-- **`?test=kairo`**: Kairo art test range (see *Art test* above). Kairo's art is also live in the normal flow: pick him on pilot select.
+- **`?test=<id>`** (`kairo`, `mira`): a pilot's art test range (see the *Art* sections above). The art is also live in the normal flow: pick the pilot on pilot select.
 - **`?noart`**: skip hand-made pilot art (procedural fallback).
 - **Title → PRACTICE**: a single fight against any boss reached so far. **RANKING** and **OPTIONS** are also on the title.
 - Idle on the title for 20 s: attract demo → ranking pages.
@@ -911,4 +938,6 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
-6. Pilot art: after the owner merges `art/kairo-test`, follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 16 pilots.
+6. Pilot art: review and merge `art/mira-test`.
+   - Next, add per-pilot art loading so the shared atlas doesn't overflow.
+   - Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 15 pilots.
