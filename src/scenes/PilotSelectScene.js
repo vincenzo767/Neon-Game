@@ -15,6 +15,8 @@ import { BOSSES } from '../bosses/index.js';
 import { DifficultySelectScene } from './DifficultySelectScene.js';
 import { getDifficulty } from '../core/difficulty.js';
 import { pilotLore } from '../data/lore/pilots.js';
+import { pilotArt } from '../core/pilotArt.js';
+import '../ui/pilotArt.css';
 
 // Pilot select: 16-slot roster grid plus the Legendary slot (#17, a tall
 // tile in the ninth column), animated portrait, stat bars, bio, ability
@@ -78,6 +80,7 @@ export class PilotSelectScene {
             <div class="sel-vehicle"></div>
             <div class="sel-stats"></div>
           </div>
+          <div class="sel-mecha"><img alt=""></div>
         </div>
         <div class="sel-bio"></div>
         <div class="sel-abilities"></div>
@@ -95,6 +98,7 @@ export class PilotSelectScene {
       abil: root.querySelector('.sel-abilities'),
       tier: root.querySelector('.sel-tier'),
       main: root.querySelector('.sel-main'),
+      mecha: root.querySelector('.sel-mecha'),
     };
     this.el.tiles.forEach((t, i) => drawPortrait(t.querySelector('canvas'), this.roster[i], 0.5));
   }
@@ -144,6 +148,10 @@ export class PilotSelectScene {
       return `<div class="stat"><label>${label}</label><div class="pips">${[1, 2, 3, 4, 5]
         .map((n) => `<i class="${n <= v ? 'on' : ''}" style="animation-delay:${n * 40}ms"></i>`).join('')}</div></div>`;
     }).join('');
+    // Hand-made art: the front view as the vehicle preview (slow bob, thruster glow).
+    const art = !p.locked && pilotArt(p.id);
+    el.mecha.classList.toggle('show', !!(art && art.images.front));
+    if (art && art.images.front) el.mecha.querySelector('img').src = art.images.front.src;
     el.bio.textContent = p.locked ? 'Personnel file sealed by order of the Commissioner.' : p.bio;
     // Update 02: precinct personnel file from the lore data (adds to the bio).
     const lore = !p.locked && pilotLore(p.id);

@@ -1,10 +1,15 @@
 import { WORLD_W, WORLD_H } from '../core/constants.js';
 import { mirrorPath, chrome, neonLines, outline, canopy, glowDot, drawBolt } from '../fx/art.js';
 import { FADE_OUT } from '../fx/Particles.js';
+import { LOOK, PAL, anchor, anchorData, unitsPerPx, kairoFrames, animatedAnchor, buildKairoSprites, renderMecha, animate, exhaust } from './kairoArt.js';
+import { LANCE_R, SHARD_TAG, renderShots, renderBeam, renderChargeOrb, muzzleFlash, hitSpark } from './kairoFx.js';
 
-// KAIRO VANCE — STORMLANCE (interceptor)
+// KAIRO VANCE — STORMLANCE (interceptor mecha)
 // Piercing rail lasers · Focus: continuous rail beam · Special: phase-dash
 // Bomb: Arc Cascade · Ultimate: Orbital Rail Strike Grid
+//
+// KAIRO ART TEST: the hand-made mecha art (kairoArt.js) replaces drawShip()
+// when it loads; drawShip() stays as the automatic fallback.
 
 const CYAN = [0.3, 0.95, 1.0];
 const UP = -Math.PI / 2;
@@ -67,6 +72,17 @@ function drawPod(ctx, w, h) {
 
 function railSprite(ctx, w, h) { drawBolt(ctx, w, h, 'rgba(90,240,255,0.9)'); }
 
+// Art test (approved gameplay change): lances leave from the rifles (and the
+// wing tips at tier 4) instead of the nose. Each lance is aimed at the point
+// its old counterpart reached REF units ahead, so the covered area matches.
+// Old pattern per side s = ±1: [x, y, outward angle, damage, from tier].
+const LANCES = [
+  { from: 'rifle', ox: 4, oy: -20, d: 0, dmg: 1.2, tier: 1 },
+  { from: 'rifle', ox: 10, oy: -10, d: 0.07, dmg: 0.9, tier: 2 },
+  { from: 'wing', ox: 16, oy: -4, d: 0.16, dmg: 0.8, tier: 4 },
+];
+const REF = 240;
+
 // Rail line positions for the ultimate's strike grid.
 const GRID_COLS = [60, 132, 204, 276, 348, 420];
 const GRID_ROWS = [90, 190, 290, 390, 490];
@@ -75,10 +91,12 @@ export default {
   id: 'kairo',
   name: 'KAIRO VANCE',
   vehicle: 'STORMLANCE',
-  role: 'Interceptor',
-  bio: 'Precinct 9\'s fastest pursuit pilot. Kairo flew syndicate courier runs before he flipped, and he still treats every red light as a suggestion.',
-  color: CYAN,
+  role: 'Interceptor Mecha',
+  bio: 'Precinct 9\'s fastest pursuit pilot, flying the Stormlance: a white and gunmetal interceptor mecha with red armour and twin rail rifles. Kairo flew syndicate courier runs before he flipped, and he still treats every red light as a suggestion.',
+  color: CYAN,           // blue rail energy (shots, UI accent)
   css: '#4ff0ff',
+  // Art test: the Stormlance's paint (white armour, gunmetal frame, red plating) + blue energy.
+  palette: { armour: '#f2f4f8', frame: '#1c2030', plating: '#e0182a', energy: '#4ff0ff' },
   stats: { speed: 5, power: 3, range: 5, bomb: 2 },
   speed: { normal: 5.2, focus: 2.1 },
   hitbox: 2.4,
@@ -86,10 +104,11 @@ export default {
   engines: [[-3, 24], [3, 24]],
   engineColor: [0.4, 0.8, 1.0],
   optionSprite: 'k_pod',
-  portrait: { skin: '#d6a07a', hair: '#1a2233', style: 'spiky', eyes: 'visor', accent: 'earpiece' },
+  // Procedural fallback, matched to pilot_portrait.jpg (dark navy hair, brown eyes, blue jacket).
+  portrait: { skin: '#e0ae86', hair: '#14202e', iris: '#6a4424', style: 'spiky', eyes: 'eyes', suit: '#24407a' },
   weapons: {
-    main: 'Rail Lances — piercing rails that punch through every target in line',
-    focus: 'Rail Beam — continuous piercing laser',
+    main: 'Rail Lances — twin rail rifles fire piercing lances that punch through every target in line',
+    focus: 'Rail Beam — continuous piercing laser from the backpack emitters',
   },
   special: {
     name: 'PHASE DASH',
@@ -108,7 +127,16 @@ export default {
     update(p, w) {
       p.x = Math.min(WORLD_W - 12, Math.max(12, p.x + p.ps.dvx));
       p.y = Math.min(WORLD_H - 18, Math.max(22, p.y + p.ps.dvy));
-      const H = w.fxHigh, f = p.frames[p.tier - 1];
+      const H = w.fxHigh, art = kairoFrames().art;
+      if (art) {
+        // 3-4 fading blue afterimages of the mecha.
+        if (p.specialT % 3 !== 0) return;
+        const full = art[LOOK.outline ? 'outline' : 'plain'].full, A = anchorData(), k = unitsPerPx(), hb = A.anchors.hitbox;
+        const i = H.spawn(full.frame, p.x + (A.image.w / 2 - hb[0]) * k, p.y + (A.image.h / 2 - hb[1]) * k, 0, 0, 16);
+        if (i >= 0) { H.size(i, A.image.w * k); H.color(i, 0.35, 0.9, 2.2, 0.15, 0.3, 1.4); H.look(i, 0.5, 1, FADE_OUT); }
+        return;
+      }
+      const f = p.frames[p.tier - 1];
       const i = H.spawn(f, p.x, p.y, 0, 0, 14);
       if (i >= 0) { H.size(i, f.w); H.color(i, 0.4, 1.4, 2); H.look(i, 0.45, 1, FADE_OUT); }
     },
@@ -173,6 +201,28 @@ export default {
     for (let t = 1; t <= 4; t++) atlas.add(`ship_kairo_${t}`, 44, 52, (c, w, h) => drawShip(c, w, h, t), { scale: 3 });
     atlas.add('k_pod', 10, 16, drawPod, { scale: 3 });
     atlas.add('k_rail', 30, 5, railSprite, { scale: 3 });
+    buildKairoSprites(atlas);
+  },
+
+  // Hand-made art hooks (each returns false without the art → procedural look).
+  renderShip: (p, b, x, y, a) => renderMecha(p, b, x, y, a),
+  exhaust,
+
+  renderBelow(p, b) {
+    if (p.ps.beam) renderBeam(p, b, p.ps.beam);
+    // Phase-dash: curved ribbon trail through the recent dash path.
+    const tr = p.ps.trail;
+    if (!tr || tr.length < 2 || !kairoFrames().art) return;
+    const F = p.F, n = tr.length;
+    for (let k = 1; k < n; k++) {
+      const [x0, y0] = tr[k - 1], [x1, y1] = tr[k];
+      const len = Math.hypot(x1 - x0, y1 - y0);
+      if (len < 0.5) continue;
+      const f = k / n, ang = Math.atan2(y1 - y0, x1 - x0), mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+      // Soft stretched glows (tapered ends) so overlapping segments don't band.
+      b.draw(F.glow, mx, my, len * 2.2 + 8, 8 + 20 * f, ang, PAL.blue[0], PAL.blue[1], PAL.blue[2], 0.22 * f, 1);
+      b.draw(F.glow, mx, my, len * 2 + 4, 3 + 6 * f, ang, PAL.cyan[0], PAL.cyan[1], PAL.cyan[2], 0.4 * f, 1);
+    }
   },
 
   init(p, w) {
@@ -182,6 +232,8 @@ export default {
 
   update(p) {
     if (p.ps.phase > 0) p.ps.phase--;
+    p.ps.beam = null; // re-set by fire() while the focus beam is on
+    animate(p);
   },
 
   optionLayout(p) {
@@ -194,22 +246,39 @@ export default {
   fire(p, w) {
     const t = p.tier, S = w.shots, rail = p.ps.fRail;
     if (p.focus) {
-      // Continuous piercing beam, re-declared every step.
+      // Continuous piercing beam from the red backpack caps, re-declared every step.
       const width = 5 + t * 2;
-      w.beam(p.x, p.y - 24, p.x, -20, width, 0.2 + 0.06 * t, CYAN);
+      const [lx, ly] = anchor('capL'), [rx] = anchor('capR');
+      const bm = w.beam(p.x + (lx + rx) / 2, p.y + ly, p.x + (lx + rx) / 2, -20, width, 0.2 + 0.06 * t, CYAN);
+      bm.skin = 'kairo';
+      p.ps.beam = bm;
     }
     if (p.fireCd > 0) return;
     p.fireCd = 5;
-    const shoot = (x, y, a, dmg) => {
-      const i = w.shot(x, y, a, 22, rail, dmg, 5);
-      if (i >= 0) S.behave(i, dmg, 0, 1);
+    const shoot = (x, y, a, dmg, r, tag) => {
+      const i = w.shot(x, y, a, 22, rail, dmg, r);
+      if (i >= 0) { S.behave(i, dmg, 0, 1); S.aux[i] = tag; } // aux: visual tag (tier / shard)
     };
-    for (const o of p.options) shoot(o.x, o.y - 8, UP, 0.7);
+    for (const o of p.options) shoot(o.x, o.y - 8, UP, 0.7, 5, SHARD_TAG);
     if (p.focus) return;
-    shoot(p.x - 4, p.y - 20, UP, 1.2);
-    shoot(p.x + 4, p.y - 20, UP, 1.2);
-    if (t >= 2) { shoot(p.x - 10, p.y - 10, UP - 0.07, 0.9); shoot(p.x + 10, p.y - 10, UP + 0.07, 0.9); }
-    if (t >= 4) { shoot(p.x - 16, p.y - 4, UP - 0.16, 0.8); shoot(p.x + 16, p.y - 4, UP + 0.16, 0.8); }
+    for (const L of LANCES) {
+      if (t < L.tier) continue;
+      for (const s of [-1, 1]) {
+        const name = L.from + (s < 0 ? 'L' : 'R');
+        const [mx, my] = anchor(name);
+        const tx = s * L.ox + Math.tan(s * L.d) * (L.oy + REF); // where the old lance was REF ahead
+        shoot(p.x + mx, p.y + my, UP + Math.atan2(tx - mx, my + REF), L.dmg, LANCE_R[t - 1], t);
+        const [fx, fy] = animatedAnchor(p, name);
+        muzzleFlash(p, w, fx, fy, L.from === 'wing' ? 20 : 26);
+      }
+    }
+  },
+
+  renderShots,
+  hitSpark,
+
+  renderAbove(p, b) {
+    if (p.ps.beam && kairoFrames().fx) renderChargeOrb(p, b, p.ps.beam);
   },
 
   renderFx(p, b) {

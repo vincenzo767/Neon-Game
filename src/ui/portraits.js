@@ -14,7 +14,33 @@
 //   twins   { ...second figure overrides } draws two pilots side by side
 //   suit    flight-suit colour override
 
+import { pilotArt } from '../core/pilotArt.js';
+
 const TAU = Math.PI * 2;
+
+/**
+ * Hand-made portrait (KAIRO_ART_TEST): the painting, cover-fitted, with a cool
+ * grade toward the pilot colour (the painted backdrop is a flat mint), a dark
+ * lower vignette and a slow scan line, so it sits with the neon UI.
+ */
+function drawArtPortrait(ctx, W, H, img, def, t) {
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  const s = Math.max(W / iw, H / ih) * (1.02 + 0.01 * Math.sin(t * 0.6)); // slow breathing zoom
+  const dw = iw * s, dh = ih * s;
+  ctx.drawImage(img, (W - dw) / 2, 0, dw, dh);
+  const col = def.color || [0.3, 0.9, 1];
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = rgb([0.55 + col[0] * 0.35, 0.65 + col[1] * 0.25, 0.8 + col[2] * 0.2]);
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = 'source-over';
+  const v = ctx.createLinearGradient(0, H * 0.55, 0, H);
+  v.addColorStop(0, 'rgba(3,4,12,0)'); v.addColorStop(1, 'rgba(3,4,12,0.75)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  const sy = ((t * 0.35) % 1) * H;
+  const scan = ctx.createLinearGradient(0, sy - H * 0.06, 0, sy + H * 0.06);
+  scan.addColorStop(0, rgb(col, 0)); scan.addColorStop(0.5, rgb(col, 0.12)); scan.addColorStop(1, rgb(col, 0));
+  ctx.fillStyle = scan; ctx.fillRect(0, sy - H * 0.06, W, H * 0.12);
+}
 
 function rgb(c, a = 1) { return `rgba(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)},${a})`; }
 
@@ -36,6 +62,8 @@ export function drawPortrait(canvas, def, t = 0) {
   const W = canvas.width, H = canvas.height;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, W, H);
+  const art = !def.locked && pilotArt(def.id);
+  if (art && art.images.portrait) { drawArtPortrait(ctx, W, H, art.images.portrait, def, t); return; }
   ctx.scale(W / 120, H / 150);
 
   const col = def.color || [0.5, 0.5, 0.6];

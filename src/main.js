@@ -11,8 +11,11 @@ import { BIOMES } from './stages/biomes.js';
 import { BOSSES, bossForStage, archetypeDeck } from './bosses/index.js';
 import { dmgFlags } from './core/damage.js';
 import { attachAudio } from './audio/engine.js';
+import { loadPilotArt } from './core/pilotArt.js';
 
-function boot() {
+async function boot() {
+  // Hand-made pilot art must be in memory before the atlas is built (never throws).
+  await loadPilotArt();
   const stage = document.getElementById('stage');
   try {
     const game = new Game({
@@ -25,7 +28,11 @@ function boot() {
     // Shareable runs: ?seed=ABCD1234 replays the same stage sequence.
     const seed = new URLSearchParams(location.search).get('seed');
     if (seed) game.seed = seed.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) || game.seed;
-    game.setScene(new TitleScene()); // M7b: title → attract → difficulty → pilot select
+    // Art test (KAIRO_ART_TEST.md): ?test=kairo opens Kairo's test range directly.
+    if (new URLSearchParams(location.search).get('test') === 'kairo') {
+      const [{ KairoTestScene }, { pilotById }] = await Promise.all([import('./scenes/KairoTestScene.js'), import('./pilots/index.js')]);
+      game.setScene(new KairoTestScene(pilotById('kairo')));
+    } else game.setScene(new TitleScene()); // M7b: title → attract → difficulty → pilot select
     game.start();
     // Exposed for console debugging only.
     window.__npo = game;
