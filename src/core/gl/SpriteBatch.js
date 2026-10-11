@@ -9,6 +9,11 @@ import { WORLD_W, WORLD_H } from '../constants.js';
 // alpha (`add` = 1). Mixed additive/alpha sprites therefore never break the
 // batch, and the whole frame is typically 1-3 draw calls even with 5k+
 // sprites.
+//
+// Pilot art (core/pilotArt.js) lives in small per-pilot textures: a frame
+// with a `tex` field is drawn from that texture. The batch flushes and
+// rebinds only when consecutive sprites need different textures, so frames
+// from the main atlas (no `tex`) keep batching as before.
 
 const VS = `#version 300 es
 layout(location=0) in vec2 a_corner;
@@ -94,6 +99,7 @@ export class SpriteBatch {
   begin(texture, viewX = 0, viewY = 0) {
     const gl = this.gl;
     this.texture = texture;
+    this.mainTexture = texture;
     this.viewX = viewX;
     this.viewY = viewY;
     this.count = 0;
@@ -114,6 +120,8 @@ export class SpriteBatch {
    * @param add  0 = alpha blend, 1 = additive, in-between = mix
    */
   draw(frame, x, y, w, h, rot, r, g, b, a, add) {
+    const tex = frame.tex || this.mainTexture;
+    if (tex !== this.texture) this._bind(tex);
     if (this.count >= this.capacity) this.flush();
     const d = this.data;
     let i = this.count * FLOATS;
@@ -127,6 +135,15 @@ export class SpriteBatch {
   /** Convenience: draw at the frame's native size times `scale`. */
   sprite(frame, x, y, scale = 1, rot = 0, a = 1, add = 0) {
     this.draw(frame, x, y, frame.w * scale, frame.h * scale, rot, 1, 1, 1, a, add);
+  }
+
+  /** Switch texture mid-run (flushes what was queued for the previous one). */
+  _bind(tex) {
+    this.flush();
+    const gl = this.gl;
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    this.texture = tex;
   }
 
   flush() {

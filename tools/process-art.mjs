@@ -1,29 +1,36 @@
-// Kairo Vance art pipeline (KAIRO_ART_TEST.md, Step 2). Repeatable: reads the
-// hand-made art from SRC (never modified) and writes game-ready files to OUT.
+// Pilot art pipeline (ART_PIPELINE.md). Repeatable: reads a pilot's hand-made
+// art from src/pilot concept art/<folder>/ (never modified) and writes
+// game-ready files to public/assets/pilots/<id>/. Settings: tools/art.config.mjs.
 //
-//   node tools/process-kairo.mjs                 process everything
-//   node tools/process-kairo.mjs --reset-anchors also overwrite kairo.anchors.json
-//   node tools/process-kairo.mjs --demo-bgremoval  run the background-removal path
-//                                                  on a synthetic dark/red-glow copy
+//   node tools/process-art.mjs <id>                   process everything
+//   node tools/process-art.mjs <id> --reset-anchors   also overwrite <id>.anchors.json
+//   node tools/process-art.mjs <id> --demo-bgremoval  run the background-removal path
+//                                                     on a synthetic dark/red-glow copy
 //
 // Outputs (OUT):
-//   kairo_back@2x.png / kairo_back@1x.png              in-game sprite (360 / 180 px tall + padding)
-//   kairo_back_outline@2x.png / _outline@1x.png        same with a dark outline
-//   kairo_front@2x.png / kairo_front@1x.png            select preview + cut-in (600 / 300 px tall)
-//   kairo_portrait.jpg / kairo_portrait_sm.jpg         4:5 crop (432x540 / 240x300)
-//   kairo.anchors.json                                 anchor points in @2x image pixels
-// Previews (PREVIEW): before/after sheets for eyeballing the processing.
+//   <id>_back@2x.png / <id>_back@1x.png              in-game sprite (360 / 180 px tall + padding)
+//   <id>_back_outline@2x.png / _outline@1x.png       same with a dark outline
+//   <id>_front@2x.png / <id>_front@1x.png            select preview + cut-in (600 / 300 px tall)
+//   <id>_portrait.jpg / <id>_portrait_sm.jpg         4:5 crop (432x540 / 240x300)
+//   <id>.anchors.json                                anchor points in @2x image pixels
+// <id>.layers.json (layer masks) is hand-written; it is only read for the overlay.
+// Previews (screenshots/<id>/process/): before/after sheets + anchor/mask overlay.
 
 import sharp from 'sharp';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PILOT_ART } from './art.config.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SRC = path.join(ROOT, 'src/pilot concept art/Kairo Vance');
-const OUT = path.join(ROOT, 'public/assets/pilots/kairo');
-const PREVIEW = path.join(ROOT, 'screenshots/kairo/process');
-const args = new Set(process.argv.slice(2));
+const argv = process.argv.slice(2);
+const ID = argv.find((a) => !a.startsWith('--'));
+const CFG = PILOT_ART[ID];
+if (!CFG) { console.error(`usage: node tools/process-art.mjs <${Object.keys(PILOT_ART).join('|')}> [--reset-anchors] [--demo-bgremoval]`); process.exit(1); }
+const SRC = path.join(ROOT, 'src/pilot concept art', CFG.folder);
+const OUT = path.join(ROOT, 'public/assets/pilots', ID);
+const PREVIEW = path.join(ROOT, 'screenshots', ID, 'process');
+const args = new Set(argv);
 
 const BACK_H = { '2x': 360, '1x': 180 };     // trimmed sprite height per export
 const PAD = { '2x': 6, '1x': 3 };            // transparent border (room for the outline)
@@ -31,29 +38,8 @@ const OUTLINE = { '2x': 4, '1x': 2 };        // outline thickness in export pixe
 const OUTLINE_RGB = [8, 10, 18];
 const FRONT_H = { '2x': 600, '1x': 300 };
 
-// In-game sprite source (owner's pick, after the Step 7 approval): the mecha
-// flying feet-first: the rifles and the chest gun point up the screen. The
-// feet (top) never fire. Was Top-Down_Back.png.
-const BACK_SRC = 'top_down_main.png';
-
-// Anchor estimates in BACK_SRC source pixels (see ASSET_NOTES.md).
-// The runtime file (kairo.anchors.json) is only rewritten with --reset-anchors,
-// so values corrected in the F9 debug editor survive re-processing.
-const SOURCE_ANCHORS = {
-  hitbox: [511, 800],      // chest centre: lands on player.x/y
-  head: [511, 1090],
-  gunL: [445, 540],        // chest gun: muzzles either side of the central spike,
-  gunR: [577, 540],        // 8 units apart like the old twin lances
-  rifleL: [92, 200],       // tips of the long black rifles (tier-4 extra lances)
-  rifleR: [932, 200],
-  beam: [511, 518],        // chest gun tip (focus rail beam origin)
-  packL: [452, 1300],      // wide back thrusters under the skirt
-  packR: [570, 1300],
-  footL: [390, 1290],      // red-tipped foot thrusters
-  footR: [632, 1290],
-  calfL: [258, 1272],      // red binder vents (small flames)
-  calfR: [764, 1272],
-};
+const BACK_SRC = CFG.back;
+const SOURCE_ANCHORS = CFG.anchors;
 
 // ------------------------------------------------------------------ helpers
 
@@ -75,7 +61,7 @@ function hasRealAlpha({ data }) {
  * pixels within `tol` of the edge colour (and dark, reddish glow pixels),
  * then feather the cut by `feather` px.
  */
-function removeBackground(img, tol = 16, feather = 1.5, maxGrad = 10) {
+function removeBackground(img, tol = 16, feather = 1.5, maxGrad = 10, glowRule = CFG.glowRule) {
   const { data, w, h } = img;
   // Local contrast: backgrounds and baked glows are smooth; line art and dark
   // armour panels are not, so the fill stops at the silhouette's outline even
@@ -102,7 +88,7 @@ function removeBackground(img, tol = 16, feather = 1.5, maxGrad = 10) {
     const d = Math.hypot(r - med[0], g - med[1], b - med[2]);
     const lum = 0.3 * r + 0.59 * g + 0.11 * b;
     // Baked glow: dark, red-dominant haze around the silhouette.
-    const glow = lum < 110 && r > g * 1.4 && r > b * 1.3;
+    const glow = glowRule && lum < 110 && r > g * 1.4 && r > b * 1.3;
     return (d < tol || glow) && grad(p) < maxGrad;
   };
   const bg = new Uint8Array(w * h);
@@ -237,7 +223,7 @@ async function processBack(srcFile, label = 'back') {
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
   fs.mkdirSync(PREVIEW, { recursive: true });
-  const log = (...a) => console.log('[kairo]', ...a);
+  const log = (...a) => console.log(`[${ID}]`, ...a);
 
   // 1–4. In-game sprite (back view).
   const back = await processBack(path.join(SRC, BACK_SRC));
@@ -247,7 +233,7 @@ async function main() {
   const written = {};
   for (const k of ['2x', '1x']) {
     const { img } = back.out[k];
-    const f = `kairo_back@${k}.png`, fo = `kairo_back_outline@${k}.png`;
+    const f = `${ID}_back@${k}.png`, fo = `${ID}_back_outline@${k}.png`;
     await fromRaw(img).png({ compressionLevel: 9 }).toFile(path.join(OUT, f));
     await fromRaw(outlined(img, OUTLINE[k])).png({ compressionLevel: 9 }).toFile(path.join(OUT, fo));
     written[k] = { w: img.w, h: img.h };
@@ -256,33 +242,35 @@ async function main() {
   await sheet(path.join(PREVIEW, 'back_before_after.png'), [
     back.before,
     await fromRaw(back.out['2x'].img).png().toBuffer(),
-    await sharp(path.join(OUT, 'kairo_back_outline@2x.png')).toBuffer(),
+    await sharp(path.join(OUT, `${ID}_back_outline@2x.png`)).toBuffer(),
   ]);
 
   // 5. Front view (select preview, cut-in) and portrait.
-  const front = cleanAlpha(await raw(path.join(SRC, 'Top-Down_Front.png')));
+  const frontRaw = await raw(path.join(SRC, CFG.front));
+  if (!hasRealAlpha(frontRaw)) { removeBackground(frontRaw); log(`${CFG.front}: no transparency → background removed by flood fill`); }
+  const front = cleanAlpha(frontRaw);
   const fbox = alphaBox(front);
   const ftrim = await fromRaw(front).extract(fbox).png().toBuffer();
   for (const k of ['2x', '1x']) {
-    const f = `kairo_front@${k}.png`;
+    const f = `${ID}_front@${k}.png`;
     const r = await sharp(ftrim).resize({ height: FRONT_H[k], kernel: 'lanczos3' }).raw().toBuffer({ resolveWithObject: true });
     await fromRaw(cleanAlpha({ data: r.data, w: r.info.width, h: r.info.height })).png({ compressionLevel: 9 }).toFile(path.join(OUT, f));
     log(`${f}: ${r.info.width}x${r.info.height}`);
   }
   await sheet(path.join(PREVIEW, 'front_before_after.png'), [
-    await sharp(path.join(SRC, 'Top-Down_Front.png')).removeAlpha().png().toBuffer(), // what the hidden RGB holds
-    await sharp(path.join(OUT, 'kairo_front@2x.png')).toBuffer(),
+    await sharp(path.join(SRC, CFG.front)).removeAlpha().png().toBuffer(), // what the hidden RGB holds
+    await sharp(path.join(OUT, `${ID}_front@2x.png`)).toBuffer(),
   ]);
 
-  const pm = await sharp(path.join(SRC, 'pilot_portrait.jpg')).metadata();
+  const pm = await sharp(path.join(SRC, CFG.portrait)).metadata();
   const ph = Math.min(pm.height, Math.round(pm.width * 5 / 4));
-  const crop = sharp(path.join(SRC, 'pilot_portrait.jpg')).extract({ left: 0, top: 0, width: pm.width, height: ph });
-  await crop.clone().resize(432, 540).jpeg({ quality: 92, mozjpeg: true }).toFile(path.join(OUT, 'kairo_portrait.jpg'));
-  await crop.clone().resize(240, 300).jpeg({ quality: 90, mozjpeg: true }).toFile(path.join(OUT, 'kairo_portrait_sm.jpg'));
-  log(`kairo_portrait.jpg 432x540, kairo_portrait_sm.jpg 240x300 (from ${pm.width}x${ph} crop)`);
+  const crop = sharp(path.join(SRC, CFG.portrait)).extract({ left: 0, top: 0, width: pm.width, height: ph });
+  await crop.clone().resize(432, 540).jpeg({ quality: 92, mozjpeg: true }).toFile(path.join(OUT, `${ID}_portrait.jpg`));
+  await crop.clone().resize(240, 300).jpeg({ quality: 90, mozjpeg: true }).toFile(path.join(OUT, `${ID}_portrait_sm.jpg`));
+  log(`${ID}_portrait.jpg 432x540, ${ID}_portrait_sm.jpg 240x300 (from ${pm.width}x${ph} crop)`);
 
   // 6. Anchors, scaled to the @2x export (origin = its top-left, padding included).
-  const anchorsFile = path.join(OUT, 'kairo.anchors.json');
+  const anchorsFile = path.join(OUT, `${ID}.anchors.json`);
   if (!fs.existsSync(anchorsFile) || args.has('--reset-anchors')) {
     const s = back.out['2x'].scale, pad = PAD['2x'];
     const anchors = {};
@@ -291,25 +279,25 @@ async function main() {
     }
     const json = {
       version: 1,
-      pilot: 'kairo',
-      space: 'kairo_back@2x.png pixels, origin top-left (1x = half)',
+      pilot: ID,
+      space: `${ID}_back@2x.png pixels, origin top-left (1x = half)`,
       image: { w: written['2x'].w, h: written['2x'].h, artH: BACK_H['2x'], pad },
       anchors,
     };
     fs.writeFileSync(anchorsFile, anchorsJson(json));
-    log('kairo.anchors.json written');
-  } else log('kairo.anchors.json kept (use --reset-anchors to regenerate)');
+    log(`${ID}.anchors.json written`);
+  } else log(`${ID}.anchors.json kept (use --reset-anchors to regenerate)`);
 
   if (args.has('--demo-bgremoval')) await demoBgRemoval(log);
   await previewOverlay(log);
 }
 
-/** Anchor + layer-mask overlay on the @2x sprite (screenshots/kairo/process/overlay.png). */
+/** Anchor + layer-mask overlay on the @2x sprite (screenshots/<id>/process/overlay.png). */
 async function previewOverlay(log) {
-  const lf = path.join(OUT, 'kairo.layers.json'), af = path.join(OUT, 'kairo.anchors.json');
+  const lf = path.join(OUT, `${ID}.layers.json`), af = path.join(OUT, `${ID}.anchors.json`);
   if (!fs.existsSync(lf) || !fs.existsSync(af)) return;
   const layers = JSON.parse(fs.readFileSync(lf, 'utf8')), anchors = JSON.parse(fs.readFileSync(af, 'utf8')).anchors;
-  const K = 2, img = path.join(OUT, 'kairo_back@2x.png');
+  const K = 2, img = path.join(OUT, `${ID}_back@2x.png`);
   const m = await sharp(img).metadata();
   const cols = { wingL: '#38f', wingR: '#f3a' };
   let svg = '';
@@ -325,7 +313,7 @@ async function previewOverlay(log) {
     { input: await sharp(img).resize(W, H).toBuffer() },
     { input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">${svg}</svg>`) },
   ]).png().toFile(path.join(PREVIEW, 'overlay.png'));
-  log('anchor/layer overlay → screenshots/kairo/process/overlay.png');
+  log(`anchor/layer overlay → screenshots/${ID}/process/overlay.png`);
 }
 
 /** Prove the no-transparency path: bake the sprite onto a dark background with
@@ -342,7 +330,7 @@ async function demoBgRemoval(log) {
   const r = await processBack(tmp, 'demo');
   fs.unlinkSync(tmp);
   await sheet(path.join(PREVIEW, 'bgremoval_demo.png'), [baked, await fromRaw(r.out['2x'].img).png().toBuffer()]);
-  log(`background-removal demo → screenshots/kairo/process/bgremoval_demo.png (removed=${r.removed})`);
+  log(`background-removal demo → screenshots/${ID}/process/bgremoval_demo.png (removed=${r.removed})`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

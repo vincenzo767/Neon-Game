@@ -1,29 +1,36 @@
 # Pilot Art Pipeline
 
-How a pilot's procedural vehicle is replaced with hand-made art. Kairo Vance
-(Stormlance) is the reference: `KAIRO_ART_TEST.md` was the brief, and
-`src/pilot concept art/Kairo Vance/ASSET_NOTES.md` records his decisions.
-Follow these steps for each of the other 16 pilots.
+How a pilot's procedural vehicle is replaced with hand-made art. Done so far:
+**Kairo Vance** (Stormlance; brief `KAIRO_ART_TEST.md`) and **Mira Solenne**
+(Halo Sprite). Each pilot's `src/pilot concept art/<Pilot Name>/ASSET_NOTES.md`
+records its decisions. Follow these steps for each of the other 15 pilots.
 
 **Ground rules**
 - Source art is read-only. Processed files go to `public/assets/pilots/<id>/`.
 - The procedural sprite stays as the fallback. A pilot whose art fails to load plays exactly as before.
 - Gameplay (hitbox, speed, damage, fire rate, abilities) doesn't change unless the owner approves it. Measure with `tools/dps.mjs` before and after.
+- **The feet never fire.** Shots leave from the chest gun and the guns the art actually shows (rifles, arm guns).
+- Default size: **90 units tall**. The hitbox never changes with size.
 
 ---
 
 ## 1. Folder layout
 
 ```
-src/pilot concept art/<Pilot Name>/        SOURCE (read-only)
-  Top-Down_Back.png      in-game sprite: seen from behind/above, head at the top
-  Top-Down_Front.png     select-card preview + cut-in (face visible)
+src/pilot concept art/<Pilot Name>/        SOURCE (read-only; file names set in tools/art.config.mjs)
+  top_down_main.png/.jpg in-game sprite: flies up the screen (Kairo and Mira fly feet-first)
+  top-down_front.png     select-card preview + cut-in (face visible)
   pilot_portrait.jpg     select card + cut-in portrait
-  Parts Sheet.png        reference only
-  FX Sprite Sheet.png    reference only (effects are rebuilt in code)
-  ASSET_NOTES.md         written in step 3 below
+  parts sheet            reference only
+  FX sheet               reference only (effects are rebuilt in code)
+  ASSET_NOTES.md         written in step 2 below
 
-tools/process-<id>.mjs                     processing script (copy of process-kairo.mjs)
+tools/art.config.mjs                       per-pilot settings: source files, background options, anchor estimates
+tools/process-art.mjs                      processing script: node tools/process-art.mjs <id>   (npm run art:<id>)
+
+src/pilots/art/mechaArt.js                 shared: sprite layers, animation, thrusters, anchors (createMechaArt)
+src/pilots/art/mechaFx.js                  shared: lances, shards, beam, charge orb, muzzle flares, hit sparks (createMechaFx)
+src/pilots/<id>Art.js                      the pilot's config: palette, built-in anchors, flames, nozzles, exhaust
 
 public/assets/pilots/<id>/                 PROCESSED (served by Vite; edit only via the script / F9 editor)
   <id>_back@2x.png           sprite, 360 px of art tall + 6 px padding
@@ -45,14 +52,17 @@ screenshots/<id>/                          test-range captures for review
 
 ## 2. Art requirements
 
-**`Top-Down_Back.png`** is the most important file.
-- The mecha must face **up** the screen (head at the top) and be mirror-symmetric where possible.
-- It needs real transparency. Remove the background by hand (remove.bg, or Photopea: Magic Wand → Delete). The script's automatic fallback leaves speckle on dark armour.
-- No baked glow. The game adds its own glow.
+**The in-game sprite** is the most important file.
+- The mecha must fly **up** the screen and be mirror-symmetric where possible.
+- Transparency:
+  - Best: real transparency (remove the background by hand: remove.bg, or Photopea: Magic Wand → Delete).
+  - A **pure black** background also works. The script cuts it out cleanly (Mira's JPEG).
+  - A dark *coloured* background leaves speckle on dark armour.
+- No baked glow. The game adds its own glow. If the art has dark warm shading (gold, orange), set `glowRule: false` in `tools/art.config.mjs`.
 
-**`Top-Down_Front.png`**
-- Real transparency.
-- The script zeroes the colour hidden under transparent pixels and snaps near-opaque alpha to 255, so this file is fine with them.
+**The front view**
+- Real transparency or a pure black background; both get the same automatic removal.
+- The script zeroes the colour hidden under transparent pixels and snaps near-opaque alpha to 255.
 
 **Portrait**
 - Any size. Taller than 4:5 is cropped from the top.
@@ -72,18 +82,20 @@ screenshots/<id>/                          test-range captures for review
    - anchor estimates in source pixels;
    - the layer split plan.
 3. **Process.**
-   - Copy `tools/process-kairo.mjs` to `tools/process-<id>.mjs`.
-   - Change `SRC`, `OUT`, `PREVIEW`, the output names, and `SOURCE_ANCHORS` (source-pixel estimates).
-   - Add an npm script (`"art:<id>"`) and run it.
+   - Add the pilot to `tools/art.config.mjs`: folder, file names, `glowRule`, and anchor estimates in source pixels.
+   - Add an npm script (`"art:<id>": "node tools/process-art.mjs <id>"`) and run it.
    - Check `screenshots/<id>/process/*_before_after.png`. `--demo-bgremoval` exercises the fallback.
 4. **Layer masks.**
    - Write `<id>.layers.json`; the format is below.
    - Re-run the script and check `screenshots/<id>/process/overlay.png`.
    - The masks should cover only the parts that move (wings, binders, arms holding weapons).
 5. **Register the art** in `ART_MANIFEST` in `src/core/pilotArt.js`.
-6. **Hook up the pilot.** Copy `src/pilots/kairoArt.js` (sprite, layers, animation, thrusters) and `kairoFx.js` (weapon FX). Then wire the hooks (section 7) into the pilot definition.
+6. **Hook up the pilot.**
+   - Write `src/pilots/<id>Art.js` (see `miraArt.js`): `createMechaArt({ id, pal, defaults, flames, nozzles, exhaust, wingAnchors })` and `createMechaFx(art, { body, lanceLen })`.
+   - In the pilot definition, set `art: <id>Art`, call `buildSprites` from `sprites()` and `animate` from `update()`, and wire the hooks (section 7).
+   - Tag every shot's `shots.aux`: the tier for lances, `SHARD_TAG` for option shots.
 7. **Test range.**
-   - Copy `KairoTestScene` and add a `?test=<id>` route in `src/main.js`.
+   - `?test=<id>` works for any pilot whose definition has `art` (`PilotArtTestScene`).
    - Use F9 to drag the anchors onto the art, then **COPY JSON** → paste into `<id>.anchors.json`.
    - Check every tier, focus, the special, banking, the ultimate cut-in, `&noart`, `&atlas=2048`, and the 1,500-bullet storm (`B`).
    - Capture screenshots to `screenshots/<id>/`, then stop for owner review.
@@ -91,7 +103,7 @@ screenshots/<id>/                          test-range captures for review
 
 ---
 
-## 4. Processing script: `tools/process-<id>.mjs`
+## 4. Processing script: `tools/process-art.mjs <id>`
 
 The script uses `sharp`, a dev dependency.
 
@@ -102,13 +114,13 @@ The script uses `sharp`, a dev dependency.
 | `--demo-bgremoval` | Bake the sprite onto a dark/red background, remove it, and save a before/after. |
 
 What the script does to the back view, in order:
-1. If it has no real alpha, flood-fill the background from the edges. The fill stops at line-art contrast and also removes dark red glow. The cut is then feathered by about 1.5 px.
+1. If it has no real alpha, flood-fill the background from the edges. The fill stops at line-art contrast and, if `glowRule` is on, also removes dark red glow. The cut is then feathered by about 1.5 px.
 2. Zero the colour under transparent pixels and snap alpha ≥ 250 to 255.
 3. Trim to the alpha bounding box.
 4. Resize to 360 / 180 px tall and add a 6 / 3 px border.
 5. Make the outline variant: dilate the alpha and composite the art over #080a12.
 
-The front view is cleaned, trimmed and resized. The portrait gets a 4:5 crop from the top.
+The front view gets the same background removal when it has no alpha, then it is cleaned, trimmed and resized. The portrait gets a 4:5 crop from the top.
 
 ---
 
@@ -150,7 +162,7 @@ The `anchors` block above is cut down; Kairo's real file has more entries (see t
 | `footL/R`, `calfL/R` | foot thruster flames + binder vents, exhaust | no |
 | `head` | reference | no |
 
-**Fallback copy.** Keep a built-in copy (`DEFAULT_ANCHORS` in `kairoArt.js`) in sync with the JSON. Gameplay anchors must not depend on whether the file loaded.
+**Fallback copy.** Keep a built-in copy (`defaults` in `<id>Art.js`) in sync with the JSON. Gameplay anchors must not depend on whether the file loaded.
 
 ---
 
@@ -184,7 +196,13 @@ The `poly` arrays above are cut down; real polygons have many more points.
 
 **Motion limits.** Keep slides ≤ the seam and rotations within ±0.05 rad. Anything bigger shows double edges.
 
-**Atlas cost.** The split runs at atlas-build time (`splitLayers` in `kairoArt.js`). Each pilot adds one full frame plus a body and one per layer, for both plain and outline variants.
+**Per-pilot textures.** A pilot's art never goes into the shared atlas, so any number of pilots can have art.
+- The split (`splitLayers` in `art/mechaArt.js`) runs the first time the pilot is drawn (`ensureArt`).
+- It produces the pilot's own small texture: 1024² (2048² if the art doesn't fit), plain and outline variants.
+- Frames from that texture carry `frame.tex`. `SpriteBatch` switches textures automatically, adding about 2 extra draw calls per frame.
+- The frames are appended to the renderer's frame list, so particles can use them (afterimages).
+- The texture is re-uploaded after a WebGL context restore.
+- With Kairo and Mira, the shared 4096 atlas stays at 81 %, the same as before any pilot art.
 - On the 4096 atlas, Kairo takes about 7 % of the space.
 - `main` already falls back to 0.85 texel scale on the 2048 atlas.
 
@@ -217,7 +235,9 @@ All hooks are optional. A pilot without them runs the original code paths.
 
 Effects are code-built and additive, and they feed the bloom.
 
-**Palette.** Sample it from the pilot's FX sheet. Kairo's is white-hot core → cyan → electric blue → violet edge (`PAL` in `kairoArt.js`). Keep body colours below the bloom's white clip so the hue survives.
+**Palette.** Sample it from the pilot's FX sheet (`pal: { core, hot, mid, edge }` in `<id>Art.js`):
+- Kairo: white-hot core → cyan → electric blue → violet edge.
+- Mira: white-hot → yellow → amber-gold → orange edge. Keep body colours below the bloom's white clip so the hue survives.
 
 **Hit area = bright core.** Draw each shot's bright core exactly as wide as its hit radius (`2r`). The outer glow is extra and semi-transparent.
 

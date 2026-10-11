@@ -1,14 +1,22 @@
 import { WORLD_W, WORLD_H } from '../core/constants.js';
 import { mirrorPath, outline, canopy, glowDot, drawBolt, neonStroke } from '../fx/art.js';
+import { miraArt, miraFx } from './miraArt.js';
 
-// MIRA SOLENNE — HALO SPRITE (drone ship)
+// MIRA SOLENNE — HALO SPRITE (drone mecha)
 // Homing light-needles · Focus: tight hard-homing needles · Special: shield orbs
 // Bomb: Halo Bloom · Ultimate: Prism Lattice (reflects every enemy bullet)
+//
+// MIRA ART TEST: the hand-made mecha art (miraArt.js) replaces drawShip()
+// when it loads; drawShip() stays as the automatic fallback. Needles leave
+// from the chest gun (the arm guns add the outermost pair from tier 3);
+// the feet never fire.
 
 const GOLD = [1.0, 0.82, 0.4];
 const PINK = [1.0, 0.5, 0.8];
 const UP = -Math.PI / 2;
 const TAU = Math.PI * 2;
+const REF = 240; // arm-gun needles aim where the old outer needles were this far ahead
+const { SHARD_TAG } = miraFx;
 
 function drawShip(ctx, w, h, tier) {
   const cx = w / 2, cy = 22;
@@ -85,10 +93,12 @@ export default {
   id: 'mira',
   name: 'MIRA SOLENNE',
   vehicle: 'HALO SPRITE',
-  role: 'Drone Ship',
-  bio: 'A former orbital-relay engineer who now flies her own swarm. Mira\'s needles find any target she sees, and she sees almost everything.',
+  role: 'Drone Mecha',
+  bio: 'A former orbital-relay engineer who now flies her own swarm in the Halo Sprite, a white and gold mecha with twin arm guns. Mira\'s needles find any target she sees, and she sees almost everything.',
   color: GOLD,
   css: '#ffd27a',
+  // Art test: the Halo Sprite's paint (white/grey armour, gold trim) + gold energy.
+  palette: { armour: '#eceef2', frame: '#4a4e58', trim: '#f2b01e', energy: '#ffd27a' },
   stats: { speed: 3, power: 3, range: 4, bomb: 3 },
   speed: { normal: 4.3, focus: 1.9 },
   hitbox: 2.6,
@@ -96,11 +106,13 @@ export default {
   engines: [[0, 18]],
   engineColor: [1.0, 0.7, 0.45],
   optionSprite: 'm_drone',
-  portrait: { skin: '#f2cfb6', hair: '#efe2c6', style: 'long', eyes: 'eyes', iris: '#f0b040', accent: 'halo' },
+  // Procedural fallback, matched to pilot_portrait.jpg (ash-blonde hair, red eyes, violet outfit).
+  portrait: { skin: '#f6dccb', hair: '#cfc6ae', style: 'long', eyes: 'eyes', iris: '#d8202c', suit: '#8a5cc8' },
   weapons: {
-    main: 'Light Needles — wide homing spread',
+    main: 'Light Needles — a wide homing spread from the chest gun; the arm guns join from tier 3',
     focus: 'Seeker Lance — tight hard-homing needles',
   },
+  art: miraArt,
   special: {
     name: 'SHIELD ORBS',
     desc: 'Three orbiting orbs erase bullets they touch',
@@ -170,7 +182,16 @@ export default {
     for (let t = 1; t <= 4; t++) atlas.add(`ship_mira_${t}`, 46, 44, (c, w, h) => drawShip(c, w, h, t), { scale: 3 });
     atlas.add('m_drone', 12, 12, drawDrone, { scale: 3 });
     atlas.add('m_needle', 18, 4, drawNeedle, { scale: 3 });
+    miraArt.buildSprites(atlas);
   },
+
+  // Hand-made art hooks (each returns false without the art → procedural look).
+  renderShip: (p, b, x, y, a) => miraArt.renderMecha(p, b, x, y, a),
+  exhaust: miraArt.exhaust,
+  renderShots: miraFx.renderShots,
+  hitSpark: miraFx.hitSpark,
+
+  update(p) { miraArt.animate(p); },
 
   init(p, w) {
     p.ps.fNeedle = w.r.frame('m_needle');
@@ -201,14 +222,29 @@ export default {
     const spread = p.focus ? 0.12 : 0.55;
     const homing = p.focus ? 0.14 : 0.06;
     const speed = p.focus ? 13 : 11;
+    // Art test (approved): the fan leaves from the chest gun; from tier 3 the
+    // outermost pair leaves from the arm guns, aimed where the old outer
+    // needles were REF ahead. The feet never fire.
+    const [gx, gy] = miraArt.anchor('gun');
+    const armsFrom = t >= 3;
     for (let k = 0; k < n; k++) {
-      const a = UP + (k / (n - 1) - 0.5) * spread;
-      const i = w.shot(p.x + (k - (n - 1) / 2) * 4, p.y - 16, a, speed, f, 0.8, 5);
-      if (i >= 0) S.behave(i, p.focus ? 0.9 : 0.75, 140, 0, homing);
+      const d = (k / (n - 1) - 0.5) * spread;
+      const ox = (k - (n - 1) / 2) * 4;
+      let x = p.x + gx + ox, y = p.y + gy, a = UP + d;
+      if (armsFrom && (k === 0 || k === n - 1)) {
+        const [mx, my] = miraArt.anchor(k === 0 ? 'armL' : 'armR');
+        const tx = ox + Math.tan(d) * (-16 + REF);
+        x = p.x + mx; y = p.y + my; a = UP + Math.atan2(tx - mx, my + REF);
+      }
+      const i = w.shot(x, y, a, speed, f, 0.8, 5);
+      if (i >= 0) { S.behave(i, p.focus ? 0.9 : 0.75, 140, 0, homing); S.aux[i] = t; } // aux: visual tag
     }
+    const flash = (name, size) => { const [fx, fy] = miraArt.animatedAnchor(p, name); miraFx.muzzleFlash(p, w, fx, fy, size); };
+    flash('gun', 22);
+    if (armsFrom) { flash('armL', 18); flash('armR', 18); }
     for (const o of p.options) {
       const i = w.shot(o.x, o.y - 6, UP, 12, f, 0.6, 5);
-      if (i >= 0) S.behave(i, 0.6, 140, 0, 0.1);
+      if (i >= 0) { S.behave(i, 0.6, 140, 0, 0.1); S.aux[i] = SHARD_TAG; }
     }
   },
 

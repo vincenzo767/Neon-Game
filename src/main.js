@@ -28,11 +28,12 @@ async function boot() {
     // Shareable runs: ?seed=ABCD1234 replays the same stage sequence.
     const seed = new URLSearchParams(location.search).get('seed');
     if (seed) game.seed = seed.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) || game.seed;
-    // Art test (KAIRO_ART_TEST.md): ?test=kairo opens Kairo's test range directly.
-    if (new URLSearchParams(location.search).get('test') === 'kairo') {
-      const [{ KairoTestScene }, { pilotById }] = await Promise.all([import('./scenes/KairoTestScene.js'), import('./pilots/index.js')]);
-      game.setScene(new KairoTestScene(pilotById('kairo')));
-    } else game.setScene(new TitleScene()); // M7b: title → attract → difficulty → pilot select
+    // Art test (ART_PIPELINE.md): ?test=<id> opens that pilot's art test range directly.
+    const testId = new URLSearchParams(location.search).get('test');
+    const [{ PilotArtTestScene }, { PILOTS }] = testId ? await Promise.all([import('./scenes/PilotArtTestScene.js'), import('./pilots/index.js')]) : [{}, {}];
+    const testDef = testId && PILOTS.find((d) => d.id === testId && d.art);
+    if (testDef) game.setScene(new PilotArtTestScene(testDef));
+    else game.setScene(new TitleScene()); // M7b: title → attract → difficulty → pilot select
     game.start();
     // Exposed for console debugging only.
     window.__npo = game;

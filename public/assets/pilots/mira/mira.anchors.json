@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "pilot": "mira",
+  "space": "mira_back@2x.png pixels, origin top-left (1x = half)",
+  "image": {
+    "w": 249,
+    "h": 372,
+    "artH": 360,
+    "pad": 6
+  },
+  "anchors": {
+    "hitbox": [123.2, 181.3],
+    "head": [123.2, 268.7],
+    "gun": [123.2, 113.3],
+    "armL": [52.4, 148.5],
+    "armR": [194.4, 148.5],
+    "ventL": [43.9, 359.7],
+    "ventR": [204.1, 359.7],
+    "packL": [116.7, 316],
+    "packR": [130, 316],
+    "footL": [97.3, 301.4],
+    "footR": [149.5, 301.4]
+  }
+}

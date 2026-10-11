@@ -1,7 +1,7 @@
 import { WORLD_W, WORLD_H } from '../core/constants.js';
 import { mirrorPath, chrome, neonLines, outline, canopy, glowDot, drawBolt } from '../fx/art.js';
 import { FADE_OUT } from '../fx/Particles.js';
-import { LOOK, PAL, anchor, anchorData, unitsPerPx, kairoFrames, animatedAnchor, buildKairoSprites, renderMecha, animate, exhaust } from './kairoArt.js';
+import { kairoArt, LOOK, PAL, anchor, anchorData, unitsPerPx, kairoFrames, animatedAnchor, buildKairoSprites, renderMecha, animate, exhaust } from './kairoArt.js';
 import { LANCE_R, SHARD_TAG, renderShots, renderBeam, renderChargeOrb, muzzleFlash, hitSpark } from './kairoFx.js';
 
 // KAIRO VANCE — STORMLANCE (interceptor mecha)
@@ -104,6 +104,7 @@ export default {
   engines: [[-3, 24], [3, 24]],
   engineColor: [0.4, 0.8, 1.0],
   optionSprite: 'k_pod',
+  art: kairoArt,           // hand-made art instance (test range, ?test=kairo)
   // Procedural fallback, matched to pilot_portrait.jpg (dark navy hair, brown eyes, blue jacket).
   portrait: { skin: '#e0ae86', hair: '#14202e', iris: '#6a4424', style: 'spiky', eyes: 'eyes', suit: '#24407a' },
   weapons: {
@@ -131,7 +132,7 @@ export default {
       if (art) {
         // 3-4 fading blue afterimages of the mecha.
         if (p.specialT % 3 !== 0) return;
-        const full = art[LOOK.outline ? 'outline' : 'plain'].full, A = anchorData(), k = unitsPerPx(), hb = A.anchors.hitbox;
+        const full = (art[LOOK.outline ? 'outline' : 'plain'] || art.outline).full, A = anchorData(), k = unitsPerPx(), hb = A.anchors.hitbox;
         const i = H.spawn(full.frame, p.x + (A.image.w / 2 - hb[0]) * k, p.y + (A.image.h / 2 - hb[1]) * k, 0, 0, 16);
         if (i >= 0) { H.size(i, A.image.w * k); H.color(i, 0.35, 0.9, 2.2, 0.15, 0.3, 1.4); H.look(i, 0.5, 1, FADE_OUT); }
         return;

@@ -1,4 +1,4 @@
-/* KAIRO ART TEST range (?test=kairo): tuning panel + F9 anchor editor. */
+/* Pilot art test range (?test=<id>): tuning panel + F9 anchor editor. */
 
 .kt-panel {
   position: absolute; top: calc(92 * var(--u)); left: calc(8 * var(--u)); width: calc(230 * var(--u));
