@@ -693,17 +693,17 @@ Brief: [KAIRO_ART_TEST.md](src/pilot%20concept%20art/Kairo%20Vance/KAIRO_ART_TES
 The branch stays unmerged until the owner says so.
 
 **What changed for Kairo**
-- **In-game vehicle.** The hand-made Stormlance mecha (`top_down_main.png`: flying feet-first with the twin barrels and rifles pointing up the screen) replaces the procedural ship.
-  - It is split into three layers: the body (barrels, torso, head) plus two wing assemblies (rifle, arm and binder). At rest the layers rebuild the original within 1.7/255.
+- **In-game vehicle.** The hand-made Stormlance mecha (`top_down_main.png`: flying feet-first with the chest gun and rifles pointing up the screen) replaces the procedural ship.
+  - It is split into three layers: the body (legs, torso, head) plus two wing assemblies (rifle, arm and binder). At rest the layers rebuild the original within 1.7/255.
   - Motion is all code-driven: banking tilt and squash, idle bob and wing breathing, a wing flare in focus, and a fold plus afterimages and a ribbon trail in phase-dash.
   - The default size is **90 units tall** (the owner's choice). The hitbox is unchanged (2.4).
 - **Thrusters.** Wide blue back plumes and nozzle glow at the rear, plus foot flames and small binder-vent flames. The painted red vents are kept. Flame size follows state: idle, moving, moving up, dash.
 - **Weapons (approved gameplay change).**
-  - Lances fire from the twin forward barrels, and the tier-4 extras from the rifle tips. Each is aimed where the old shot reached 240 units ahead.
-  - The focus beam starts between the barrel tips.
+  - Lances fire from the chest gun, and the tier-4 extras from the rifle tips. The feet never fire. Each is aimed where the old shot reached 240 units ahead.
+  - The focus beam starts at the chest gun.
   - `tools/dps.mjs` shows boss, single-target and wave DPS within ±1 of `main` at every tier; focus is identical.
 - **FX**, rebuilt in code from the FX sheet:
-  - diamond-tipped lances whose bright core is exactly the hit area (r = 4 / 4.5 / 5 / 6 by tier), inside a semi-transparent glow;
+  - diamond-tipped lances whose bright core is exactly the hit area (r = 5 / 5 / 5.5 / 6 by tier), inside a semi-transparent glow;
   - tier-4 ring pulses;
   - the focus beam with a solid core, travelling rings and a charge orb;
   - 2× muzzle flares and bigger hit sparks.

@@ -10,7 +10,7 @@ const LANCE = [0.25, 0.85, 1.45];
 // and the bright core of each shot is drawn exactly as wide as its hit area.
 
 /** Hit radius of a main lance per power tier (the bright core is 2r wide). */
-export const LANCE_R = [4, 4.5, 5, 6];
+export const LANCE_R = [5, 5, 5.5, 6];
 export const SHARD_TAG = 10; // shots.aux tag for option shards (lances store their tier)
 
 /** Glow fades as the screen fills with enemy bullets (readability rule). */

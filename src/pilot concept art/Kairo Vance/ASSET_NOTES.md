@@ -136,3 +136,8 @@ matches the brief's "wing-binder with rifle".
 - **Thrusters.** Wide blue back plumes come from under the skirt (`packL/R` ≈ (452, 1300) / (570, 1300)), with foot thrusters at the red-tipped feet (`footL/R` ≈ (390, 1290) / (632, 1290)) and small flames at the red binder vents (`calfL/R`).
 - **Layers.** Each wing layer is a rifle, arm and binder (pivot at the shoulder, about (300, 960)). The body is the barrels, torso and head.
 - **Anchor names.** The old `capL/R` and `wingL/R` anchors are gone. `Top-Down_Back.png` stays in the folder, unused.
+
+**Correction (owner).** The twin structures at the top of `top_down_main.png` are the **feet**, and the feet never fire.
+- Normal lances now leave from the **chest gun**: `gunL/R` ≈ (445, 540) / (577, 540), either side of the central spike. That is 8 units apart at size 90, the same spacing as the old twin lances, so wave-clear coverage is unchanged.
+- The focus beam starts at its tip, `beam` ≈ (511, 518).
+- The rifles still fire the tier-4 extras.

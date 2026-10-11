@@ -72,8 +72,8 @@ function drawPod(ctx, w, h) {
 
 function railSprite(ctx, w, h) { drawBolt(ctx, w, h, 'rgba(90,240,255,0.9)'); }
 
-// Art test (approved gameplay change): lances leave from the twin forward
-// barrels (and the rifle tips at tier 4) instead of the nose. Each lance is aimed at the point
+// Art test (approved gameplay change): lances leave from the chest gun (and
+// the rifle tips at tier 4) instead of the nose. The feet never fire. Each lance is aimed at the point
 // its old counterpart reached REF units ahead, so the covered area matches.
 // Old pattern per side s = ±1: [x, y, outward angle, damage, from tier].
 const LANCES = [
@@ -246,7 +246,7 @@ export default {
   fire(p, w) {
     const t = p.tier, S = w.shots, rail = p.ps.fRail;
     if (p.focus) {
-      // Continuous piercing beam from the central spike, re-declared every step.
+      // Continuous piercing beam from the chest gun, re-declared every step.
       const width = 5 + t * 2;
       const [bx, by] = anchor('beam');
       const bm = w.beam(p.x + bx, p.y + by, p.x + bx, -20, width, 0.2 + 0.06 * t, CYAN);

@@ -32,8 +32,8 @@ const OUTLINE_RGB = [8, 10, 18];
 const FRONT_H = { '2x': 600, '1x': 300 };
 
 // In-game sprite source (owner's pick, after the Step 7 approval): the mecha
-// flying head-down/feet-forward, so its twin forward barrels and the rifles
-// point up the screen. Was Top-Down_Back.png.
+// flying feet-first: the rifles and the chest gun point up the screen. The
+// feet (top) never fire. Was Top-Down_Back.png.
 const BACK_SRC = 'top_down_main.png';
 
 // Anchor estimates in BACK_SRC source pixels (see ASSET_NOTES.md).
@@ -42,11 +42,11 @@ const BACK_SRC = 'top_down_main.png';
 const SOURCE_ANCHORS = {
   hitbox: [511, 800],      // chest centre: lands on player.x/y
   head: [511, 1090],
-  gunL: [395, 38],         // tips of the twin forward barrels (main lance origins)
-  gunR: [627, 38],
+  gunL: [445, 540],        // chest gun: muzzles either side of the central spike,
+  gunR: [577, 540],        // 8 units apart like the old twin lances
   rifleL: [92, 200],       // tips of the long black rifles (tier-4 extra lances)
   rifleR: [932, 200],
-  beam: [511, 61],         // between the twin barrel tips (focus rail beam origin)
+  beam: [511, 518],        // chest gun tip (focus rail beam origin)
   packL: [452, 1300],      // wide back thrusters under the skirt
   packR: [570, 1300],
   footL: [390, 1290],      // red-tipped foot thrusters

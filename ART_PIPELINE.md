@@ -122,8 +122,8 @@ The front view is cleaned, trimmed and resized. The portrait gets a 4:5 crop fro
   "image": { "w": 228, "h": 372, "artH": 360, "pad": 6 },
   "anchors": {
     "hitbox": [114, 193.5],
-    "gunL": [85.8, 8.7],
-    "gunR": [142.1, 8.7]
+    "gunL": [98, 130.4],
+    "gunR": [130, 130.4]
   }
 }
 ```
@@ -143,9 +143,9 @@ The `anchors` block above is cut down; Kairo's real file has more entries (see t
 | Name | Use | Gameplay? |
 |---|---|---|
 | `hitbox` | chest centre, placed on `player.x/y` | visual placement only |
-| `gunL/R` | twin forward barrel tips: main lance origins | **yes**: shot spawn points |
+| `gunL/R` | chest gun muzzles either side of the central spike: main lance origins | **yes**: shot spawn points |
 | `rifleL/R` | long rifle tips: tier-4 extra lance origins (move with the wing layers) | **yes** |
-| `beam` | focus-beam origin + charge orb | **yes** (beam start) |
+| `beam` | chest gun tip: focus-beam origin + charge orb | **yes** (beam start) |
 | `packL/R` | wide back-thruster plumes + nozzle glow | no |
 | `footL/R`, `calfL/R` | foot thruster flames + binder vents, exhaust | no |
 | `head` | reference | no |

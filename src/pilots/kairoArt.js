@@ -26,9 +26,9 @@ const DEFAULT_ANCHORS = {
   image: { w: 228, h: 372, artH: 360, pad: 6 },
   anchors: {
     hitbox: [114, 193.5], head: [114, 263.9],
-    gunL: [85.8, 8.7], gunR: [142.1, 8.7],
+    gunL: [98, 130.4], gunR: [130, 130.4],
     rifleL: [12.3, 48], rifleR: [216.1, 48],
-    beam: [114, 14.2],
+    beam: [114, 125.1],
     packL: [99.6, 314.8], packR: [128.3, 314.8],
     footL: [84.6, 312.4], footR: [143.3, 312.4],
     calfL: [52.6, 308], calfR: [175.3, 308],
