@@ -6,7 +6,7 @@ import { pilotArt } from '../core/pilotArt.js';
 import '../ui/pilotArtTest.css';
 
 // Pilot art test range (ART_PIPELINE.md, Step 6). Open with ?test=<id> for any
-// pilot whose definition has an `art` instance (art/mechaArt.js): kairo, mira.
+// pilot whose definition has an `art` instance (art/mechaArt.js): kairo, mira, bruno.
 //
 //   1-4  power tier          E  spawn dummy enemies     B  bullet storm (1,500)
 //   Y    invincibility       R  size 68 / 80 / 90       O  outline sprite on/off

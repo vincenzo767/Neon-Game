@@ -29,6 +29,15 @@ export const ART_MANIFEST = {
     },
     json: { anchors: 'mira.anchors.json', layers: 'mira.layers.json' },
   },
+  bruno: {
+    images: {
+      back2x: 'bruno_back@2x.png',
+      outline2x: 'bruno_back_outline@2x.png',
+      front: 'bruno_front@2x.png',
+      portrait: 'bruno_portrait.jpg',
+    },
+    json: { anchors: 'bruno.anchors.json', layers: 'bruno.layers.json' },
+  },
 };
 
 const base = () => {
