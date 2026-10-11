@@ -87,3 +87,35 @@ matches the brief's "wing-binder with rifle".
 - **Thruster colour.** The back view's vents glow **red**, but the brief and FX sheet want **blue** flames. Plan: keep the red vents as painted, and add the blue teardrop flames below the feet.
 - **Location.** The art lives in `src/pilot concept art/Kairo Vance/`, not `assets_source/pilots/kairo/` (A1). Vite doesn't serve `src/` files by URL, so processed output goes to `public/assets/pilots/kairo/`. The source folder will be read-only.
 - **Load order.** The game builds its single texture atlas once at start-up, synchronously, in `Renderer`. So the Kairo images must be **preloaded before `Game` is created** (async boot in `main.js`), then drawn into the atlas like any other sprite. If loading fails, the procedural `ship_kairo_1..4` frames are used as they are today.
+
+## Decisions after the Step 1 checkpoint (approved by the owner)
+
+1. **Muzzles (approved gameplay change).** Real shots now start at the rifles. The muzzle is the rifle's **forward end**, about (62, 245) / (346, 245); the painted tips point backward.
+   - Lances angle slightly inward so they cover about the same area in front of Kairo as before.
+   - Total DPS stays the same; it's measured before and after.
+   - The focus rail beam starts at the red backpack caps.
+   - The wing tips are used only for the tier-4 extra shots.
+2. **Size.** Start at **68 units tall**. A test-range key cycles 68 / 80 / 90. The hitbox stays the same at every size. Anchor-based shot origins scale with the sprite.
+3. **Thrusters.** Keep the painted red vents and add blue flames below them.
+4. **Shots.** Thick and glowing, matching the "Rifle shot effects" and "Burst / Charged shot" rows.
+   - Lances: about 3× the current width, a white-hot core in a cyan/blue glow, a diamond tip and a long tail. Each tier is bigger and brighter. Tier 4 is near-beam with ring pulses.
+   - Focus beam: wide, with a pulsing core, rings and a big charge orb.
+   - Muzzle flash: 2× the current size.
+   - Hit sparks: bigger, with an impact flash.
+   - The hit area matches the bright core, not the glow.
+   - The outer glow is semi-transparent and dims automatically when the screen is crowded.
+   - Test-range sliders for shot width and glow strength.
+
+## Step 2 output
+
+`npm run art:kairo` (= `node tools/process-kairo.mjs`) writes to `public/assets/pilots/kairo/`. Previews go to `screenshots/kairo/process/`.
+
+- **Back sprite.** `Top-Down_Back.png` already had alpha, so background removal was skipped. The script still zeroes hidden RGB and snaps near-opaque alpha. The trim box is x 20, y 11, 368×582.
+  - Exports: `kairo_back@2x.png` (240×372: 360 px of art plus 6 px padding) and `@1x` (120×186).
+  - `_outline` variants have a 4 px / 2 px dark outline.
+- **Background-removal fallback.** For future pilots whose art has no alpha, the script flood-fills from the image edges. The fill stops at line-art contrast, and it also removes dark red glow.
+  - Tested on a synthetic dark/red-glow copy: see `bgremoval_demo.png`. It works, with some speckle on the darkest gunmetal edges.
+  - **Removing the background by hand is still the better result.**
+- **Front view.** Hidden RGB zeroed, then trimmed. `kairo_front@2x.png` is 360×600; `@1x` is 180×300.
+- **Portrait.** A 4:5 crop from the top: `kairo_portrait.jpg` (432×540) and `kairo_portrait_sm.jpg` (240×300).
+- **Anchors.** `kairo.anchors.json` uses @2x pixels. The script only rewrites it with `--reset-anchors`, so corrections pasted from the F9 editor survive re-processing.
