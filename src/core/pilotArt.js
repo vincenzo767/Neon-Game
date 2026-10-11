@@ -20,6 +20,15 @@ export const ART_MANIFEST = {
     },
     json: { anchors: 'kairo.anchors.json', layers: 'kairo.layers.json' },
   },
+  mira: {
+    images: {
+      back2x: 'mira_back@2x.png',
+      outline2x: 'mira_back_outline@2x.png',
+      front: 'mira_front@2x.png',
+      portrait: 'mira_portrait.jpg',
+    },
+    json: { anchors: 'mira.anchors.json', layers: 'mira.layers.json' },
+  },
 };
 
 const base = () => {

@@ -3,22 +3,23 @@ import { TestRangeScene } from './TestRangeScene.js';
 import { RNG } from '../core/RNG.js';
 import { COLOR_NAMES } from '../fx/sprites.js';
 import { pilotArt } from '../core/pilotArt.js';
-import { LOOK, SIZES, anchorData, unitsPerPx, kairoFrames } from '../pilots/kairoArt.js';
-import '../ui/kairoTest.css';
+import '../ui/pilotArtTest.css';
 
-// KAIRO ART TEST range (KAIRO_ART_TEST.md, Step 6). Open with ?test=kairo.
+// Pilot art test range (ART_PIPELINE.md, Step 6). Open with ?test=<id> for any
+// pilot whose definition has an `art` instance (art/mechaArt.js): kairo, mira.
 //
 //   1-4  power tier          E  spawn dummy enemies     B  bullet storm (1,500)
 //   Y    invincibility       R  size 68 / 80 / 90       O  outline sprite on/off
 //   Q    clear the field     F9 debug overlay: anchors, hitbox, layer outlines;
-//                               drag anchors, then COPY JSON for kairo.anchors.json
+//                               drag anchors, then COPY JSON for <id>.anchors.json
 // Sliders: shot width and glow strength (visual only).
 
 const STORM = 1500;
 const C = Object.fromEntries(COLOR_NAMES.map((n, i) => [n, i]));
 
-export class KairoTestScene extends TestRangeScene {
+export class PilotArtTestScene extends TestRangeScene {
   setup() {
+    this.art = this.def.art;
     this.ranked = false;
     this.world.density = 0;
     this.spawner = null;          // quiet range: enemies only on demand (E)
@@ -26,18 +27,18 @@ export class KairoTestScene extends TestRangeScene {
     this.storm = false;
     this.stormRng = new RNG('STORM');
     this.drag = null;
-    this.menuHint = '<div class="menu-sub">KAIRO ART TEST</div>';
-    this.banner('KAIRO ART TEST', 'STORMLANCE · TEST RANGE', 120);
+    this.menuHint = `<div class="menu-sub">${this.def.name} · ART TEST</div>`;
+    this.banner(`${this.def.name.split(' ')[0]} ART TEST`, `${this.def.vehicle} · TEST RANGE`, 120);
     this.hud.setStage('ART TEST');
     this._applyInvincible();
     this._buildPanel();
   }
 
-  restartScene() { this.g.setScene(new KairoTestScene(this.def)); }
+  restartScene() { this.g.setScene(new PilotArtTestScene(this.def)); }
 
   exit() {
     super.exit();
-    LOOK.debug = false;
+    this.art.LOOK.debug = false;
     window.removeEventListener('keydown', this._f9);
   }
 
@@ -48,8 +49,8 @@ export class KairoTestScene extends TestRangeScene {
     root.insertAdjacentHTML('beforeend', `
       <div class="kt-panel">
         <div class="kt-row kt-stats"><b class="kt-fps">-- FPS</b><span class="kt-count"></span></div>
-        <label class="kt-row">WIDTH <input type="range" class="kt-width" min="0.5" max="2" step="0.05" value="${LOOK.widthMul}"><span class="kt-wv"></span></label>
-        <label class="kt-row">GLOW <input type="range" class="kt-glow" min="0" max="2" step="0.05" value="${LOOK.glowMul}"><span class="kt-gv"></span></label>
+        <label class="kt-row">WIDTH <input type="range" class="kt-width" min="0.5" max="2" step="0.05" value="${this.art.LOOK.widthMul}"><span class="kt-wv"></span></label>
+        <label class="kt-row">GLOW <input type="range" class="kt-glow" min="0" max="2" step="0.05" value="${this.art.LOOK.glowMul}"><span class="kt-gv"></span></label>
         <div class="kt-row kt-state"></div>
         <div class="kt-keys">1-4 tier · E enemies · B storm · Y invincible · R size · O outline · Q clear · F9 debug</div>
       </div>
@@ -82,16 +83,16 @@ export class KairoTestScene extends TestRangeScene {
 
   _refreshPanel() {
     const u = this.ui;
-    u.wv.textContent = `×${LOOK.widthMul.toFixed(2)}`;
-    u.gv.textContent = `×${LOOK.glowMul.toFixed(2)}`;
-    const art = kairoFrames().art ? 'ART' : 'FALLBACK (procedural)';
-    u.state.textContent = `T${this.world.player.tier} · ${LOOK.size}u tall · outline ${LOOK.outline ? 'on' : 'off'} · ${this.invincible ? 'INVINCIBLE' : 'mortal'} · storm ${this.storm ? 'ON' : 'off'} · ${art}`;
+    u.wv.textContent = `×${this.art.LOOK.widthMul.toFixed(2)}`;
+    u.gv.textContent = `×${this.art.LOOK.glowMul.toFixed(2)}`;
+    const art = this.art.hasArt() ? 'ART' : 'FALLBACK (procedural)';
+    u.state.textContent = `T${this.world.player.tier} · ${this.art.LOOK.size}u tall · outline ${this.art.LOOK.outline ? 'on' : 'off'} · ${this.invincible ? 'INVINCIBLE' : 'mortal'} · storm ${this.storm ? 'ON' : 'off'} · ${art}`;
   }
 
   _toggleDebug() {
-    LOOK.debug = !LOOK.debug;
-    this.ui.debug.classList.toggle('show', LOOK.debug);
-    if (LOOK.debug) this._updateJson();
+    this.art.LOOK.debug = !this.art.LOOK.debug;
+    this.ui.debug.classList.toggle('show', this.art.LOOK.debug);
+    if (this.art.LOOK.debug) this._updateJson();
   }
 
   _applyInvincible() {
@@ -109,7 +110,7 @@ export class KairoTestScene extends TestRangeScene {
   }
 
   _pointer(e, type) {
-    const p = this.world.player, A = anchorData(), k = unitsPerPx(), hb = A.anchors.hitbox;
+    const p = this.world.player, A = this.art.anchorData(), k = this.art.unitsPerPx(), hb = A.anchors.hitbox;
     const [wx, wy] = this._world(e);
     if (type === 'down') {
       let best = null, bd = 10 * 10;
@@ -140,8 +141,9 @@ export class KairoTestScene extends TestRangeScene {
   }
 
   _jsonText() {
-    const A = anchorData();
-    const json = { version: 1, pilot: 'kairo', space: 'kairo_back@2x.png pixels, origin top-left (1x = half)', image: A.image, anchors: A.anchors };
+    const A = this.art.anchorData();
+    const id = this.def.id;
+    const json = { version: 1, pilot: id, space: `${id}_back@2x.png pixels, origin top-left (1x = half)`, image: A.image, anchors: A.anchors };
     return `${JSON.stringify(json, null, 2).replace(/\[\s+(-?[\d.]+),\s+(-?[\d.]+)\s+\]/g, '[$1, $2]')}\n`;
   }
 
@@ -152,7 +154,7 @@ export class KairoTestScene extends TestRangeScene {
     this.ui.json.value = txt;
     try {
       await navigator.clipboard.writeText(txt);
-      this.ui.msg.textContent = 'copied — paste into public/assets/pilots/kairo/kairo.anchors.json';
+      this.ui.msg.textContent = `copied — paste into public/assets/pilots/${this.def.id}/${this.def.id}.anchors.json`;
     } catch {
       this.ui.json.select();
       this.ui.msg.textContent = 'clipboard blocked — copy from the box below';
@@ -171,10 +173,10 @@ export class KairoTestScene extends TestRangeScene {
     if (inp.keyPressed('KeyB')) { this.storm = !this.storm; this.banner(this.storm ? 'BULLET STORM' : 'STORM OFF', `${STORM} BULLETS`, 60); changed = true; }
     if (inp.keyPressed('KeyY')) { this.invincible = !this.invincible; this._applyInvincible(); this.banner(this.invincible ? 'INVINCIBLE' : 'MORTAL', '', 50); changed = true; }
     if (inp.keyPressed('KeyR')) {
-      LOOK.size = SIZES[(SIZES.indexOf(LOOK.size) + 1) % SIZES.length];
-      this.banner(`SIZE ${LOOK.size}`, 'UNITS TALL · HITBOX UNCHANGED', 60); changed = true;
+      this.art.LOOK.size = this.art.SIZES[(this.art.SIZES.indexOf(this.art.LOOK.size) + 1) % this.art.SIZES.length];
+      this.banner(`SIZE ${this.art.LOOK.size}`, 'UNITS TALL · HITBOX UNCHANGED', 60); changed = true;
     }
-    if (inp.keyPressed('KeyO')) { LOOK.outline = !LOOK.outline; changed = true; }
+    if (inp.keyPressed('KeyO')) { this.art.LOOK.outline = !this.art.LOOK.outline; changed = true; }
     if (inp.keyPressed('KeyQ')) {
       for (const e of w.enemies.active) e.alive = false;
       w.bullets.clearAll();
@@ -221,11 +223,11 @@ export class KairoTestScene extends TestRangeScene {
 
   render(r, alpha) {
     super.render(r, alpha);
-    if (LOOK.debug) this._renderDebug(r.batch);
+    if (this.art.LOOK.debug) this._renderDebug(r.batch);
   }
 
   _renderDebug(b) {
-    const p = this.world.player, F = this.world.F, A = anchorData(), k = unitsPerPx(), hb = A.anchors.hitbox;
+    const p = this.world.player, F = this.world.F, A = this.art.anchorData(), k = this.art.unitsPerPx(), hb = A.anchors.hitbox;
     const x = p.renderX ?? p.x, y = p.renderY ?? p.y;
     const at = (ix, iy) => [x + (ix - hb[0]) * k, y + (iy - hb[1]) * k];
     const line = (x0, y0, x1, y1, c, wd = 1) => {
@@ -237,7 +239,7 @@ export class KairoTestScene extends TestRangeScene {
     line(ix0, iy0, ix1, iy0, [0.6, 0.6, 0.6]); line(ix1, iy0, ix1, iy1, [0.6, 0.6, 0.6]);
     line(ix1, iy1, ix0, iy1, [0.6, 0.6, 0.6]); line(ix0, iy1, ix0, iy0, [0.6, 0.6, 0.6]);
     // Layer mask outlines (rest pose) + pivots.
-    const layers = pilotArt('kairo')?.layers?.layers || {};
+    const layers = pilotArt(this.def.id)?.layers?.layers || {};
     const cols = { wingL: [0.3, 0.6, 1], wingR: [1, 0.3, 0.7] };
     for (const [name, L] of Object.entries(layers)) {
       const c = cols[name] || [1, 1, 0];
