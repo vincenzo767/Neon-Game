@@ -12,19 +12,19 @@ Create `assets_source/pilots/kairo/` in the project root and save:
 
 | Your image | Save as | Used for |
 |------------|---------|----------|
-| Top-down **back** view (head at top, red-glowing feet thrusters at bottom, dark background) | `sprite_back.png` | **The in-game sprite** (the player flies up, so the camera sees the back) |
-| Top-down **front** view (face visible, already transparent) | `sprite_front.png` | Select-screen preview and ultimate cut-in |
-| Pilot portrait | `portrait.jpg` | Select screen and cut-in |
-| Parts sheet | `parts_sheet.png` | Reference only (see A3) |
-| FX sheet | `fx_reference.png` | Reference only (see A3) |
+| Top-down **back** view (head at top, red-glowing feet thrusters at bottom, dark background) | `Top-Down_Back.png` | **The in-game sprite** (the player flies up, so the camera sees the back) |
+| Top-down **front** view (face visible, already transparent) | `Top-Down_Front.png` | Select-screen preview and ultimate cut-in |
+| Pilot portrait | `pilot_portrait.jpg` | Select screen and cut-in |
+| Parts sheet | `Parts Sheet.png` | Reference only (see A3) |
+| FX sheet | `FX Sprite Sheet.png` | Reference only (see A3) |
 
 **Do not add** the white concept image with the "HJ web" watermark. It is a published design from Hobby Japan, not your art.
 
 ### A2. Fix the one image that needs it
 
-`sprite_back.png` has **no transparency**. The dark background and red glow are baked into the pixels. This is the most important image, so the cleaner its edges, the better the game looks.
+`Top-Down_Back.png` has **no transparency**. The dark background and red glow are baked into the pixels. This is the most important image, so the cleaner its edges, the better the game looks.
 
-- **Best:** remove the background yourself with remove.bg or Photopea (Magic Wand on the background → Delete → Export PNG). Keep the name `sprite_back.png`.
+- **Best:** remove the background yourself with remove.bg or Photopea (Magic Wand on the background → Delete → Export PNG). Keep the name `Top-Down_Back.png`.
 - **Fallback:** leave it as-is. Claude Code will try to remove it with a script and show you the result.
 
 ### A3. What can't be used directly (and how Claude Code handles it)
@@ -45,7 +45,7 @@ Put this file in the project root and tell Claude Code:
 
 ### Context
 
-The game is at **M7c** with all gameplay complete. This is a **vertical-slice art test**: replace the procedural visuals of **one pilot, Kairo Vance (Stormlance)**, with the hand-made art in `assets_source/pilots/kairo/`. The goal is to prove the art pipeline before the other 16 pilots get art.
+The game is at **M7c** with all gameplay complete. This is a **vertical-slice art test**: replace the procedural visuals of **one pilot, Kairo Vance (Stormlance)**, with the hand-made art in `src/pilot concept art/Kairo Vance/`. The goal is to prove the art pipeline before the other 16 pilots get art.
 
 ### Hard rules
 
@@ -62,11 +62,11 @@ Find where Kairo (and players in general) are drawn, where his shots, thrusters,
 
 ### Step 1 — Inspect the art · ✋ CHECKPOINT
 
-Open and view **every image** in `assets_source/pilots/kairo/`. Write `assets_source/pilots/kairo/ASSET_NOTES.md` with:
+Open and view **every image** in `src/pilot concept art/Kairo Vance/`. Write `src/pilot concept art/Kairo Vance/ASSET_NOTES.md` with:
 
 - For each image: what it shows, pixel size, whether it has real transparency, and any problems.
-- Which way the mecha faces in `sprite_back.png` (expected: head at top = flying up).
-- Your estimate of these **anchor points** in `sprite_back.png` pixel coordinates:
+- Which way the mecha faces in `Top-Down_Back.png` (expected: head at top = flying up).
+- Your estimate of these **anchor points** in `Top-Down_Back.png` pixel coordinates:
   - **Muzzles:** the forward tips of the two long black rifles (or the forward-most weapon points if the rifles don't face forward)
   - **Thrusters:** the two red-glowing foot nozzles at the bottom, plus any backpack nozzles
   - **Hitbox center:** the center of the torso
@@ -78,11 +78,11 @@ Open and view **every image** in `assets_source/pilots/kairo/`. Write `assets_so
 
 Write a repeatable script, `tools/process-kairo.mjs` (use `sharp`) or a Python equivalent:
 
-1. If `sprite_back.png` has no transparency, remove the dark background: flood-fill from the image edges with a color tolerance, then feather the edge by 1–2px. Also remove the baked red background glow; the game adds its own glow. Show me a before/after preview.
+1. If `Top-Down_Back.png` has no transparency, remove the dark background: flood-fill from the image edges with a color tolerance, then feather the edge by 1–2px. Also remove the baked red background glow; the game adds its own glow. Show me a before/after preview.
 2. Trim empty space.
 3. Export at **2×** (about 360px tall) and **1×** (about 180px tall), keeping the aspect ratio.
 4. Add an optional 2px dark outline variant so the white armor stays readable over bright backgrounds.
-5. Process `sprite_front.png` and `portrait.jpg` to the sizes the select screen and cut-in need.
+5. Process `Top-Down_Front.png` and `pilot_portrait.jpg` to the sizes the select screen and cut-in need.
 6. Save the anchor points from Step 1 to `public/assets/pilots/kairo/kairo.anchors.json`, scaled to the exported size.
 
 ### Step 3 — In-game sprite and animation
@@ -97,9 +97,9 @@ Replace Kairo's drawing with the sprite. All motion is code-driven:
 - **Damage flash:** keep the existing hit/respawn blink behavior.
 - **Readability check:** view the sprite at actual game size. If the detail turns to mush, suggest a size between 180–220px tall. **The hitbox stays the same size regardless.**
 
-### Step 4 — Effects (recreated in code from `fx_reference.png`)
+### Step 4 — Effects (recreated in code from `FX Sprite Sheet.png`)
 
-**Do not slice `fx_reference.png`.** It has a painted checkerboard and text labels. Use it as a **visual reference** and rebuild each effect with sprites generated at runtime, shaders, and particles. If `fx_*.png` files on pure black exist, use those with additive blending instead.
+**Do not slice `FX Sprite Sheet.png`.** It has a painted checkerboard and text labels. Use it as a **visual reference** and rebuild each effect with sprites generated at runtime, shaders, and particles. If `fx_*.png` files on pure black exist, use those with additive blending instead.
 
 **Palette** (sample exact values from the sheet): white-hot core → cyan → electric blue → faint violet edge. All player FX use additive blending and feed the existing bloom.
 
@@ -117,8 +117,8 @@ Replace Kairo's drawing with the sprite. All motion is code-driven:
 
 ### Step 5 — Select screen and cut-in
 
-- **Select card:** `portrait.jpg` as the portrait, `sprite_front.png` as the vehicle preview (slow bob, thruster glow).
-- **Ultimate cut-in:** portrait slides in from the side, `sprite_front.png` behind it, blue speed lines, then cut back to gameplay.
+- **Select card:** `pilot_portrait.jpg` as the portrait, `Top-Down_Front.png` as the vehicle preview (slow bob, thruster glow).
+- **Ultimate cut-in:** portrait slides in from the side, `Top-Down_Front.png` behind it, blue speed lines, then cut back to gameplay.
 - **Update Kairo's data:** palette is white, gunmetal black, and red armor with blue energy effects. Describe the Stormlance as a **mecha** instead of a ship.
 
 ### Step 6 — Test range · ✋ CHECKPOINT
