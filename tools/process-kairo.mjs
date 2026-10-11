@@ -31,24 +31,28 @@ const OUTLINE = { '2x': 4, '1x': 2 };        // outline thickness in export pixe
 const OUTLINE_RGB = [8, 10, 18];
 const FRONT_H = { '2x': 600, '1x': 300 };
 
-// Anchor estimates from ASSET_NOTES.md, in Top-Down_Back.png source pixels.
+// In-game sprite source (owner's pick, after the Step 7 approval): the mecha
+// flying feet-first: the rifles and the chest gun point up the screen. The
+// feet (top) never fire. Was Top-Down_Back.png.
+const BACK_SRC = 'top_down_main.png';
+
+// Anchor estimates in BACK_SRC source pixels (see ASSET_NOTES.md).
 // The runtime file (kairo.anchors.json) is only rewritten with --reset-anchors,
 // so values corrected in the F9 debug editor survive re-processing.
 const SOURCE_ANCHORS = {
-  hitbox: [204, 220],      // torso centre: lands on player.x/y
-  head: [204, 110],
-  rifleL: [62, 245],       // forward end of each long black rifle (real shot origins)
-  rifleR: [346, 245],
-  capL: [155, 92],         // red backpack caps (focus rail beam origin)
-  capR: [250, 92],
-  wingL: [56, 13],         // wing-binder blade tips (tier-4 extra shots)
-  wingR: [352, 13],
-  footL: [155, 533],       // red foot nozzles (main thruster flames)
-  footR: [253, 533],
-  calfL: [152, 425],       // calf vents (small flames)
-  calfR: [252, 425],
-  packL: [155, 255],       // lower backpack pod ends (small flames)
-  packR: [250, 255],
+  hitbox: [511, 800],      // chest centre: lands on player.x/y
+  head: [511, 1090],
+  gunL: [445, 540],        // chest gun: muzzles either side of the central spike,
+  gunR: [577, 540],        // 8 units apart like the old twin lances
+  rifleL: [92, 200],       // tips of the long black rifles (tier-4 extra lances)
+  rifleR: [932, 200],
+  beam: [511, 518],        // chest gun tip (focus rail beam origin)
+  packL: [452, 1300],      // wide back thrusters under the skirt
+  packR: [570, 1300],
+  footL: [390, 1290],      // red-tipped foot thrusters
+  footR: [632, 1290],
+  calfL: [258, 1272],      // red binder vents (small flames)
+  calfR: [764, 1272],
 };
 
 // ------------------------------------------------------------------ helpers
@@ -236,9 +240,9 @@ async function main() {
   const log = (...a) => console.log('[kairo]', ...a);
 
   // 1–4. In-game sprite (back view).
-  const back = await processBack(path.join(SRC, 'Top-Down_Back.png'));
-  log(back.removed ? 'Top-Down_Back.png: no transparency → background removed by flood fill'
-    : 'Top-Down_Back.png: already transparent → background removal skipped');
+  const back = await processBack(path.join(SRC, BACK_SRC));
+  log(back.removed ? `${BACK_SRC}: no transparency → background removed by flood fill`
+    : `${BACK_SRC}: already transparent → background removal skipped`);
   log(`trim box x${back.box.left} y${back.box.top} ${back.box.width}x${back.box.height}`);
   const written = {};
   for (const k of ['2x', '1x']) {
@@ -327,7 +331,7 @@ async function previewOverlay(log) {
 /** Prove the no-transparency path: bake the sprite onto a dark background with
  *  a red glow (like the original export), run the removal, show before/after. */
 async function demoBgRemoval(log) {
-  const src = await sharp(path.join(SRC, 'Top-Down_Back.png')).png().toBuffer();
+  const src = await sharp(path.join(SRC, BACK_SRC)).png().toBuffer();
   const m = await sharp(src).metadata();
   const glow = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${m.width}" height="${m.height}">
     <defs><radialGradient id="g" cx="50%" cy="85%" r="45%"><stop offset="0" stop-color="#a01818" stop-opacity="0.85"/><stop offset="1" stop-color="#a01818" stop-opacity="0"/></radialGradient></defs>

@@ -124,3 +124,20 @@ matches the brief's "wing-binder with rifle".
 
 - **Back thrusters.** Wide blue plumes and nozzle glow come from the backpack nozzles (`packL/R`), in addition to the foot and calf flames.
 - **Size.** The default is **90 units tall** (`LOOK.size`). The test range still cycles 90 / 68 / 80. Anchor-based shot origins scale with size; DPS was re-measured at 90 and is unchanged.
+
+## New in-game sprite: `top_down_main.png` (owner's request, after Step 7)
+
+- **Image.** `top_down_main.png` (1024×1536, real alpha; max alpha 254 and hidden dark RGB, both cleaned by the script) replaces `Top-Down_Back.png` as the in-game sprite. It is the mecha flying feet-first: the twin forward barrels and the long rifles point up the screen. Trim box x 66, y 27, 891×1484.
+- **Shots.** Shots now follow where the guns point.
+  - Main lances (tiers 1–2) leave from the twin barrel tips (`gunL/R` ≈ (395, 38) / (627, 38)).
+  - Tier-4 extras leave from the rifle tips (`rifleL/R` ≈ (92, 200) / (932, 200)).
+  - The focus beam starts between the barrel tips (`beam` ≈ (511, 61)).
+  - DPS is re-measured and unchanged.
+- **Thrusters.** Wide blue back plumes come from under the skirt (`packL/R` ≈ (452, 1300) / (570, 1300)), with foot thrusters at the red-tipped feet (`footL/R` ≈ (390, 1290) / (632, 1290)) and small flames at the red binder vents (`calfL/R`).
+- **Layers.** Each wing layer is a rifle, arm and binder (pivot at the shoulder, about (300, 960)). The body is the barrels, torso and head.
+- **Anchor names.** The old `capL/R` and `wingL/R` anchors are gone. `Top-Down_Back.png` stays in the folder, unused.
+
+**Correction (owner).** The twin structures at the top of `top_down_main.png` are the **feet**, and the feet never fire.
+- Normal lances now leave from the **chest gun**: `gunL/R` ≈ (445, 540) / (577, 540), either side of the central spike. That is 8 units apart at size 90, the same spacing as the old twin lances, so wave-clear coverage is unchanged.
+- The focus beam starts at its tip, `beam` ≈ (511, 518).
+- The rifles still fire the tier-4 extras.

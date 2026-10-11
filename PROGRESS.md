@@ -693,17 +693,17 @@ Brief: [KAIRO_ART_TEST.md](src/pilot%20concept%20art/Kairo%20Vance/KAIRO_ART_TES
 The branch stays unmerged until the owner says so.
 
 **What changed for Kairo**
-- **In-game vehicle.** The hand-made Stormlance mecha replaces the procedural ship.
-  - It is split into three layers: body plus two wing-binders with rifles. At rest the layers rebuild the original within 1.7/255.
+- **In-game vehicle.** The hand-made Stormlance mecha (`top_down_main.png`: flying feet-first with the chest gun and rifles pointing up the screen) replaces the procedural ship.
+  - It is split into three layers: the body (legs, torso, head) plus two wing assemblies (rifle, arm and binder). At rest the layers rebuild the original within 1.7/255.
   - Motion is all code-driven: banking tilt and squash, idle bob and wing breathing, a wing flare in focus, and a fold plus afterimages and a ribbon trail in phase-dash.
   - The default size is **90 units tall** (the owner's choice). The hitbox is unchanged (2.4).
-- **Thrusters.** Wide blue plumes and nozzle glow come from the backpack, plus foot and calf flames. The painted red vents are kept. Flame size follows state: idle, moving, moving up, dash.
+- **Thrusters.** Wide blue back plumes and nozzle glow at the rear, plus foot flames and small binder-vent flames. The painted red vents are kept. Flame size follows state: idle, moving, moving up, dash.
 - **Weapons (approved gameplay change).**
-  - Lances fire from the rifles, and the tier-4 extras from the wing tips. Each is aimed where the old shot reached 240 units ahead.
-  - The focus beam starts at the backpack caps.
+  - Lances fire from the chest gun, and the tier-4 extras from the rifle tips. The feet never fire. Each is aimed where the old shot reached 240 units ahead.
+  - The focus beam starts at the chest gun.
   - `tools/dps.mjs` shows boss, single-target and wave DPS within ±1 of `main` at every tier; focus is identical.
 - **FX**, rebuilt in code from the FX sheet:
-  - diamond-tipped lances whose bright core is exactly the hit area (r = 4 / 4.5 / 5 / 6 by tier), inside a semi-transparent glow;
+  - diamond-tipped lances whose bright core is exactly the hit area (r = 5 / 5 / 5.5 / 6 by tier), inside a semi-transparent glow;
   - tier-4 ring pulses;
   - the focus beam with a solid core, travelling rings and a charge orb;
   - 2× muzzle flares and bigger hit sparks.
@@ -734,7 +734,6 @@ The branch stays unmerged until the owner says so.
 **Frame rate.** With 1,500 bullets while firing, the branch averages about 49 FPS on this GPU and `main` about 48 (same within noise). Neither holds a solid 60 here; without firing, both do.
 
 **Known gaps**
-- The rifles' painted muzzles point backward, so lances leave from the rifles' forward ends, level with the torso.
 - The tier-3+ option pods are still procedural.
 - On the 2048 atlas, `main` already drops to 0.85 texel scale.
 
