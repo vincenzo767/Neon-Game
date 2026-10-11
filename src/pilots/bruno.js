@@ -2,7 +2,7 @@ import { WORLD_W, WORLD_H } from '../core/constants.js';
 import { mirrorPath, chrome, outline, glowDot, drawBolt, neonLines } from '../fx/art.js';
 import { SHOT_FLAK } from '../entities/World.js';
 import { brunoArt } from './brunoArt.js';
-import { renderShots, flakBurst, muzzleFlash } from './brunoFx.js';
+import { renderShots, flakBurst, muzzleFlash, buildSprites as buildFxSprites } from './brunoFx.js';
 
 // BRUNO HAGEN — IRONHOUND (heavy mecha)
 // Wide flak airbursts · Focus: heavy cannon shells · Special: brace mode
@@ -16,6 +16,14 @@ import { renderShots, flakBurst, muzzleFlash } from './brunoFx.js';
 const ORANGE = [1.0, 0.55, 0.15];
 const VIOLET = [0.75, 0.3, 1.0];
 const UP = -Math.PI / 2;
+
+/** Big explosion (bomb, ultimate, Brace): the airburst look at scale s, with the blast's shockwave and shake. */
+function boom(w, x, y, s) {
+  flakBurst(w, x, y, 46 * s);
+  w.r.post.shockwave(x, y, 0.012 * s, 0.012 + 0.004 * s, 0.12 + 0.1 * s);
+  w.r.post.heat(0.25 * s);
+  w.g.camera.addTrauma(0.12 * s);
+}
 
 const REF = 170; // arm shells cross the old shell paths this far ahead (typical engagement range)
 
@@ -153,7 +161,7 @@ export default {
       w.cancelAll();
       if (t % 3 === 0) {
         const [x, y] = burstTarget(w);
-        w.explosions.blast(x, y, 0.9, VIOLET);
+        boom(w, x, y, 0.9);
         w.damageCircle(x, y, 55, 7);
       }
     },
@@ -176,7 +184,7 @@ export default {
       for (const d of p.ps.drops) {
         d.y += 0.6;
         if (--d.t === 0) {
-          w.explosions.blast(d.x, d.y, 1.2, VIOLET);
+          boom(w, d.x, d.y, 1.2);
           w.damageCircle(d.x, d.y, 60, 9);
         }
       }
@@ -192,6 +200,7 @@ export default {
     atlas.add('b_shell', 16, 7, drawShell, { scale: 3 });
     atlas.add('b_bomber', 92, 70, drawBomber, { scale: 2 });
     brunoArt.buildSprites(atlas);
+    buildFxSprites(atlas);
   },
 
   // Hand-made art hooks (each returns false without the art → procedural look).
@@ -223,7 +232,7 @@ export default {
     p.speedMul = 1;
     p.invuln = 90;
     w.cancelCircle(p.x, p.y, 130);
-    w.explosions.blast(p.x, p.y, 0.8, VIOLET);
+    boom(w, p.x, p.y, 0.8);
     w.r.post.flash(0.75, 0.3, 1, 0.3, 0.05);
     w.g.camera.addTrauma(0.4);
     w.event('brace');

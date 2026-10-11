@@ -129,3 +129,19 @@ Same method as Kairo and Mira: feathered polygons plus the exact alpha complemen
   - The option pods and the bombers are still procedural.
   - The fallback portrait has no fur hat.
   - Without art (`?noart`), shots still leave the arm-cannon positions, so gameplay is the same either way.
+
+## Revision: explosions (owner feedback)
+
+The airbursts looked like flat pink discs. They are rebuilt after the explosion row of `fx_reference.png`:
+
+- **Layers.** Each burst has:
+  - a billowing **dark purple smoke cloud** (new cloud texture), drawn under the fire;
+  - an **orange fire core** that cools to magenta and lasts about 20 steps;
+  - a white-yellow flash with a violet bloom;
+  - violet spikes, dark debris chips and orange embers.
+- **Bomb, ultimate and Brace** use the same explosion at a larger size, with the blast's shockwave and camera shake.
+- **Flak shells** lost the ring disc: each is an orange slug with a white-hot centre and a short violet flame tail.
+- **Checks.**
+  - The textures fit in the shared atlas, which stays at 81 %.
+  - Storm frame rate is unchanged (about 49 FPS), and DPS is unchanged because the change is cosmetic.
+  - Screenshots: `screenshots/bruno/14_burst_*.png`.
