@@ -1,15 +1,28 @@
 import { WORLD_W, WORLD_H } from '../core/constants.js';
 import { mirrorPath, outline, neonLines } from '../fx/art.js';
+import { tessArt, tessMechaFx, PAL } from './tessArt.js';
+import { renderShots, renderSlash, renderCut, renderCopy, buildSprites as buildFxSprites } from './tessFx.js';
 
-// TESS KURO — WIREGHOST (stealth fighter)
+// TESS KURO — WIREGHOST (stealth mecha)
 // Short-range piercing blades · Focus: close-quarters slash that cuts bullets
 // Special: cloak (enemy aim locks onto a decoy) · Bomb: Thousand Cuts
-// Ultimate: Shadow Clones that mirror her attacks
+// Ultimate: Shadow Clones that mirror his attacks
+//
+// TESS ART TEST: the hand-made mecha art (tessArt.js) replaces drawShip()
+// when it loads; drawShip() stays as the automatic fallback. Crescents are
+// thrown from the two forearm blades; the leg blades (feet) never fire.
+// Clones and the decoy are full copies of the mecha. FX are violet outside,
+// orange inside.
 
 const VIOLET = [0.75, 0.4, 1.0];
-const PINK = [1.0, 0.35, 0.75];
 const UP = -Math.PI / 2;
 const CLONE_OFFSETS = [[-70, 14], [70, 14], [-130, 34], [130, 34]];
+const REF = 130; // blade crescents cross the old crescent paths this far ahead (near the end of their short range)
+
+/** Angle from a blade at (mx, my) through the point the old shot (from ox, oy at angle a) reached REF ahead. */
+function aimAcross(mx, my, ox, oy, a) {
+  return Math.atan2(oy + Math.sin(a) * REF - my, ox + Math.cos(a) * REF - mx);
+}
 
 function drawShip(ctx, w, h, tier) {
   const cx = w / 2;
@@ -62,33 +75,51 @@ function drawBlade(ctx, w, h) {
   ctx.globalCompositeOperation = 'source-over';
 }
 
-/** Fire one volley from (x, y). Used by Tess and by each shadow clone. */
-function volley(p, w, x, y, dmgMul) {
+/**
+ * Fire one volley from (x, y). Used by Tess and by each shadow clone (a full
+ * copy: same blades, same pattern). Art test (approved): every crescent
+ * leaves a forearm blade, never the leg blades (feet).
+ */
+function volley(p, w, x, y, dmgMul, self) {
   const t = p.tier, S = w.shots;
+  const flash = (name, size) => {
+    const [fx, fy] = self ? tessArt.animatedAnchor(p, name) : (([ax, ay]) => [x + ax, y + ay])(tessArt.anchor(name));
+    tessMechaFx.muzzleFlash(p, w, fx, fy, size);
+  };
   if (p.focus) {
     // Close-quarters slash: big damage, also cuts enemy bullets it touches.
+    // The swinging blade alternates; the small crescent leaves that blade.
     const sx = x, sy = y - 34, r = 30 + t * 6;
     w.damageCircle(sx, sy, r, (4 + t * 0.6) * dmgMul);
     w.cancelCircle(sx, sy, r * 0.8);
-    p.ps.slashes.push({ x: sx, y: sy, r, t: 0, flip: (p.ps.flip = -p.ps.flip) });
-    const i = w.shot(x, y - 16, UP, 10, p.ps.fBlade, 1.4, 7);
-    if (i >= 0) { S.behave(i, 1.4 * dmgMul, 22, 1); S.motion(i, -0.25, 0, 3.5, 10); }
+    const flip = (p.ps.flip = -p.ps.flip);
+    p.ps.slashes.push({ x: sx, y: sy, r, t: 0, flip });
+    const name = flip < 0 ? 'bladeL' : 'bladeR', [mx, my] = tessArt.anchor(name);
+    const i = w.shot(x + mx, y + my, aimAcross(mx, my, 0, -16, UP), 10, p.ps.fBlade, 1.4, 7);
+    if (i >= 0) { S.behave(i, 1.4 * dmgMul, 22, 1); S.motion(i, -0.25, 0, 3.5, 10); S.aux[i] = 2; }
+    if (self) p.ps[flip < 0 ? 'kickL' : 'kickR'] = 1;
+    flash(name, 18);
     return;
   }
-  const n = t + 1;
+  // The fan splits across the two blades; the middle crescent of an odd count alternates.
+  const n = t + 1, used = new Set();
   for (let k = 0; k < n; k++) {
-    const a = UP + (k / Math.max(1, n - 1) - 0.5) * (n > 1 ? 0.45 : 0);
-    const i = w.shot(x, y - 16, a, 9.5, p.ps.fBlade, 1.5, 7);
-    if (i >= 0) { S.behave(i, 1.5 * dmgMul, 22, 1); S.motion(i, -0.25, 0, 3.5, 10); }
+    const a0 = UP + (k / Math.max(1, n - 1) - 0.5) * (n > 1 ? 0.45 : 0);
+    const side = k * 2 < n - 1 ? -1 : k * 2 > n - 1 ? 1 : p.ps.mid;
+    const name = side < 0 ? 'bladeL' : 'bladeR', [mx, my] = tessArt.anchor(name);
+    const i = w.shot(x + mx, y + my, aimAcross(mx, my, 0, -16, a0), 9.5, p.ps.fBlade, 1.5, 7);
+    if (i >= 0) { S.behave(i, 1.5 * dmgMul, 22, 1); S.motion(i, -0.25, 0, 3.5, 10); S.aux[i] = 1; }
+    used.add(name);
   }
+  for (const name of used) flash(name, 14);
 }
 
 export default {
   id: 'tess',
   name: 'TESS KURO',
   vehicle: 'WIREGHOST',
-  role: 'Stealth Fighter',
-  bio: 'Ex-syndicate infiltrator turned precinct ghost. Tess fights at knife range: she slips inside the bullet storm and cuts it apart from within.',
+  role: 'Stealth Mecha',
+  bio: 'Ex-syndicate infiltrator turned precinct ghost. Tess flies the Wireghost, a violet mecha with a long blade on each forearm. He fights at knife range: he slips inside the bullet storm and cuts it apart from within.',
   color: VIOLET,
   css: '#c07aff',
   stats: { speed: 4, power: 4, range: 1, bomb: 2 },
@@ -98,11 +129,15 @@ export default {
   engines: [[-4, 20], [4, 20]],
   engineColor: [0.8, 0.4, 1.0],
   optionSprite: null,
-  portrait: { skin: '#e7c2a6', hair: '#141019', style: 'bob', eyes: 'eyes', iris: '#c070ff', accent: 'mask' },
+  // Procedural fallback, matched to pilot_portrait.jpg (black bandana, scar over one eye, dark coat).
+  portrait: { skin: '#d9a07a', hair: '#141216', style: 'buzz', eyes: 'eyes', iris: '#9a8cc8', accent: 'scar', suit: '#18181c' },
   weapons: {
-    main: 'Wire Blades — short-range piercing crescents',
-    focus: 'Ghost Slash — melee arc that cuts bullets',
+    main: 'Wire Blades — short-range piercing crescents thrown from both forearm blades',
+    focus: 'Ghost Slash — a forearm-blade arc that cuts bullets',
   },
+  // Art test: the Wireghost's paint (violet / lilac armour, red light lines) + violet energy.
+  palette: { armour: '#b8b4e6', frame: '#2c2648', plating: '#5a46a8', energy: '#c07aff' },
+  art: tessArt,
   special: {
     name: 'CLOAK',
     desc: 'Vanish: enemy aim locks onto a decoy, double graze charge',
@@ -129,7 +164,8 @@ export default {
         const cut = { x0: tgt.x - Math.cos(a) * L, y0: tgt.y - Math.sin(a) * L, x1: tgt.x + Math.cos(a) * L, y1: tgt.y + Math.sin(a) * L, t: 0 };
         p.ps.cuts.push(cut);
         w.damageLine(cut.x0, cut.y0, cut.x1, cut.y1, 14, 9);
-        w.explosions.sparks(tgt.x, tgt.y, 8, PINK, 5, 16, 4);
+        w.explosions.sparks(tgt.x, tgt.y, 8, [1.0, 0.45, 0.1], 5, 16, 4);
+        w.explosions.sparks(tgt.x, tgt.y, 6, VIOLET, 6, 14, 5);
         w.r.post.shockwave(tgt.x, tgt.y, 0.012, 0.025, 0.25);
         w.g.camera.addTrauma(0.08);
       }
@@ -162,12 +198,21 @@ export default {
   sprites(atlas) {
     for (let t = 1; t <= 4; t++) atlas.add(`ship_tess_${t}`, 50, 46, (c, w, h) => drawShip(c, w, h, t), { scale: 3 });
     atlas.add('t_blade', 18, 18, drawBlade, { scale: 3 });
+    tessArt.buildSprites(atlas);
+    buildFxSprites(atlas);
   },
+
+  // Hand-made art hooks (each returns false without the art → procedural look).
+  renderShip: (p, b, x, y, a) => tessArt.renderMecha(p, b, x, y, a),
+  exhaust: tessArt.exhaust,
+  renderShots,
+  hitSpark: tessMechaFx.hitSpark,
 
   init(p, w) {
     p.ps.fBlade = w.r.frame('t_blade');
     p.ps.slashes = [];
     p.ps.flip = 1;
+    p.ps.mid = 1;
     p.ps.cloak = 0;
   },
 
@@ -178,6 +223,10 @@ export default {
   },
 
   update(p) {
+    tessArt.animate(p);
+    // The swinging arm of a Ghost Slash kicks out, then settles.
+    p.ps.kickL = (p.ps.kickL || 0) * 0.78;
+    p.ps.kickR = (p.ps.kickR || 0) * 0.78;
     for (const s of p.ps.slashes) s.t++;
     if (p.ps.slashes.length) p.ps.slashes = p.ps.slashes.filter((s) => s.t < 10);
   },
@@ -185,25 +234,30 @@ export default {
   fire(p, w) {
     if (p.fireCd > 0) return;
     p.fireCd = p.focus ? 8 : 6;
-    volley(p, w, p.x, p.y, 1);
-    if (p.ps.clones) for (const c of p.ps.clones) volley(p, w, c.x, c.y, 0.6);
+    p.ps.mid = -p.ps.mid;
+    volley(p, w, p.x, p.y, 1, true);
+    if (p.ps.clones) for (const c of p.ps.clones) volley(p, w, c.x, c.y, 0.6, false);
   },
 
   renderBelow(p, b, x, y, alpha) {
     const F = p.F;
-    // Cloak decoy hologram.
+    // Cloak decoy: a flickering full copy of the mecha.
     if (p.ps.cloak && p.w.decoy) {
-      const d = p.w.decoy, f = p.frames[p.tier - 1];
-      const fl = (p.t >> 1) % 5 === 0 ? 0.2 : 0.55;
-      b.draw(f, d.x + Math.sin(p.t * 0.7) * 1.5, d.y, f.w, f.h, 0, VIOLET[0], VIOLET[1], VIOLET[2], fl, 1);
-      b.draw(F.ring, d.x, d.y, 50, 50, p.t * 0.05, 1, 0.3, 0.8, 0.3, 1);
+      const d = p.w.decoy, fl = (p.t >> 1) % 5 === 0 ? 0.25 : 0.6;
+      const dx = d.x + Math.sin(p.t * 0.7) * 1.5;
+      if (!renderCopy(p, b, dx, d.y, fl, 0.7)) {
+        const f = p.frames[p.tier - 1];
+        b.draw(f, dx, d.y, f.w, f.h, 0, VIOLET[0], VIOLET[1], VIOLET[2], fl, 1);
+      }
+      b.draw(F.ring, d.x, d.y, 70, 70, p.t * 0.05, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.3, 1);
     }
-    // Shadow clones.
+    // Shadow clones: full copies of the mecha (same pose, wings, thrusters and blades).
     if (p.ps.clones) {
-      const f = p.frames[p.tier - 1];
       for (const c of p.ps.clones) {
         const cx = c.px + (c.x - c.px) * alpha, cy = c.py + (c.y - c.py) * alpha;
-        b.draw(F.glow, cx, cy, 60, 60, 0, 0.6, 0.2, 1, 0.35, 1);
+        b.draw(F.glow, cx, cy, 90, 90, 0, PAL.mid[0] * 0.5, PAL.mid[1] * 0.5, PAL.mid[2] * 0.5, 0.35, 1);
+        if (renderCopy(p, b, cx, cy, 0.85)) continue;
+        const f = p.frames[p.tier - 1];
         b.draw(f, cx, cy, f.w, f.h, 0, 0.15, 0.1, 0.25, 0.85, 0);
         b.draw(f, cx, cy, f.w, f.h, 0, VIOLET[0], VIOLET[1], VIOLET[2], 0.5, 1);
       }
@@ -211,21 +265,7 @@ export default {
   },
 
   renderFx(p, b) {
-    const F = p.F;
-    for (const s of p.ps.slashes) {
-      const k = s.t / 10, a = 1 - k;
-      const sz = s.r * 2.3 * (0.85 + k * 0.3);
-      b.draw(F.slash, s.x, s.y, sz, sz * 0.8, UP + 0.3 * s.flip + k * 0.5 * s.flip, PINK[0] * 1.8, PINK[1] * 1.8, PINK[2] * 1.8, a, 1);
-    }
-    if (p.ps.cuts) {
-      for (const c of p.ps.cuts) {
-        const k = c.t / 12;
-        const mx = (c.x0 + c.x1) / 2, my = (c.y0 + c.y1) / 2;
-        const len = Math.hypot(c.x1 - c.x0, c.y1 - c.y0), ang = Math.atan2(c.y1 - c.y0, c.x1 - c.x0);
-        b.draw(F.laser, mx, my, len, 22 * (1 - k), ang, PINK[0] * 1.5, PINK[1] * 1.5, PINK[2] * 1.5, 0.7 * (1 - k), 1);
-        b.draw(F.laser, mx, my, len, 5 * (1 - k), ang, 2.5, 2.5, 2.5, 1 - k, 1);
-      }
-    }
+    for (const s of p.ps.slashes) renderSlash(p, b, s);
+    if (p.ps.cuts) for (const c of p.ps.cuts) renderCut(p, b, c);
   },
 };
-

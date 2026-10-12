@@ -10,7 +10,7 @@ export const PILOT_LORE = {
   kairo: { origin: 'The Grid', rival: 'stratos', file: 'Ran sky-lane courier jobs for the Stratos Cartel before turning state witness. Madame Hale has a price on his head.' },
   mira: { origin: 'The Crown', rival: 'helix', file: 'Former Helix drone engineer. She walked out of Project HALCYON the night it failed and never said what she saw.' },
   bruno: { origin: 'The Furnace', rival: 'ironclad', file: 'Served under Gideon Raske before the Brotherhood turned to salvage piracy. He knows every war-rig by the sound of its engine.' },
-  tess: { origin: 'The Docks', rival: 'blacktide', file: "Grew up on Black Tide smuggling skiffs. Admiral Quell's flagship is the one thing in the harbor she has never boarded." },
+  tess: { origin: 'The Docks', rival: 'blacktide', file: "Grew up on Black Tide smuggling skiffs. Admiral Quell's flagship is the one thing in the harbor he has never boarded." },
   oduya: { origin: 'The Furnace', rival: 'ironclad', file: 'Reactor-hall foreman who held the Furnace gates for three days when the Brotherhood came for the foundries.' },
   lin: { origin: 'The Crown', rival: 'outerstar', file: 'Bio-tech botanist. Her spore engines are the only thing the Choir\'s crystal growths cannot overgrow.' },
   dax: { origin: 'The Grid', rival: 'ironclad', file: 'Street racer with more speeding tickets than flight hours. The Precinct recruited him instead of jailing him.' },

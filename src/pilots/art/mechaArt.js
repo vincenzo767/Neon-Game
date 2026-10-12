@@ -346,9 +346,10 @@ export function createMechaArt(cfg) {
   function wingPose(p, s) {
     const ps = p.ps, flare = ps.flare || 0, fold = ps.fold || 0;
     const breath = Math.sin(p.t * 0.06);
-    const out = flare * 8 - fold * 6 + breath * 0.8;            // + = outward
+    const kick = (s < 0 ? ps.kickL : ps.kickR) || 0;            // optional per-side swing (0..1), e.g. a melee slash
+    const out = flare * 8 - fold * 6 + breath * 0.8 + kick * 7; // + = outward
     const ox = s * out - p.bank * 5;                            // banking: far wing in, near wing out
-    const rot = s * (0.035 * (flare - fold) + 0.006 * breath);
+    const rot = s * (0.035 * (flare - fold) + 0.006 * breath + 0.14 * kick);
     return { ox, rot };
   }
 
