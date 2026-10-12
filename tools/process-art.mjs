@@ -216,7 +216,7 @@ function largestPiece(img) {
  * green glow turns into translucent emerald, black crystal and white cores
  * stay solid.
  */
-function keyFx(img, B = 208) {
+function keyFx(img, tint = 'emerald', B = 208) {
   const { data, w, h } = img, N = w * h;
   const lum = (p) => 0.3 * data[p * 4] + 0.59 * data[p * 4 + 1] + 0.11 * data[p * 4 + 2];
   const spread = (p) => Math.max(data[p * 4], data[p * 4 + 1], data[p * 4 + 2]) - Math.min(data[p * 4], data[p * 4 + 1], data[p * 4 + 2]);
@@ -245,7 +245,7 @@ function keyFx(img, B = 208) {
     data[i + 3] = Math.round(a * 255);
   }
   // Soft glow: the checkerboard still shows through it as grain, and solved
-  // colours drift grey. Smooth the alpha there and tint it emerald.
+  // colours drift grey. Smooth the alpha there and tint it (emerald or red).
   const al = new Float32Array(N);
   for (let p = 0; p < N; p++) al[p] = data[p * 4 + 3] / 255;
   const sm = boxBlur(al, w, h, 2);
@@ -255,7 +255,7 @@ function keyFx(img, B = 208) {
     const s = Math.min(a, sm[p]) * (1 - a / 0.75) + a * (a / 0.75); // fade into the smoothed value
     data[i + 3] = Math.round(Math.max(0, s) * 255);
     const l = (0.3 * data[i] + 0.59 * data[i + 1] + 0.11 * data[i + 2]) / 255, k = 0.65 * (1 - a / 0.75);
-    const em = [70 * l + 20, 255 * Math.min(1, l * 1.15), 150 * l + 30];
+    const em = tint === 'red' ? [255 * Math.min(1, l * 1.15), 40 * l + 10, 50 * l + 15] : [70 * l + 20, 255 * Math.min(1, l * 1.15), 150 * l + 30];
     for (let c = 0; c < 3; c++) data[i + c] = Math.round(data[i + c] * (1 - k) + em[c] * k);
   }
   return img;
@@ -507,7 +507,9 @@ async function main() {
     const tiles = [];
     for (const [name, F] of Object.entries(CFG.fx)) {
       const file = path.join(ROOT, F.file);
-      const im = keyFx(await raw(file));
+      // Real alpha (e.g. Dax's ultimate-fx.png) is kept; a painted checkerboard is un-blended.
+      const src = await raw(F.box ? await sharp(file).extract(F.box).png().toBuffer() : file); // optional crop box
+      const im = hasRealAlpha(src) ? src : keyFx(src, F.tint);
       cleanAlpha(im);
       let buf = await fromRaw(im).extract(alphaBox(im, 4)).png().toBuffer();
       if (F.rotate) buf = await sharp(buf).rotate(F.rotate).png().toBuffer();

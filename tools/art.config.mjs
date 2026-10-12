@@ -153,4 +153,40 @@ export const PILOT_ART = {
       wingR: [780, 700],
     },
   },
+  dax: {
+    folder: 'Dax Morrow',
+    back: 'top-down-main.jpg',
+    front: 'top-down-front.jpg',
+    portrait: 'pilot-portrait.jpg',
+    portraitCrop: { left: 110, top: 0, width: 520, height: 650 }, // head and shoulders (4:5)
+    bg: 'checker',             // painted checkerboard, not real transparency
+    glowRule: false,           // the red glow is paint
+    // The lower blade wings (and the fins under them) move; nothing held crosses them.
+    wings: {
+      axis: 572,
+      pivotL: [480, 880],
+      wingL: [[-80, 1150], [150, 1000], [300, 900], [440, 820], [490, 860], [490, 930], [440, 1000], [420, 1140], [400, 1420], [-80, 1420]],
+      keep: [],
+    },
+    // Owner's FX picks (tools/art-ref/dax/ over a checkerboard; ultimate-fx.png has real alpha) → dax_fx_<name>.png.
+    fx: {
+      beam: { file: 'tools/art-ref/dax/void-beam.png', height: 64, tint: 'red' },          // main void beam segments
+      bent: { file: 'tools/art-ref/dax/void-beam-bent.png', box: { left: 0, top: 0, width: 304, height: 92 }, height: 96, tint: 'red' },     // short arcs at enemy attacks
+      ghost: { file: 'tools/art-ref/dax/ghost-clone.png', box: { left: 0, top: 0, width: 300, height: 287 }, height: 192, tint: 'red' },      // smoke cloak of the ghost clones
+      crescent: { file: 'tools/art-ref/dax/void-crescent.png', height: 320, tint: 'red', rotate: 270 }, // Void Crescent (convex side up)
+      ult: { file: 'src/pilot concept art/Dax Morrow/ultimate-fx.png', height: 900 },      // Void Cannon
+    },
+    anchors: {
+      hitbox: [572, 805],      // red chest core: lands on player.x/y
+      head: [572, 900],
+      core: [572, 805],        // the chest core: every void beam leaves here (owner's choice B)
+      spike: [572, 160],       // forward waist spike (reference)
+      lensL: [175, 515],       // red lenses on the forearm shield pods (reference)
+      lensR: [968, 515],
+      ventL: [430, 1180],      // rear fin roots: wide void plumes
+      ventR: [715, 1180],
+      packL: [530, 1100],      // either side of the rear spine: smaller plumes
+      packR: [615, 1100],
+    },
+  },
 };

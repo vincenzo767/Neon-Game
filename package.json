@@ -12,7 +12,8 @@
     "art:bruno": "node tools/process-art.mjs bruno",
     "art:tess": "node tools/process-art.mjs tess",
     "art:oduya": "node tools/process-art.mjs oduya",
-    "art:lin": "node tools/process-art.mjs lin"
+    "art:lin": "node tools/process-art.mjs lin",
+    "art:dax": "node tools/process-art.mjs dax"
   },
   "devDependencies": {
     "sharp": "^0.35.5",
