@@ -122,7 +122,8 @@ export function createMechaFx(art, opts = {}) {
     let i = H.spawn(F.glow, x, y - 2, 0, -0.6, 3);
     if (i >= 0) { H.size(i, size, size * 0.6); H.color(i, P.core[0], P.core[1], P.core[2], P.hot[0], P.hot[1], P.hot[2]); H.look(i, 0.6, 1, FADE_OUT); }
     i = H.spawn(fx.flare, x, y - 2, 0, -0.6, 3);
-    if (i >= 0) { H.size(i, size * 1.15, size * 0.7); H.color(i, P.hot[0], P.hot[1], P.hot[2], P.mid[0], P.mid[1], P.mid[2]); H.look(i, 0.7, 1, FADE_OUT); }
+    const rim = P.rim || P.mid; // optional band colour (e.g. Tess's scarlet)
+    if (i >= 0) { H.size(i, size * 1.15, size * 0.7); H.color(i, P.hot[0], P.hot[1], P.hot[2], rim[0], rim[1], rim[2]); H.look(i, 0.7, 1, FADE_OUT); }
   }
 
   /** Impact burst where the pilot's shots and beams hit (World hitSpark hook). */
@@ -131,7 +132,8 @@ export function createMechaFx(art, opts = {}) {
     let i = H.spawn(F.glow, x, y, 0, 0, 4);
     if (i >= 0) { H.size(i, 34, 18); H.color(i, P.core[0], P.core[1], P.core[2], P.hot[0], P.hot[1], P.hot[2]); H.look(i, 0.9, 1, FADE_OUT); }
     i = H.spawn(F.ring, x, y, 0, 0, 10);
-    if (i >= 0) { H.size(i, 6, 30); H.color(i, P.hot[0], P.hot[1], P.hot[2], P.mid[0], P.mid[1], P.mid[2]); H.look(i, 0.7, 1, FADE_OUT); }
+    const rim = P.rim || P.hot; // without a rim colour: unchanged (hot → mid)
+    if (i >= 0) { H.size(i, 6, 30); H.color(i, rim[0], rim[1], rim[2], P.mid[0], P.mid[1], P.mid[2]); H.look(i, 0.7, 1, FADE_OUT); }
     for (let k = 0; k < 5; k++) {
       const a = angle + R.range(-0.9, 0.9), sp = R.range(3, 7);
       i = H.spawn(F.spark, x, y, Math.cos(a) * sp, Math.sin(a) * sp, R.range(8, 14));

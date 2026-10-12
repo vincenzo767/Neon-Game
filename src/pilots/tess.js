@@ -6,7 +6,7 @@ import { renderShots, renderSlash, renderCut, renderCopy, buildSprites as buildF
 // TESS KURO — WIREGHOST (stealth mecha)
 // Short-range piercing blades · Focus: close-quarters slash that cuts bullets
 // Special: cloak (enemy aim locks onto a decoy) · Bomb: Thousand Cuts
-// Ultimate: Shadow Clones that mirror his attacks
+// Ultimate: Shadow Clones that mirror her attacks
 //
 // TESS ART TEST: the hand-made mecha art (tessArt.js) replaces drawShip()
 // when it loads; drawShip() stays as the automatic fallback. Crescents are
@@ -119,7 +119,7 @@ export default {
   name: 'TESS KURO',
   vehicle: 'WIREGHOST',
   role: 'Stealth Mecha',
-  bio: 'Ex-syndicate infiltrator turned precinct ghost. Tess flies the Wireghost, a violet mecha with a long blade on each forearm. He fights at knife range: he slips inside the bullet storm and cuts it apart from within.',
+  bio: 'Ex-syndicate infiltrator turned precinct ghost. Tess flies the Wireghost, a violet mecha with a long blade on each forearm. She fights at knife range: she slips inside the bullet storm and cuts it apart from within.',
   color: VIOLET,
   css: '#c07aff',
   stats: { speed: 4, power: 4, range: 1, bomb: 2 },
@@ -129,8 +129,8 @@ export default {
   engines: [[-4, 20], [4, 20]],
   engineColor: [0.8, 0.4, 1.0],
   optionSprite: null,
-  // Procedural fallback, matched to pilot_portrait.jpg (black bandana, scar over one eye, dark coat).
-  portrait: { skin: '#d9a07a', hair: '#141216', style: 'buzz', eyes: 'eyes', iris: '#9a8cc8', accent: 'scar', suit: '#18181c' },
+  // Procedural fallback, matched to pilot-portrait-main.jpg (long scarlet hair, red eyes, dark bodysuit).
+  portrait: { skin: '#f2d6d0', hair: '#d8264a', style: 'long', eyes: 'eyes', iris: '#d0203a', suit: '#2a2c3c' },
   weapons: {
     main: 'Wire Blades — short-range piercing crescents thrown from both forearm blades',
     focus: 'Ghost Slash — a forearm-blade arc that cuts bullets',

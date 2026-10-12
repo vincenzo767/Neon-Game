@@ -6,6 +6,7 @@
 // portrait   pilot portrait
 // glowRule   background removal also strips dark red baked glow (off when the
 //            art has dark warm shading it would eat, e.g. Mira's gold)
+// portraitCrop optional { left, top, width, height } 4:5 box in portrait pixels (default: full width from the top)
 // holes      optional [x, y] seeds (back source pixels) for enclosed background
 //            gaps the edge flood fill can't reach (frontHoles: same for `front`)
 // anchors    estimates in `back` source pixels; written to <id>.anchors.json
@@ -78,7 +79,8 @@ export const PILOT_ART = {
     folder: 'Tess Kuro',
     back: 'top-down_main.jpg',
     front: 'top-down_front.jpg',
-    portrait: 'pilot_portrait.jpg',
+    portrait: 'pilot-portrait-main.jpg',
+    portraitCrop: { left: 125, top: 70, width: 400, height: 500 }, // head and shoulders (4:5)
     glowRule: false,           // thin red light lines
     anchors: {
       hitbox: [512, 960],      // chest centre: lands on player.x/y

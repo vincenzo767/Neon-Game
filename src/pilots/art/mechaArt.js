@@ -18,7 +18,8 @@ import { FADE_OUT } from '../../fx/Particles.js';
 //   id          pilot id (art from pilotArt(id))
 //   defaults    built-in copy of <id>.anchors.json: gameplay anchors never
 //               depend on whether the file loaded
-//   pal         { core, hot, mid, edge }: HDR colours, hottest to outermost
+//   pal         { core, hot, mid, edge }: HDR colours, hottest to outermost;
+//               optional `rim`: a band between `mid` and `hot` in thruster flames
 //   flames      [{ name, len, wid, hot = 1, over = false, cap = Infinity }]
 //               thruster flames at anchors (len × thruster level, capped);
 //               `over` draws on top of the art, `hot` < 1 keeps a plume mostly `mid`
@@ -385,6 +386,8 @@ export function createMechaArt(cfg) {
       const at = (d) => [fx + ux * d, fy + uy * d];
       let [cx, cy] = at(L * 0.5);
       b.draw(K.fx.flame, cx, cy, Wd * 1.7, L * 1.15, rot, pal.mid[0], pal.mid[1], pal.mid[2], 0.75 * a, 1);
+      // Optional rim band between the outer and inner colours (e.g. Tess's scarlet).
+      if (pal.rim) b.draw(K.fx.flame, cx, cy, Wd * 1.3, L * 1.08, rot, pal.rim[0], pal.rim[1], pal.rim[2], 0.7 * a, 1);
       b.draw(K.fx.flame, cx, cy, Wd, L, rot, pal.hot[0], pal.hot[1], pal.hot[2], 0.9 * a * hot, 1);
       [cx, cy] = at(L * 0.25);
       b.draw(K.fx.flame, cx, cy, Wd * 0.45 * hot, L * 0.5, rot, pal.core[0], pal.core[1], pal.core[2], a * hot, 1);

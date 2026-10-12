@@ -83,7 +83,7 @@ Same method as the others: feathered polygons plus the exact alpha complement fo
 1. **Wire Blades: A.** Thrown from the two forearm blades.
 2. **Ghost Slash.** Swept as a crescent by one arm blade, alternating sides.
 3. **Clones and decoy.** Full copies of the mecha, with all its properties.
-4. **Portrait: B.** Tess is written as male, and the fallback portrait matches the painting. The game will not be published.
+4. **Portrait: B** (later reversed, see *Revision* below).
 5. **Thrusters.** Left to me: wide plumes from the rear of the shoulder armour, smaller ones beside the head's rear spike.
 
 ## Steps 2–6: results
@@ -118,3 +118,16 @@ Same method as the others: feathered polygons plus the exact alpha complement fo
 - **Known gaps.**
   - With five crescents overlapping at tier 4, the orange core reads pinker than on a single crescent.
   - The fallback portrait has no earrings or green hair (no such styles).
+
+## Revision: portrait, bio and scarlet (owner feedback)
+
+- **Tess is female.** The first portrait (`pilot_portrait.jpg`, a man) was a mistake.
+  - The bio and the lore line say "she" again.
+  - The new portrait is `pilot-portrait-main.jpg` (640×1136: red-haired woman in a dark bodysuit). It is cropped to head and shoulders with the new `portraitCrop` setting: a 400×500 box at (125, 70). The watermark at the bottom stays out of the crop.
+  - The fallback portrait matches it: long scarlet hair, red eyes, dark bodysuit.
+- **Scarlet in the FX.** Every effect now has a scarlet band between the violet outside and the orange inside:
+  - crescents (a scarlet layer and wake);
+  - the Ghost Slash and the Thousand Cuts lines;
+  - thrusters, muzzle flares and hit sparks.
+  - Thrusters, muzzle flares and hit sparks use a new optional `pal.rim` colour in the shared modules. Pilots without it look exactly as before.
+- Screenshots refreshed in `screenshots/tess/`.

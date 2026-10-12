@@ -811,11 +811,11 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Tess%20Kuro/ASSE
   - At 120 units, sweep coverage is within about 10–20 % (the sweep grid is coarse for short-range piercing crescents).
 - **Ghost Slash (approved).** Same hit area and damage. It is drawn as a big crescent swept by one arm blade, alternating sides. That arm kicks out, and the small crescent leaves that blade.
 - **Shadow Clones and the Cloak decoy (approved).** Full copies of the mecha: the same art, pose, wing animation and thrusters, and the clones throw crescents from their own blades. The clones' damage is unchanged (0.6×).
-- **FX.** Violet outside, orange inside, white-hot edge:
+- **FX.** Violet outside, a scarlet band, orange inside, white-hot edge:
   - crescent shots and the slash use a new thin crescent texture;
   - Thousand Cuts lines;
-  - muzzle flares, hit sparks, and plumes from the shoulder armour and beside the head spike.
-- **Data (approved).** Tess is now written as male (bio and lore file) to match the painted portrait. The fallback portrait matches the painting (bandana, scar). The role is "Stealth Mecha".
+  - muzzle flares, hit sparks, and plumes from the shoulder armour and beside the head spike, all with the scarlet band (opt-in `pal.rim` in the shared art/FX modules; other pilots are unchanged).
+- **Data.** Tess is female. The owner supplied a new portrait (`pilot-portrait-main.jpg`), cropped to head and shoulders with a new `portraitCrop` setting. The fallback portrait matches it (long scarlet hair, red eyes, dark bodysuit). The role is "Stealth Mecha".
 - **Frame rate.** In the 1,500-bullet storm, about 53 FPS with art versus about 50 with the procedural ship (within noise; Intel HD 5500).
 
 ## Run

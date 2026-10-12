@@ -83,6 +83,7 @@ screenshots/<id>/                          test-range captures for review
    - the layer split plan.
 3. **Process.**
    - Add the pilot to `tools/art.config.mjs`: folder, file names, `glowRule`, and anchor estimates in source pixels.
+   - If the portrait isn't a head-and-shoulders shot, set `portraitCrop: { left, top, width, height }` (a 4:5 box in portrait pixels).
    - If an enclosed gap in the art stays opaque (the edge fill can't reach it), add a seed pixel to `holes` (back view) or `frontHoles` (front view), as for Bruno's backpack frame.
    - Add an npm script (`"art:<id>": "node tools/process-art.mjs <id>"`) and run it.
    - Check `screenshots/<id>/process/*_before_after.png`. `--demo-bgremoval` exercises the fallback.

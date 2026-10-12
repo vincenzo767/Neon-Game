@@ -6,10 +6,11 @@ import { createMechaFx } from './art/mechaFx.js';
 // flies feet-first; the leg blades (feet) never fire. Wire-blade crescents
 // leave the two forearm blades.
 
-// Owner's choice for every effect: violet outside, orange inside (white-hot centre).
+// Owner's choice for every effect: violet outside, a scarlet band, orange inside (white-hot centre).
 export const PAL = {
   core: [2.6, 1.9, 1.1],
   hot: [2.2, 0.95, 0.25],
+  rim: [2.0, 0.05, 0.08],
   mid: [1.15, 0.35, 1.9],
   edge: [0.55, 0.12, 1.1],
 };

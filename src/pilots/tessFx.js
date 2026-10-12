@@ -2,7 +2,8 @@ import { crowdFactor } from './art/mechaFx.js';
 import { tessArt, PAL } from './tessArt.js';
 
 // Tess's weapon effects, after the crescent-slash rows of fx_reference.png,
-// in the owner's colours: violet outside, orange inside, white-hot edge.
+// in the owner's colours: violet outside, a scarlet band, orange inside,
+// white-hot edge.
 // All cosmetic: hit areas live in tess.js. The orange crescent spans the
 // shot's hit area.
 //
@@ -13,6 +14,7 @@ const LOOK = tessArt.LOOK;
 const fxOf = () => tessArt.frames().fx;
 const ORANGE = [1.8, 0.65, 0.04];   // below the bloom's white clip
 const WHITE = [2.0, 1.7, 1.3];
+const SCARLET = [1.9, 0.03, 0.05];
 let CRESCENT = null;
 
 /**
@@ -39,12 +41,13 @@ export function buildSprites(atlas) {
 // Looked up per draw call (not cached across atlas rebuilds).
 const crescent = (r) => { CRESCENT = r.frame('t_crescent'); };
 
-/** Three-layer crescent: violet halo, orange body, white-hot leading edge. */
+/** Four-layer crescent: violet halo, scarlet band, orange body, white-hot leading edge. */
 function drawCrescent(b, x, y, H, ang, glowA, alpha) {
   const f = CRESCENT, W = H * 0.5, dx = Math.cos(ang), dy = Math.sin(ang);
-  // Violet halo is wider and longer than the orange body, so violet frames the orange.
-  b.draw(f, x - dx * 2, y - dy * 2, W * 1.45, H * 1.22, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], glowA * 0.75 * alpha, 1);
-  b.draw(f, x, y, W * 0.8, H * 0.92, ang, ORANGE[0], ORANGE[1], ORANGE[2], 0.95 * alpha, 1);
+  // Each layer is wider and longer than the next, so violet frames scarlet frames orange.
+  b.draw(f, x - dx * 3, y - dy * 3, W * 1.6, H * 1.28, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], glowA * 0.45 * alpha, 1);
+  b.draw(f, x - dx * 1.5, y - dy * 1.5, W * 1.15, H * 1.1, ang, SCARLET[0], SCARLET[1], SCARLET[2], 0.8 * alpha, 1);
+  b.draw(f, x, y, W * 0.7, H * 0.9, ang, ORANGE[0], ORANGE[1], ORANGE[2], 0.95 * alpha, 1);
   b.draw(f, x + dx, y + dy, W * 0.4, H * 0.62, ang, WHITE[0], WHITE[1], WHITE[2], 0.3 * alpha, 1);
 }
 
@@ -66,9 +69,10 @@ export function renderShots(p, b, alpha, S) {
     const age = S.age[i] + alpha, left = S.maxAge[i] - age;
     const fade = Math.min(1, age / 2, Math.max(0, left) / 5);
     const H = 2 * S.radius[i] * 2.3 * wm * grow * (tag === 2 ? 1.2 : 1);
-    // Thin violet wake trailing from the crescent's centre.
+    // Thin scarlet-violet wake trailing from the crescent's centre.
     const L = 22 * wm;
-    b.draw(fx.glow, x - dx * L * 0.55, y - dy * L * 0.55, L, H * 0.22, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], glowA * 0.5 * fade, 1);
+    b.draw(fx.glow, x - dx * L * 0.55, y - dy * L * 0.55, L, H * 0.3, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], glowA * 0.4 * fade, 1);
+    b.draw(fx.glow, x - dx * L * 0.5, y - dy * L * 0.5, L * 0.8, H * 0.16, ang, SCARLET[0], SCARLET[1], SCARLET[2], 0.6 * fade, 1);
     drawCrescent(b, x, y, H, ang, glowA, fade);
   }
 }
@@ -93,8 +97,9 @@ export function renderCut(p, b, c) {
   const F = p.F, k = c.t / 12, a = 1 - k;
   const mx = (c.x0 + c.x1) / 2, my = (c.y0 + c.y1) / 2;
   const len = Math.hypot(c.x1 - c.x0, c.y1 - c.y0), ang = Math.atan2(c.y1 - c.y0, c.x1 - c.x0);
-  b.draw(F.laser, mx, my, len, 26 * a, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.6 * a, 1);
-  b.draw(F.laser, mx, my, len, 11 * a, ang, ORANGE[0], ORANGE[1], ORANGE[2], 0.9 * a, 1);
+  b.draw(F.laser, mx, my, len, 30 * a, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.55 * a, 1);
+  b.draw(F.laser, mx, my, len, 18 * a, ang, SCARLET[0], SCARLET[1], SCARLET[2], 0.8 * a, 1);
+  b.draw(F.laser, mx, my, len, 9 * a, ang, ORANGE[0], ORANGE[1], ORANGE[2], 0.9 * a, 1);
   b.draw(F.laser, mx, my, len, 3.5 * a, ang, WHITE[0], WHITE[1], WHITE[2], a, 1);
 }
 
