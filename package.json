@@ -11,7 +11,8 @@
     "art:mira": "node tools/process-art.mjs mira",
     "art:bruno": "node tools/process-art.mjs bruno",
     "art:tess": "node tools/process-art.mjs tess",
-    "art:oduya": "node tools/process-art.mjs oduya"
+    "art:oduya": "node tools/process-art.mjs oduya",
+    "art:lin": "node tools/process-art.mjs lin"
   },
   "devDependencies": {
     "sharp": "^0.35.5",

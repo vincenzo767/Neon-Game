@@ -322,8 +322,8 @@ export class Player {
     const def = this.def, F = this.F;
     if (def.renderBelow) def.renderBelow(this, b, x, y, alpha);
 
-    // Options.
-    if (this.optFrame) {
+    // Options (a pilot's renderOptions hook may draw them itself: true = done).
+    if (this.optFrame && !(def.renderOptions && def.renderOptions(this, b, alpha))) {
       for (const o of this.options) {
         const ox = o.px + (o.x - o.px) * alpha, oy = o.py + (o.y - o.py) * alpha;
         b.draw(F.glow, ox, oy, 26, 26, 0, def.color[0], def.color[1], def.color[2], 0.35 * this.alpha, 1);

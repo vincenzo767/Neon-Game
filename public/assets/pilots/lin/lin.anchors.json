@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "pilot": "lin",
+  "space": "lin_back@2x.png pixels, origin top-left (1x = half)",
+  "image": {
+    "w": 409,
+    "h": 372,
+    "artH": 360,
+    "pad": 6
+  },
+  "anchors": {
+    "hitbox": [204.5, 201.4],
+    "head": [204.5, 238.5],
+    "core": [204.5, 127.3],
+    "blade": [296.2, 84.1],
+    "spear": [298.7, 13.1],
+    "whip": [39.3, 16.2],
+    "wingL": [167.5, 220],
+    "wingR": [241.6, 220]
+  }
+}

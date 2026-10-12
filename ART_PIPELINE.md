@@ -85,6 +85,10 @@ screenshots/<id>/                          test-range captures for review
    - Add the pilot to `tools/art.config.mjs`: folder, file names, `glowRule`, and anchor estimates in source pixels.
    - If the portrait isn't a head-and-shoulders shot, set `portraitCrop: { left, top, width, height }` (a 4:5 box in portrait pixels).
    - If an enclosed gap in the art stays opaque (the edge fill can't reach it), add a seed pixel to `holes` (back view) or `frontHoles` (front view), as for Bruno's backpack frame.
+   - If the "transparency" is a **painted checkerboard** (a JPEG or RGB PNG showing grey squares), set `bg: 'checker'`, as for Lin. Light neutral greys are filled from the edges, enclosed pockets holding both checker greys are found automatically, and the grey fringe next to the line art is removed.
+   - If held weapons cross wings that should move, generate the layers with `wings` instead of writing them by hand (see section 6).
+   - Effect art the owner picks (glow painted over a checkerboard) goes in `tools/art-ref/<id>/` and `fx: { name: { file, height } }` → `<id>_fx_<name>.png`. It is un-blended: the checkerboard becomes transparent, glow becomes translucent and tinted, black and white stay solid. Small, frequent sprites go in the shared atlas; big ones go in `extras` (the pilot texture).
+   - A turret or drone on a concept sheet can be cut out with `turret: { file, box, rotate, height }` → `<id>_turret.png`. It removes the checkerboard and a baked pale glow, and keeps only the largest piece.
    - Add an npm script (`"art:<id>": "node tools/process-art.mjs <id>"`) and run it.
    - Check `screenshots/<id>/process/*_before_after.png`. `--demo-bgremoval` exercises the fallback.
 4. **Layer masks.**
@@ -200,6 +204,24 @@ The `poly` arrays above are cut down; real polygons have many more points.
 
 **Motion limits.** Keep slides ≤ the seam and rotations within ±0.05 rad. Anything bigger shows double edges.
 
+**Generated layers for wings behind held weapons (`wings` in `art.config.mjs`, Lin).** In source pixels:
+- `axis` is the mirror line.
+- `wingL` is the left wing polygon; the right wing is its mirror. Take the polygon past the image edges wherever the wing touches them, or the seam band leaves static wing tips in the body.
+- `pivotL` is the left wing root.
+- `keep` lists polygons of held weapons.
+
+The script then writes `<id>.layers.json` with:
+- `under: true`: the wings are drawn under the body;
+- `keep`: the body keeps those pixels whole.
+
+It also writes `<id>_wings@2x.png` and `<id>_wings_outline@2x.png`: the sprite with the wing pixels hidden under a weapon taken from the mirrored wing, or filled from their neighbours where both sides are covered. `mechaArt` cuts the wing layers from these images when the art has `wings2x` / `wingsOutline2x` in `ART_MANIFEST`. Pilots without these keys are unchanged.
+
+**Wing beat (`flap: true` in `createMechaArt`).** For mechas with real wings and no thrusters (Lin):
+- The wing layers squash toward their pivot, like a butterfly seen from above, with a small rotation.
+- The beat is slow and shallow at idle, faster and deeper when moving, and strongest flying up; the dash folds the wings.
+- Large squashes are fine here, because the wings are under the body and their pivot sits at the root.
+- `beatOf(p)` gives the current beat (0–1) for wing FX.
+
 **Per-pilot textures.** A pilot's art never goes into the shared atlas, so any number of pilots can have art.
 - The split (`splitLayers` in `art/mechaArt.js`) runs the first time the pilot is drawn (`ensureArt`).
 - It produces the pilot's own small texture: 1024² (2048² if the art doesn't fit), plain and outline variants.
@@ -223,6 +245,13 @@ All hooks are optional. A pilot without them runs the original code paths.
 | `renderShots(p, b, alpha, shots)` | `World.renderMid` | replaces the generic player-shot renderer |
 | `hitSpark(w, x, y, angle)` | `World._collide` | impact FX for this pilot's shots and its own beams |
 | beam `.skin` | `World.beam()` result | set it and the generic beam renderer skips that beam; draw it yourself (e.g. in `renderBelow`) |
+| `shotHit(w, i, enemy)` | `World._collide` | called when a non-piercing shot lands, before it is removed. Queue any new shots (the pool is being compacted), e.g. Lin's splitting spears |
+| `renderOptions(p, b, alpha)` | `Player.render` | `true` = drew the options itself (e.g. Lin's drones from the art texture) |
+| `renderUnder(p, b, alpha)` | `World.renderMid` | draws under the air enemies (e.g. Lin's starry void path) |
+
+**Extra images.**
+- `createMechaArt({ extras: { name: imageKey } })` packs more images from the pilot's art into its own texture; `art.extra(name)` returns the frame, or `null` without art.
+- Draw everything that uses the pilot's own texture together, not interleaved with atlas sprites. Every switch between the pilot texture and the atlas flushes the batch. Lin's turrets drawn glow / drone / glow per turret halved the storm frame rate; three passes fixed it.
 
 **Art loading**
 - Art loads before the atlas is built: `loadPilotArt()` runs in `src/main.js`, and `pilotArt(id)` returns the loaded art or `null`.
@@ -242,6 +271,7 @@ Effects are code-built and additive, and they feed the bloom.
 **Palette.** Sample it from the pilot's FX sheet (`pal: { core, hot, mid, edge }` in `<id>Art.js`):
 - Kairo: white-hot core → cyan → electric blue → violet edge.
 - Mira: white-hot → yellow → amber-gold → orange edge. Keep body colours below the bloom's white clip so the hue survives.
+- Lin: white → emerald → black. Additive light can't make black, so black parts (edges of spears, debris, smoke, roots, the rift) are drawn alpha-blended (`add = 0`) under the additive glow (`DARK` in `linArt.js`).
 
 **Hit area = bright core.** Draw each shot's bright core exactly as wide as its hit radius (`2r`). The outer glow is extra and semi-transparent.
 

@@ -27,6 +27,15 @@ import { FADE_OUT } from '../../fx/Particles.js';
 //   exhaust     anchors that emit exhaust particles
 //   wingAnchors anchor-name prefixes that move with the wing layers (muzzles)
 //   size        default height in world units
+//   flap        wings beat like a butterfly's instead of only flaring (the
+//               layers squash toward their root); faster and deeper when moving
+//   extras      { name: imageKey }: more images from the pilot's art (e.g. a
+//               turret) packed into the same texture; frame via extra(name)
+//
+// layers.json may also set `under: true` (wings drawn under the body) and
+// `keep` polygons (body pixels the wings never take, e.g. held weapons); the
+// wing layers then come from the `wings2x` / `wingsOutline2x` images when the
+// art has them (wing pixels hidden under the weapons filled in).
 
 export const SIZES = [90, 68, 80];
 const VARIANTS = ['plain', 'outline'];
@@ -189,7 +198,7 @@ function polyBox(poly, pad, w, h) {
  * Split a sprite image into body / wing canvases (+ crop boxes).
  * @param imageW width of the @2x image the layer JSON is written for
  */
-export function splitLayers(img, layers, imageW) {
+export function splitLayers(img, layers, imageW, wingImg = img) {
   const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
   const sx = W / imageW; // layers.json is in @2x pixels; scale if a 1x image is passed
   const sc = (p) => p.map(([x, y]) => [x * sx, y * sx]);
@@ -203,6 +212,14 @@ export function splitLayers(img, layers, imageW) {
     for (let p = 0; p < W * H; p++) {
       m[p] = Math.max(m[p], md[p * 4 + 3] / 255);
       if (ed[p * 4 + 3] > 127) e[p] = 1;
+    }
+  }
+  // Keep areas (held weapons): the body keeps these pixels whole.
+  for (const poly of layers.keep || []) {
+    const kd = pixels(maskCanvas(W, H, sc(poly), 1));
+    for (let p = 0; p < W * H; p++) {
+      const k = kd[p * 4 + 3] / 255;
+      if (k > 0) { m[p] *= 1 - k; if (k > 0.5) e[p] = 0; }
     }
   }
   // Body = the exact "over" complement of the wings, so body + wings at rest
@@ -226,7 +243,7 @@ export function splitLayers(img, layers, imageW) {
     const c = canvas(box.w, box.h), cx = c.getContext('2d');
     cx.drawImage(maskCanvas(W, H, sc(L.poly), feather), -box.x, -box.y);
     cx.globalCompositeOperation = 'source-in';
-    cx.drawImage(img, -box.x, -box.y, W, H);
+    cx.drawImage(wingImg, -box.x, -box.y, W, H);
     out[name] = { canvas: c, box, pivot: [L.pivot[0] * sx, L.pivot[1] * sx] };
   }
   return out;
@@ -296,7 +313,8 @@ export function createMechaArt(cfg) {
           sets = {};
           for (const variant of VARIANTS) {
             const img = art.images[variant === 'outline' ? 'outline2x' : 'back2x'];
-            const parts = splitLayers(img, art.layers, A.image.w);
+            const wingImg = art.images[variant === 'outline' ? 'wingsOutline2x' : 'wings2x'] || img;
+            const parts = splitLayers(img, art.layers, A.image.w, wingImg);
             const set = {};
             set.full = { frame: atlas.add(`${id}_mecha_${variant}`, A.image.w, A.image.h, (c, w, h) => c.drawImage(img, 0, 0, w, h), { scale: 1 }), box: { x: 0, y: 0, w: A.image.w, h: A.image.h } };
             for (const [name, p] of Object.entries(parts)) {
@@ -306,6 +324,11 @@ export function createMechaArt(cfg) {
               };
             }
             sets[variant] = set;
+          }
+          sets.extras = {};
+          for (const [name, key] of Object.entries(cfg.extras || {})) {
+            const img = art.images[key];
+            if (img) sets.extras[name] = atlas.add(`${id}_${name}`, img.naturalWidth, img.naturalHeight, (c, w, h) => c.drawImage(img, 0, 0, w, h), { scale: 1 });
           }
           break;
         } catch (err) {
@@ -338,6 +361,14 @@ export function createMechaArt(cfg) {
     const moving = Math.abs(p.moveX) + Math.abs(p.moveY) > 0.2;
     const thr = ps.phase > 0 ? 3.2 : p.moveY < -0.2 ? 2 : moving ? 1.4 : 1;
     ease('thr', thr, 0.25);
+    // Butterfly wing beat: idle slow and shallow, moving faster and deeper,
+    // strongest flying up (the dash folds them through `fold`).
+    if (cfg.flap) {
+      const up = p.moveY < -0.2;
+      ease('flapRate', up ? 0.24 : moving ? 0.17 : 0.075, 0.08);
+      ease('flapAmp', up ? 0.46 : moving ? 0.36 : 0.2, 0.08);
+      ps.flapPh = ((ps.flapPh || 0) + ps.flapRate) % (Math.PI * 2);
+    }
     // Dash trail points.
     const tr = ps.trail || (ps.trail = []);
     if (ps.phase > 0) { tr.push([p.x, p.y]); if (tr.length > 14) tr.shift(); } else if (tr.length) tr.shift();
@@ -350,9 +381,19 @@ export function createMechaArt(cfg) {
     const kick = (s < 0 ? ps.kickL : ps.kickR) || 0;            // optional per-side swing (0..1), e.g. a melee slash
     const out = flare * 8 - fold * 6 + breath * 0.8 + kick * 7; // + = outward
     const ox = s * out - p.bank * 5;                            // banking: far wing in, near wing out
-    const rot = s * (0.035 * (flare - fold) + 0.006 * breath + 0.14 * kick);
-    return { ox, rot };
+    let rot = s * (0.035 * (flare - fold) + 0.006 * breath + 0.14 * kick);
+    let sx = 1;
+    if (cfg.flap) {
+      // 0 = spread, 1 = top of the beat (wing raised: seen from above it narrows).
+      const beat = 0.5 - 0.5 * Math.cos(ps.flapPh || 0);
+      sx = 1 - (ps.flapAmp || 0.2) * beat - fold * 0.4 + flare * 0.04;
+      rot += s * (0.05 * beat - 0.06 * fold);
+    }
+    return { ox, rot, sx };
   }
+
+  /** Current wing beat 0 (spread) .. 1 (raised), for wing FX. */
+  const beatOf = (p) => (cfg.flap ? 0.5 - 0.5 * Math.cos(p.ps.flapPh || 0) : 0);
 
   /**
    * Draw the mecha. Returns false when the art isn't available (the Player then
@@ -400,24 +441,26 @@ export function createMechaArt(cfg) {
     // Flames under the art first (the body covers their roots).
     flames$(false);
 
-    const drawPart = (part, ox = 0, prot = 0, tint = null, alpha = a, add = 0) => {
+    const drawPart = (part, ox = 0, prot = 0, tint = null, alpha = a, add = 0, psx = 1) => {
       const bx = part.box;
       let cx = bx.x + bx.w / 2 - hb[0], cy = bx.y + bx.h / 2 - hb[1];
-      if (prot && part.pivot) {
-        // Rotate the layer's centre about its pivot.
+      if ((prot || psx !== 1) && part.pivot) {
+        // Squash toward, then rotate about, the layer's pivot.
         const px = part.pivot[0] - hb[0], py = part.pivot[1] - hb[1];
-        const c = Math.cos(prot), s = Math.sin(prot), dx = cx - px, dy = cy - py;
+        const c = Math.cos(prot), s = Math.sin(prot), dx = (cx - px) * psx, dy = cy - py;
         cx = px + dx * c - dy * s; cy = py + dx * s + dy * c;
       }
       const [wx, wy] = place(cx + ox, cy);
       const t = tint || [1, 1, 1];
-      b.draw(part.frame, wx, wy, bx.w * k * sq, bx.h * k, rot + prot, t[0], t[1], t[2], alpha, add);
+      b.draw(part.frame, wx, wy, bx.w * k * sq * psx, bx.h * k, rot + prot, t[0], t[1], t[2], alpha, add);
     };
 
-    drawPart(set.body);
     const L = wingPose(p, -1), R = wingPose(p, 1);
-    drawPart(set.wingL, L.ox, L.rot);
-    drawPart(set.wingR, R.ox, R.rot);
+    const wings = () => { drawPart(set.wingL, L.ox, L.rot, null, a, 0, L.sx); drawPart(set.wingR, R.ox, R.rot, null, a, 0, R.sx); };
+    const under = pilotArt(id)?.layers?.under;
+    if (under) wings();
+    drawPart(set.body);
+    if (!under) wings();
 
     // Nozzle glow on top of the art, so the thrusters read as lit.
     nozzles.forEach((name, i) => {
@@ -492,7 +535,9 @@ export function createMechaArt(cfg) {
     frames: () => K,
     ensureArt,
     anchorData, unitsPerPx, anchor, animatedAnchor,
-    buildSprites, animate, renderMecha, exhaust, afterimage,
+    buildSprites, animate, renderMecha, exhaust, afterimage, wingPose, beatOf,
     hasArt: () => !!K.art,
+    /** Frame of an `extras` image (null without art). */
+    extra: (name) => K.art?.extras?.[name] || null,
   };
 }

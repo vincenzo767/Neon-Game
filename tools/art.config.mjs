@@ -112,4 +112,45 @@ export const PILOT_ART = {
       maneR: [696, 1060],
     },
   },
+  lin: {
+    folder: 'Lin Hayase',
+    back: 'top-down-main.jpg',
+    front: 'top-down-front.jpg',
+    portrait: 'pilot-portrait.jpg',
+    portraitCrop: { left: 20, top: 0, width: 200, height: 250 }, // head and shoulders (4:5)
+    bg: 'checker',             // painted checkerboard, not real transparency
+    glowRule: false,
+    // Butterfly wings flap under the body. The spear (right) and whip (left)
+    // cross the wings: they stay in the body (`keep`), and the wing pixels
+    // under them come from the mirrored wing. Source pixels; mirror axis x 660.
+    wings: {
+      axis: 660,
+      pivotL: [490, 700],
+      wingL: [[-120, 370], [120, 370], [260, 470], [400, 560], [470, 640], [500, 700], [470, 760], [420, 880], [370, 1000], [340, 1100], [290, 1320], [-120, 1320]],
+      keep: [
+        // spear: shaft, guard and blade
+        [[935, 0], [995, 0], [995, 330], [1003, 420], [1018, 500], [1022, 560], [1014, 700], [992, 800], [966, 905], [944, 905], [918, 800], [896, 700], [890, 560], [902, 500], [922, 420], [928, 330]],
+        // whip: from its tip down to his hand
+        [[20, 300], [170, 300], [300, 380], [430, 430], [500, 500], [505, 620], [497, 632], [393, 670], [341, 650], [272, 603], [202, 540], [150, 476], [104, 416], [40, 395]],
+      ],
+    },
+    // Owner's FX picks (tools/art-ref/lin/, over a checkerboard) → lin_fx_<name>.png.
+    fx: {
+      cosmic: { file: 'tools/art-ref/lin/cosmic-spear.png', height: 480 },  // Cosmic Spear head
+      arrow: { file: 'tools/art-ref/lin/shot-arrow.png', height: 128 },     // main-shot arrows
+      spear: { file: 'tools/art-ref/lin/focus-spear.png', height: 192 },    // focus spears (and split shards, bomb spears)
+      star: { file: 'tools/art-ref/lin/bomb-star.png', height: 192 },       // every Spear Rain hit
+    },
+    turret: { file: 'swarm-turrets.png', box: { left: 8, top: 8, width: 300, height: 226 }, rotate: 180, height: 120 },
+    anchors: {
+      hitbox: [660, 640],      // chest centre: lands on player.x/y
+      head: [660, 760],
+      core: [660, 400],        // forward waist spike: main-shot shards
+      blade: [957, 260],       // spear blade, ~30 units ahead: focus-spear origin
+      spear: [965, 30],        // spear tip (reference, ultimate launch)
+      whip: [125, 40],         // whip tip (reference)
+      wingL: [540, 700],       // wing roots: glitter, no thrusters
+      wingR: [780, 700],
+    },
+  },
 };
