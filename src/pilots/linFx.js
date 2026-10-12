@@ -1,6 +1,7 @@
 import { FADE_OUT, FADE_INOUT } from '../fx/Particles.js';
 import { crowdFactor } from './art/mechaFx.js';
 import { linArt, PAL, DARK } from './linArt.js';
+import { pilotArt } from '../core/pilotArt.js';
 
 // Lin's effects, after fx-reference.png and swarm-turrets.png: crystal spears
 // and shards in glowing emerald with a black edge and a white core, ring
@@ -67,11 +68,38 @@ function rootTex(ctx, w, h) {
   }
 }
 
+// The owner's FX picks (tools/art-ref/lin/ → lin_fx_*.png, all pointing up),
+// packed into the main atlas next to the shot glows so drawing them never
+// switches textures. [image key, logical w, h]. Without the art the code-drawn
+// spear and crystal stand in.
+// The two big picks (cosmic spear, star seal) live in the pilot's own texture (linArt extras).
+const PICK = { arrow: ['fxArrow', 15, 42], spear: ['fxSpear', 19, 63] };
+let PICKS = {};
+/** A picked FX frame (arrow / spear / star / cosmic) or null. */
+export const pick = (k) => PICKS[k] || linArt.extra(k);
+
 /** Atlas textures (part of lin.js `sprites`). */
 export function linFxSprites(atlas) {
   atlas.add('l_spear', 64, 16, spearTex, { scale: 3 });
   atlas.add('l_crystal', 16, 8, crystalTex, { scale: 3 });
   atlas.add('l_root', 64, 16, rootTex, { scale: 2 });
+  PICKS = {};
+  const images = pilotArt('lin')?.images || {};
+  for (const [k, [key, w, h]] of Object.entries(PICK)) {
+    const img = images[key];
+    if (img) PICKS[k] = atlas.add(`l_pick_${k}`, w, h, (c, cw, ch) => c.drawImage(img, 0, 0, cw, ch), { scale: 2 });
+  }
+}
+
+/**
+ * A picked sprite pointing along `ang`, tip at (x, y): a soft additive
+ * emerald glow under the painted art (alpha-blended, so its black edges and
+ * white core read as painted).
+ */
+function painted(b, F, fr, x, y, ang, len, wid, alpha, glowA, glow = 1) {
+  const dx = Math.cos(ang), dy = Math.sin(ang), cx = x - dx * len / 2, cy = y - dy * len / 2;
+  if (glow > 0) b.draw(F.glow, cx, cy, len * 1.3, wid * 2.4, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.35 * alpha * glowA * glow, 1);
+  b.draw(fr, cx, cy, wid, len, ang + Math.PI / 2, 1, 1, 1, alpha, 0);
 }
 
 // ------------------------------------------------------------ pieces
@@ -101,10 +129,22 @@ const frames = (p) => p.ps.Fr;
 export function renderShots(p, b, alpha, S) {
   const F = p.F, Fr = frames(p), fx = fxOf(), wm = LOOK.widthMul;
   const glowA = LOOK.glowMul * crowdFactor(p.w);
+  const arrow = pick('arrow'), spr = pick('spear');
   for (let i = 0; i < S.count; i++) {
     const x = S.px[i] + (S.x[i] - S.px[i]) * alpha, y = S.py[i] + (S.y[i] - S.py[i]) * alpha;
     const ang = S.ang[i], tag = S.aux[i], dx = Math.cos(ang), dy = Math.sin(ang);
     const fade = Math.min(1, (S.age[i] + alpha) / 2);
+    // Painted picks first (the hit point sits just behind the tip).
+    if (spr && (tag === T_SPEAR || tag === T_SPLIT)) {
+      const big = tag === T_SPEAR;
+      painted(b, F, spr, x + dx * (big ? 8 : 5), y + dy * (big ? 8 : 5), ang, (big ? 50 : 30) * wm, (big ? 15 : 9) * wm, fade, glowA);
+      continue;
+    }
+    if (arrow && (tag === T_SHARD || tag === T_NEEDLE)) {
+      const big = tag === T_SHARD;
+      painted(b, F, arrow, x + dx * 5, y + dy * 5, ang, (big ? 32 : 20) * wm, (big ? 11.5 : 7) * wm, fade, glowA, big ? 1 : 0.6);
+      continue;
+    }
     if (tag === T_SPEAR) {
       spear(b, F, Fr, x + dx * 6, y + dy * 6, ang, 34 * wm, 11 * wm, fade, glowA);
       // Ring halo running down the shaft (FX sheet).
@@ -306,12 +346,25 @@ export function renderFieldRoots(p, b) {
 
 /** Spear Rain: falling spears with long light trails. */
 export function renderRain(p, b) {
-  const F = p.F, Fr = frames(p), glowA = crowdFactor(p.w);
+  const F = p.F, Fr = frames(p), glowA = crowdFactor(p.w), spr = pick('spear'), st = pick('star');
   for (const s of p.ps.rain) {
-    const L = s.big ? 46 : 30, wd = s.big ? 13 : 9;
-    b.draw(F.laser, s.x - s.vx * 3, s.y - 50, 4, 100, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.35 * glowA, 1);
-    spear(b, F, Fr, s.x, s.y, Math.atan2(s.vy, s.vx), L, wd, 1, glowA);
+    const L = s.big ? 64 : 42, wd = s.big ? 19 : 13, ang = Math.atan2(s.vy, s.vx);
+    b.draw(F.laser, s.x - s.vx * 3, s.y - 60, 4, 110, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.3 * glowA, 1);
+    if (spr) painted(b, F, spr, s.x, s.y, ang, L, wd, 1, glowA);
+    else spear(b, F, Fr, s.x, s.y, ang, L * 0.75, wd * 0.7, 1, glowA);
   }
+  // Every hit: the star seal from the FX picks, opening, turning and fading.
+  // In passes: the seals use the pilot texture, so they don't interleave with atlas glows.
+  const seals = p.ps.stars.map((h) => {
+    const k = h.t / h.life;
+    return { h, k, s: h.size * (0.55 + 0.45 * Math.min(1, k * 3)), a: k < 0.6 ? 1 : 1 - (k - 0.6) / 0.4 };
+  });
+  for (const { h, s, a } of seals) b.draw(F.glow, h.x, h.y, s * 1.1, s * 1.1, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.22 * a * glowA, 1);
+  for (const { h, k, s, a } of seals) {
+    if (st) b.draw(st, h.x, h.y, s, s, h.rot + k * 0.6, 0.75, 1, 0.82, 0.9 * a, 0);
+    else b.draw(F.ring, h.x, h.y, s, s, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], a, 1);
+  }
+  for (const { h, k, s } of seals) if (k < 0.3) star(b, h.x, h.y, s * 0.7 * (1 - k / 0.3), 1, h.rot);
 }
 
 /** Cosmic Spear: charge, the giant spear and the starry rift it leaves. */
@@ -334,43 +387,49 @@ export function renderUlt(p, b) {
       const a = i * 2.4 + t * 0.07, d = 70 * (1 - ((t * 0.04 + hash(i)) % 1));
       star(b, x + Math.cos(a) * d, y + Math.sin(a) * d, 6 + 6 * hash(i * 3), k, a);
     }
-    spear(b, F, Fr, x, y - 20 * k, -Math.PI / 2, 40 + 30 * k, 12 + 8 * k, k);
+    const cs = pick('cosmic');
+    if (cs) painted(b, F, cs, x, y - 30 * k, -Math.PI / 2, 60 + 50 * k, (60 + 50 * k) * (cs.w / cs.h), k, 1, 0.6);
+    else spear(b, F, Fr, x, y - 20 * k, -Math.PI / 2, 40 + 30 * k, 12 + 8 * k, k);
     star(b, x, y - 20 * k, 40 + 40 * k, k, t * 0.04);
     return;
   }
+  if (u.headY > -340) {
+    // The giant spear itself (the owner's pick), pointing up.
+    const cs = pick('cosmic'), x = u.x;
+    if (cs) {
+      const L = 330, Wd = L * (cs.w / cs.h);
+      painted(b, F, cs, x, u.headY, -Math.PI / 2, L, Wd, 1, 1, 0.8);
+    } else {
+      spear(b, F, Fr, x, u.headY, -Math.PI / 2, 240, 84, 1, 0.6);
+    }
+    star(b, x, u.headY + 40, 80, 0.8, t * 0.05);
+  }
+}
+
+/** The Cosmic Spear's path, drawn under the enemies (World renderUnder hook). */
+export function renderVoid(p, b) {
+  const u = p.ps.ult;
+  if (!u || u.phase !== 'fly') return;
+  const F = p.F, fx = fxOf(), t = p.t;
   const a = u.fade, x = u.x, wd = u.w, top = Math.max(-40, u.headY), y0 = u.y0, len = y0 - top, my = (y0 + top) / 2;
   if (len > 0 && fx) {
-    // Rift: black space with emerald edges, a white seam and stars.
-    b.draw(F.laser, x, my, len, wd * 2.4, -Math.PI / 2, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.12 * a, 1);
-    b.draw(fx.beam, x, my, len, wd * 1.25, -Math.PI / 2, DARK[0], DARK[1], DARK[2], 0.92 * a, 0);
-    b.draw(fx.beam, x, my, len, wd * 1.05, -Math.PI / 2, DARK[0], DARK[1], DARK[2], 0.6 * a, 0);
-    // Faint emerald nebula drifting inside the black.
-    for (let k = 0; k < 5; k++) {
-      const ny = y0 - ((hash(k * 3.3) * 700 + t * 0.6) % 700);
-      if (ny < top || ny > y0) continue;
-      b.draw(F.glow, x + (hash(k * 2.2) - 0.5) * wd * 0.6, ny, wd * 0.9, wd * 1.6, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.35 * a, 1);
+    // The path: a void of empty space with stars. A soft black edge, the
+    // black void, a hair-thin emerald rim; nothing else lit but the stars.
+    b.draw(fx.beam, x, my, len, wd * 1.7, -Math.PI / 2, DARK[0], DARK[1], DARK[2], 0.45 * a, 0);
+    b.draw(fx.beam, x, my, len, wd * 1.25, -Math.PI / 2, 0, 0, 0, 0.97 * a, 0);
+    b.draw(fx.beam, x, my, len, wd * 1.05, -Math.PI / 2, 0, 0, 0, 0.8 * a, 0);
+    for (const s of [-1, 1]) b.draw(F.laser, x + s * wd * 0.6, my, len, 3, -Math.PI / 2, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.4 * a, 1);
+    // Stars: many faint pin-points, fewer bright four-point stars, a few
+    // emerald ones; they drift slowly and twinkle.
+    for (let k = 0; k < 120; k++) {
+      const sy = y0 - ((hash(k * 1.7) * 760 + t * (0.15 + hash(k) * 0.35)) % 760);
+      if (sy < top + 4 || sy > y0) continue;
+      const sx = x + (hash(k * 4.1) - 0.5) * wd * 1.05, tw = 0.5 + 0.5 * Math.sin(t * (0.08 + hash(k * 6.1) * 0.2) + k * 2.3);
+      const sz = hash(k * 9.2), em = hash(k * 2.9) > 0.8 ? 1 : 0;
+      const c = em ? PAL.hot : PAL.core;
+      if (sz < 0.75) b.draw(F.core, sx, sy, 1.5 + 2.5 * sz, 1.5 + 2.5 * sz, 0, c[0], c[1], c[2], a * (0.35 + 0.65 * tw), 1);
+      else star(b, sx, sy, (6 + 14 * (sz - 0.75) * 4) * (0.6 + 0.5 * tw), a * (0.5 + 0.5 * tw), k);
     }
-    for (const s of [-1, 1]) b.draw(F.laser, x + s * wd * 0.55, my, len, 6, -Math.PI / 2, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.85 * a, 1);
-    b.draw(F.laser, x, my, len, 2 + 2 * Math.sin(t * 0.4), -Math.PI / 2, PAL.core[0], PAL.core[1], PAL.core[2], 0.35 * a, 1);
-    // Stars drifting slowly up the rift, twinkling.
-    for (let k = 0; k < 70; k++) {
-      const sy = y0 - ((hash(k * 1.7) * 700 + t * (0.4 + hash(k) * 0.6)) % 700);
-      if (sy < top || sy > y0) continue;
-      const sx = x + (hash(k * 4.1) - 0.5) * wd * 1.1, tw = 0.5 + 0.5 * Math.sin(t * 0.25 + k * 2.3);
-      star(b, sx, sy, (3 + 7 * hash(k * 9.2)) * (0.6 + 0.6 * tw), a * (0.4 + 0.6 * tw), k);
-    }
-    // Crescent rings climbing the path.
-    for (let k = 0; k < 6; k++) {
-      const ry = y0 - ((k * 120 + t * 3) % 720);
-      if (ry < top || ry > y0) continue;
-      b.draw(F.ring, x, ry, wd * 1.4, 26, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.5 * a, 1);
-    }
-  }
-  if (u.headY > -260) {
-    // The giant spear itself, pointing up.
-    spear(b, F, Fr, x, u.headY, -Math.PI / 2, 240, 84, 1, 0.6);
-    b.draw(F.glow, x, u.headY + 40, wd * 1.6, wd * 2, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.3, 1);
-    star(b, x, u.headY, 70, 0.9, t * 0.05);
   }
 }
 

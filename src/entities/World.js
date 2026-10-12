@@ -592,6 +592,9 @@ export class World {
   renderMid(b, alpha) {
     const F = this.F, frames = this.r.frames;
     this.fxLow.render(b, frames, alpha);
+    // Optional pilot layer under the air enemies (e.g. Lin's starry void path).
+    const pu = this.player && this.player.def.renderUnder;
+    if (pu) pu(this.player, b, alpha);
 
     for (const e of this.enemies.active) if (!e.ground) this._drawEnemy(b, e, alpha);
 

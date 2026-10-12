@@ -169,3 +169,30 @@ Same method as the others: feathered polygons plus the exact alpha complement fo
 - **Known gaps.**
   - Lin's sounds are still the old seed-pod pluck and bloom chime (no new sound was requested).
   - The 2048-atlas warning (`retrying smaller`) is the same on the Oduya branch; it isn't new.
+
+## Revision: FX from the owner's picks
+
+The owner picked four images as the exact look (saved in `tools/art-ref/lin/`; the concept folder is untouched):
+
+1. **Cosmic Spear** (`cosmic-spear.png`). The giant spear of the ultimate. Its path is now a **void of empty space with stars**: black, a hair-thin emerald rim, many faint pin-point stars, fewer bright four-point stars and a few emerald ones, drifting and twinkling. No nebula and no rings.
+2. **Main-shot arrows** (`shot-arrow.png`). The basic attack: crystal spears with black edges, emerald body and a white core. The turret and option needles use smaller copies.
+3. **Focus spears** (`focus-spear.png`). The focus attack, the split shards (smaller), and the spears falling in Spear Rain.
+4. **Bomb hit** (`bomb-star.png`). Every Spear Rain hit opens this star seal: it grows, turns slightly and fades. Big spears get a bigger seal and a burst. Half the small hits use a plain spark, so the seals don't stack into a cloud.
+
+How they are made:
+- `process-art.mjs` reads the new `fx` config and writes `lin_fx_<name>.png`.
+- The images have a painted checkerboard and baked glow, so they are **un-blended**:
+  - the checkerboard becomes transparent;
+  - each other pixel gets the least opacity that explains its difference from the grey background;
+  - pale glow becomes translucent emerald (smoothed and tinted);
+  - black crystal and white cores stay solid.
+- In game the picked art is drawn alpha-blended (so the black reads) over a soft additive emerald glow.
+
+Where they live:
+- The arrow and spear are in the shared atlas: they are drawn many times a frame, so they never switch textures.
+- The cosmic spear and star seal are in Lin's own texture (`extras`); the seals are drawn in passes.
+- Atlas fill is 87.0 % on 4096 (was 86.5 %) and 84.8 % on the 2048 fallback.
+
+**The path is drawn under the enemies** (new optional World hook `renderUnder`), so a boss inside it stays visible.
+
+Damage is unchanged. In the storm Lin runs at about 50 FPS with art versus 45 procedural.

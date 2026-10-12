@@ -206,6 +206,61 @@ function largestPiece(img) {
   return img;
 }
 
+/**
+ * Glowing FX art painted over a checkerboard → a sprite with soft alpha.
+ * The checkerboard (flood-filled from the edges, plus enclosed pockets holding
+ * both greys, plus any light neutral grey) becomes transparent. Every other
+ * pixel is "un-blended" from a mid-grey background B: it gets the least
+ * opacity that explains how far it is from B (tint, darkness, or white
+ * brightness), and its colour is solved from pixel = a·F + (1−a)·B. So pale
+ * green glow turns into translucent emerald, black crystal and white cores
+ * stay solid.
+ */
+function keyFx(img, B = 208) {
+  const { data, w, h } = img, N = w * h;
+  const lum = (p) => 0.3 * data[p * 4] + 0.59 * data[p * 4 + 1] + 0.11 * data[p * 4 + 2];
+  const spread = (p) => Math.max(data[p * 4], data[p * 4 + 1], data[p * 4 + 2]) - Math.min(data[p * 4], data[p * 4 + 1], data[p * 4 + 2]);
+  const neutralLight = (p) => spread(p) <= 22 && lum(p) >= 160;
+  const bg = new Uint8Array(N), stack = [];
+  for (let x = 0; x < w; x++) for (const p of [x, x + (h - 1) * w]) if (!bg[p] && neutralLight(p)) { bg[p] = 1; stack.push(p); }
+  for (let y = 0; y < h; y++) for (const p of [y * w, w - 1 + y * w]) if (!bg[p] && neutralLight(p)) { bg[p] = 1; stack.push(p); }
+  while (stack.length) for (const q of nbrs(stack.pop(), w, h)) if (q >= 0 && !bg[q] && neutralLight(q)) { bg[q] = 1; stack.push(q); }
+  const seen = new Uint8Array(N);
+  for (let p0 = 0; p0 < N; p0++) { // enclosed checker pockets
+    if (bg[p0] || seen[p0] || !neutralLight(p0)) continue;
+    const comp = [p0];
+    seen[p0] = 1;
+    for (let k = 0; k < comp.length; k++) for (const q of nbrs(comp[k], w, h)) if (q >= 0 && !seen[q] && !bg[q] && neutralLight(q)) { seen[q] = 1; comp.push(q); }
+    let dk = 0, lt = 0;
+    for (const p of comp) { const l = lum(p); if (l < 205) dk++; else if (l > 220) lt++; }
+    if (comp.length >= 30 && dk > comp.length * 0.1 && lt > comp.length * 0.1) for (const p of comp) bg[p] = 1;
+  }
+  for (let p = 0; p < N; p++) {
+    const i = p * 4, l = lum(p), sp = spread(p);
+    if (bg[p] || (sp <= 14 && l >= 160 && l < 242)) { data[i + 3] = 0; continue; }
+    let a = Math.max(sp / 80, l < B ? ((B - l) / B) * 1.4 : 0, l > B && sp <= 30 ? (l - B) / (255 - B) : 0);
+    a = Math.min(1, a);
+    if (a < 0.04) { data[i + 3] = 0; continue; }
+    for (let c = 0; c < 3; c++) data[i + c] = Math.max(0, Math.min(255, Math.round(B + (data[i + c] - B) / a)));
+    data[i + 3] = Math.round(a * 255);
+  }
+  // Soft glow: the checkerboard still shows through it as grain, and solved
+  // colours drift grey. Smooth the alpha there and tint it emerald.
+  const al = new Float32Array(N);
+  for (let p = 0; p < N; p++) al[p] = data[p * 4 + 3] / 255;
+  const sm = boxBlur(al, w, h, 2);
+  for (let p = 0; p < N; p++) {
+    const i = p * 4, a = al[p];
+    if (a >= 0.75) continue;
+    const s = Math.min(a, sm[p]) * (1 - a / 0.75) + a * (a / 0.75); // fade into the smoothed value
+    data[i + 3] = Math.round(Math.max(0, s) * 255);
+    const l = (0.3 * data[i] + 0.59 * data[i + 1] + 0.11 * data[i + 2]) / 255, k = 0.65 * (1 - a / 0.75);
+    const em = [70 * l + 20, 255 * Math.min(1, l * 1.15), 150 * l + 30];
+    for (let c = 0; c < 3; c++) data[i + c] = Math.round(data[i + c] * (1 - k) + em[c] * k);
+  }
+  return img;
+}
+
 /** Point in polygon (even-odd rule). */
 function inPoly(x, y, poly) {
   let c = false;
@@ -445,6 +500,24 @@ async function main() {
       await sharp(path.join(SRC, T.file)).extract(T.box).png().toBuffer(),
       await sharp(path.join(OUT, `${ID}_turret.png`)).toBuffer(),
     ], 260);
+  }
+
+  // FX sprites (config `fx`): glowing effect art over a checkerboard → <id>_fx_<name>.png.
+  if (CFG.fx) {
+    const tiles = [];
+    for (const [name, F] of Object.entries(CFG.fx)) {
+      const file = path.join(ROOT, F.file);
+      const im = keyFx(await raw(file));
+      cleanAlpha(im);
+      let buf = await fromRaw(im).extract(alphaBox(im, 4)).png().toBuffer();
+      if (F.rotate) buf = await sharp(buf).rotate(F.rotate).png().toBuffer();
+      const r = await sharp(buf).resize({ height: F.height, kernel: 'lanczos3' }).png({ compressionLevel: 9 }).toBuffer();
+      fs.writeFileSync(path.join(OUT, `${ID}_fx_${name}.png`), r);
+      const m = await sharp(r).metadata();
+      log(`${ID}_fx_${name}.png: ${m.width}x${m.height}`);
+      tiles.push(await sharp(file).png().toBuffer(), r);
+    }
+    await sheet(path.join(PREVIEW, 'fx_before_after.png'), tiles, 320);
   }
 
   // 5. Front view (select preview, cut-in) and portrait.

@@ -30,6 +30,8 @@ export const linArt = createMechaArt({
   },
   flames: [],
   flap: true,
-  extras: { turret: 'turret' },
+  // Pilot-texture extras: the swarm turret, and the owner's two big FX picks
+  // (drawn a few times per frame, so they stay out of the shared atlas).
+  extras: { turret: 'turret', cosmic: 'fxCosmic', star: 'fxStar' },
   size: 90,
 });

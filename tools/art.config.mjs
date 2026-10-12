@@ -134,6 +134,13 @@ export const PILOT_ART = {
         [[20, 300], [170, 300], [300, 380], [430, 430], [500, 500], [505, 620], [497, 632], [393, 670], [341, 650], [272, 603], [202, 540], [150, 476], [104, 416], [40, 395]],
       ],
     },
+    // Owner's FX picks (tools/art-ref/lin/, over a checkerboard) → lin_fx_<name>.png.
+    fx: {
+      cosmic: { file: 'tools/art-ref/lin/cosmic-spear.png', height: 480 },  // Cosmic Spear head
+      arrow: { file: 'tools/art-ref/lin/shot-arrow.png', height: 128 },     // main-shot arrows
+      spear: { file: 'tools/art-ref/lin/focus-spear.png', height: 192 },    // focus spears (and split shards, bomb spears)
+      star: { file: 'tools/art-ref/lin/bomb-star.png', height: 192 },       // every Spear Rain hit
+    },
     turret: { file: 'swarm-turrets.png', box: { left: 8, top: 8, width: 300, height: 226 }, rotate: 180, height: 120 },
     anchors: {
       hitbox: [660, 640],      // chest centre: lands on player.x/y

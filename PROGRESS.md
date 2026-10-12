@@ -857,6 +857,7 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Lin%20Hayase/ASS
   - **Ultimate: Cosmic Spear.** A short charge (black space opens at his spear, stars fall in), then a giant spear 110 units wide flies up the screen. It hits everything in its path once for 120 (through shields). It leaves a black, starry rift for about 3 s that keeps burning and clears bullets.
 - **Balance (approved: strong but fair).** Boss DPS at T4: shot 97, focus 104 (was 79 / 80). Splitting spears clear a line of six at 261 (was 79).
 - **FX.** Emerald, black and white. The black parts are alpha-blended under the additive glow: spear edges, crystal debris, smoke, roots, the rift.
+- **FX from the owner's picks** (`tools/art-ref/lin/`, un-blended by `process-art.mjs` `fx`): main-shot arrows, focus / split / rain spears, the star seal on every Spear Rain hit, and the Cosmic Spear. Its path is a black void of stars, drawn under the enemies (new World hook `renderUnder`).
 - **Frame rate.** In the 1,500-bullet storm, about 53 FPS with art versus 49 procedural (Intel HD 5500).
 
 ## Run

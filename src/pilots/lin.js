@@ -5,7 +5,7 @@ import { FADE_OUT } from '../fx/Particles.js';
 import { linArt, PAL } from './linArt.js';
 import {
   linFxSprites, renderShots, hitSpark, burst, wingGlitter, renderTurrets,
-  renderFieldGround, renderFieldRoots, renderRain, renderUlt,
+  renderFieldGround, renderFieldRoots, renderRain, renderUlt, renderVoid,
   T_SHARD, T_SPEAR, T_SPLIT, T_NEEDLE,
 } from './linFx.js';
 
@@ -213,14 +213,17 @@ export default {
         const e = T.length && R.chance(0.5) ? R.pick(T) : null;
         const tx = e ? e.x + R.range(-12, 12) : R.range(10, W - 10), ty = e ? e.y : R.range(30, H - 110);
         const big = k === 0 && t % 10 === 0;
-        ps.rain.push({ x: tx - 3 * (ty + 60) / 26, y: -40 - R.range(0, 60), tx, ty, vx: 3, vy: 26, big });
+        ps.rain.push({ x: tx - 3 * (ty + 60) / 26, y: -40 - R.range(0, 60), tx, ty, vx: 3, vy: 26, big, n: ps.rainN = (ps.rainN || 0) + 1 });
       }
       for (const s of ps.rain) {
         s.x += s.vx; s.y += s.vy;
         if (s.y < s.ty) continue;
         s.dead = true;
         w.damageCircle(s.tx, s.ty, s.big ? 64 : 40, s.big ? 7 : 3, DMG_IGNORES_SHIELDS);
-        if (s.big) { burst(w, s.tx, s.ty, 1.2); w.g.camera.addTrauma(0.08); } else hitSpark(w, s.tx, s.ty, -Math.PI / 2);
+        // Every hit opens a star seal (owner's pick); big ones also burst.
+        if (s.big || (s.n & 1)) ps.stars.push({ x: s.tx, y: s.ty, t: 0, life: s.big ? 24 : 15, size: s.big ? 96 : 50, rot: w.fxRng.range(-0.4, 0.4) });
+        else hitSpark(w, s.tx, s.ty, -Math.PI / 2);
+        if (s.big) { burst(w, s.tx, s.ty, 1.2); w.g.camera.addTrauma(0.08); }
       }
       ps.rain = ps.rain.filter((s) => !s.dead);
     },
@@ -308,6 +311,7 @@ export default {
     ps.turrets = [];
     ps.splits = [];
     ps.rain = [];
+    ps.stars = [];
     ps.field = null;
     ps.ult = null;
   },
@@ -318,6 +322,8 @@ export default {
     linArt.animate(p);
     const ps = p.ps, S = w.shots;
     if (ps.splits.length) splitShards(p, w);
+    for (const h of ps.stars) h.t++;
+    if (ps.stars.length) ps.stars = ps.stars.filter((h) => h.t < h.life);
     // Seeds fly, slow down and grow into swarm turrets.
     for (const s of ps.seeds) {
       s.px = s.x; s.py = s.y;
@@ -408,6 +414,8 @@ export default {
       b.draw(p.ps.fSeed, sx, sy, 8, 10, s.t * 0.2, 1, 1, 1, 1, 0);
     }
   },
+
+  renderUnder: (p, b) => renderVoid(p, b),
 
   renderFx(p, b) {
     renderFieldRoots(p, b);
