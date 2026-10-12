@@ -56,6 +56,18 @@ export const ART_MANIFEST = {
     },
     json: { anchors: 'oduya.anchors.json', layers: 'oduya.layers.json' },
   },
+  lin: {
+    images: {
+      back2x: 'lin_back@2x.png',
+      outline2x: 'lin_back_outline@2x.png',
+      wings2x: 'lin_wings@2x.png',            // wing pixels under the spear / whip filled in
+      wingsOutline2x: 'lin_wings_outline@2x.png',
+      turret: 'lin_turret.png',               // swarm turret drone
+      front: 'lin_front@2x.png',
+      portrait: 'lin_portrait.jpg',
+    },
+    json: { anchors: 'lin.anchors.json', layers: 'lin.layers.json' },
+  },
 };
 
 const base = () => {

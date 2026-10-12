@@ -104,3 +104,68 @@ Same method as the others: feathered polygons plus the exact alpha complement fo
 - **Data (step 5).** A male pilot: the bio and lore line are rewritten (he/him), the fallback portrait gets short auburn hair and amber eyes, and the role stays "Bio-tech Craft". The vehicle name "PETAL ENGINE" stays unless you want a new one.
 - **Swarm turret sprite.** Cut from `swarm-turrets.png` into `lin_turret.png`. Its baked glow is removed and redrawn in code.
 - **Background removal.** `tools/process-art.mjs` gets an optional `bg: 'checker'` setting. A pixel counts as background when it is light and neutral grey; the black line art stops the fill. Enclosed pockets are found automatically: any large light, neutral area containing both checker greys. The other pilots' settings are unchanged.
+
+## Decisions at the Step 1 checkpoint (approved by the owner)
+
+1. **Main shot: A.** Emerald shards plus seeds that grow into swarm turrets; the options become small drones.
+2. **Spear origin: A.** From the spear's blade (about 30 units ahead), aimed to cross his centre line.
+3. **Splitting: A.** 3 half-damage shards at the 3 nearest other enemies; no second split.
+4. **Root field: A.** A large field around him (radius 200).
+5. **Power: A.** Strong but fair.
+6. The vehicle name stays **PETAL ENGINE**.
+
+## Steps 2–6: results
+
+- **Processing.** `npm run art:lin`.
+  - New `bg: 'checker'` rule; 12 enclosed checker pockets were found automatically.
+  - Sprite exports: 409×372 @2x and 205×186 @1x, with outline variants. Front view: 661×600.
+  - Portrait: a 200×250 crop at (20, 0) of the 240×338 painting (upscaled, so a little soft).
+  - Turret: `lin_turret.png` (163×120), cut from the first drone on `swarm-turrets.png`, turned to face up.
+- **Wings.** Generated from the `wings` config:
+  - `lin.layers.json` has `under: true` and `keep` polygons for the spear and whip.
+  - `lin_wings@2x.png` / `lin_wings_outline@2x.png` fill the wing pixels under the weapons from the mirrored wing.
+  - The wing polygon runs past the image edges, so no static wing tips are left behind when the wings beat.
+- **Anchors** (`lin.anchors.json`, @2x):
+  - `core`: the waist spike; shard origin.
+  - `blade`: the spear blade; spear origin.
+  - `spear`, `whip`, `head`: reference.
+  - `wingL/R`: glitter.
+  - `hitbox`.
+- **Code.**
+  - `src/pilots/linArt.js`: config (size 90, `flap`, turret extra, emerald palette, `DARK`).
+  - `src/pilots/linFx.js`: spear, shard, root and crystal textures; shots, hits, bursts, turrets, glitter, root field, rain, cosmic spear.
+  - `src/pilots/lin.js`: the new kit.
+- **Shared, all optional; other pilots unchanged and checked.**
+  - `mechaArt.js`: `keep` areas, separate wing images, `under`, `flap`, `extras`.
+  - `World`: `shotHit` hook.
+  - `Player`: `renderOptions` hook.
+  - `process-art.mjs`: checkerboard, wings, turret.
+- **DPS** (`tools/dps.mjs lin`):
+
+  | Mode | T1 | T2 | T3 | T4 |
+  |---|---|---|---|---|
+  | Shot, boss | 40 | 58 | 77 | 97 |
+  | Shot, line of 6 | 31 | 57 | 66 | 96 |
+  | Focus, boss | 36 | 70 | 87 | 104 |
+  | Focus, line of 6 | 89 | 175 | 217 | 261 |
+
+  - Old kit at T4: shot boss 79, focus boss 80, line 78–79.
+- **Special.** Uses the shared `stun()`; bosses can't be held. The crush is lethal to normal enemies (`max(30, hp × 4)`) and deals 40 to bosses.
+- **Data.**
+  - The bio and lore line are now male ("his").
+  - The fallback portrait has short auburn hair, amber eyes and a yellow top.
+  - Stats: power 4, bomb 4.
+- **Frame rate.** Storm: about 53 FPS with art versus 49 procedural.
+  - The first version ran at 26 FPS. Every turret switched between the pilot texture and the atlas; drawing the turrets in three passes fixed it.
+  - Special, bomb and ultimate hold 60 FPS.
+- **Screenshots** are in `screenshots/lin/`:
+  - `14_l_flap_spread` / `14_l_flap_raised`: wing beat;
+  - `14_l_main_t4`: shards and turrets;
+  - `14_l_focus_t4`: spears;
+  - `14_l_special_*`: Root Field;
+  - `14_l_bomb`: Spear Rain;
+  - `14_l_ult_*`: Cosmic Spear;
+  - plus select, cut-in, storm and fallback.
+- **Known gaps.**
+  - Lin's sounds are still the old seed-pod pluck and bloom chime (no new sound was requested).
+  - The 2048-atlas warning (`retrying smaller`) is the same on the Oduya branch; it isn't new.

@@ -20,6 +20,7 @@
 | **Art: Bruno** | Hand-made art for Bruno Hagen (Ironhound) on the shared art modules (branch `art/bruno-test`, on top of `art/pilot-textures`, not merged) | 🔍 In review |
 | **Art: Tess** | Hand-made art for Tess Kuro (Wireghost) on the shared art modules (branch `art/tess-test`, on top of `art/bruno-test`, not merged) | 🔍 In review |
 | **Art: Oduya** | Hand-made art and a redesigned kit for Oduya Rex (Thunderjaw), the god of thunder (branch `art/oduya-test`, on top of `art/tess-test`, not merged) | 🔍 In review |
+| **Art: Lin** | Hand-made art and a redesigned kit for Lin Hayase (Petal Engine), an emerald crystal knight on butterfly wings (branch `art/lin-test`, on top of `art/oduya-test`, not merged) | 🔍 In review |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -836,6 +837,28 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Oduya%20Rex/ASSE
 - **FX.** Blue outside, white inside: jagged forked bolts that re-roll every step, bright strike nodes, spears with ring pulses, crackling stun arcs, blue-white plumes from the wing roots and mane.
 - **Frame rate.** In the 1,500-bullet storm, about 58 FPS with art versus 56 procedural. During the ultimate it holds 60 FPS once the cut-in has finished (Intel HD 5500).
 
+## Art: Lin Hayase (branch `art/lin-test`)
+
+Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Lin%20Hayase/ASSET_NOTES.md).
+
+- **Art.**
+  - The sprite and front view are JPEGs with a painted checkerboard; the new `bg: 'checker'` rule cuts them out.
+  - 90 units tall, about 100 wide. He flies feet-first; the crystal legs (feet) never fire.
+  - The swarm turret is cut from `swarm-turrets.png`.
+  - Lin is now a man: bio, lore line and fallback portrait.
+- **Wings instead of thrusters.**
+  - No flames. The butterfly wings beat: slow at idle, faster moving, strongest flying up; folded in a dash. Emerald glitter falls from them.
+  - The wings are drawn under the body. The spear and whip stay on top; the wing pixels under them come from the mirrored wing.
+- **Kit (owner's design).**
+  - **Main: Crystal Seed.** A fan of emerald shards from the waist spike. Seeds grow into **swarm turrets** (the winged drone) that fire needles and eat bullets that touch them. The orbiting options are small drones.
+  - **Focus: Emerald Spears.** Spears from his spear's blade, aimed to cross his centre line 150 units ahead. A spear that hits **splits into 3 half-damage shards** at the 3 nearest other enemies; the shards don't split again. Turrets and option drones throw splitting spears too.
+  - **Special: Root Field.** Roots wrap every enemy within 200 units (more are caught as they enter), hold them 1.5 s, then crush them. Lethal to normal enemies; bosses take 40. The field eats bullets.
+  - **Bomb: Spear Rain.** 3 s of falling spears (two a step, half aimed at enemies), wide bursts that go **through boss shields**. It clears bullets.
+  - **Ultimate: Cosmic Spear.** A short charge (black space opens at his spear, stars fall in), then a giant spear 110 units wide flies up the screen. It hits everything in its path once for 120 (through shields). It leaves a black, starry rift for about 3 s that keeps burning and clears bullets.
+- **Balance (approved: strong but fair).** Boss DPS at T4: shot 97, focus 104 (was 79 / 80). Splitting spears clear a line of six at 261 (was 79).
+- **FX.** Emerald, black and white. The black parts are alpha-blended under the additive glow: spear edges, crystal debris, smoke, roots, the rift.
+- **Frame rate.** In the 1,500-bullet storm, about 53 FPS with art versus 49 procedural (Intel HD 5500).
+
 ## Run
 
 ```
@@ -847,7 +870,7 @@ npm run build      # production bundle in dist/
 Flow right now:
 - **Title** → START → difficulty → **Pilot Select → (Z) endless procedural stages**: intro → waves → mid-boss → waves → boss → tally → next stage...
 - **(C) on pilot select → Test Range**: placeholder waves with a selectable bullet density.
-- **`?test=<id>`** (`kairo`, `mira`, `bruno`, `tess`, `oduya`): a pilot's art test range (see the *Art* sections above). The art is also live in the normal flow: pick the pilot on pilot select.
+- **`?test=<id>`** (`kairo`, `mira`, `bruno`, `tess`, `oduya`, `lin`): a pilot's art test range (see the *Art* sections above). The art is also live in the normal flow: pick the pilot on pilot select.
 - **`?noart`**: skip hand-made pilot art (procedural fallback).
 - **Title → PRACTICE**: a single fight against any boss reached so far. **RANKING** and **OPTIONS** are also on the title.
 - Idle on the title for 20 s: attract demo → ranking pages.
@@ -1010,4 +1033,4 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
-6. Pilot art: review and merge `art/oduya-test` (it contains `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 12 pilots.
+6. Pilot art: review and merge `art/lin-test` (it contains `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 11 pilots.

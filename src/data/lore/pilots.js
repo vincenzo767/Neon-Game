@@ -12,7 +12,7 @@ export const PILOT_LORE = {
   bruno: { origin: 'The Furnace', rival: 'ironclad', file: 'Served under Gideon Raske before the Brotherhood turned to salvage piracy. He knows every war-rig by the sound of its engine.' },
   tess: { origin: 'The Docks', rival: 'blacktide', file: "Grew up on Black Tide smuggling skiffs. Admiral Quell's flagship is the one thing in the harbor she has never boarded." },
   oduya: { origin: 'The Furnace', rival: 'ironclad', file: 'Immortal. When the Brotherhood stormed the foundries, he came down with the storm and held the Furnace gates for three days. The Precinct still cannot say where he came from.' },
-  lin: { origin: 'The Crown', rival: 'outerstar', file: 'Bio-tech botanist. Her spore engines are the only thing the Choir\'s crystal growths cannot overgrow.' },
+  lin: { origin: 'The Crown', rival: 'outerstar', file: 'Bio-tech botanist. His emerald crystal is the only thing the Choir\'s crystal growths cannot overgrow.' },
   dax: { origin: 'The Grid', rival: 'ironclad', file: 'Street racer with more speeding tickets than flight hours. The Precinct recruited him instead of jailing him.' },
   sera: { origin: 'The Spindle', rival: 'outerstar', file: 'Cryo-systems officer from the ring station. She was in orbit when the Upper Breach opened.' },
   nova7: { origin: 'The Crown', rival: 'helix', file: 'A Helix security android that refused a kill order. Its own source code is classified evidence.' },
