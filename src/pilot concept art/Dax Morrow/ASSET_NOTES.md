@@ -178,3 +178,16 @@ Same method as the others: feathered polygons plus the exact alpha complement fo
 - **Known gaps.**
   - His sounds are still the old Overclock cannon and vent blast.
   - Enemy lasers aren't erased by the beam; they pass through him while he is focused.
+
+## Polish round (owner's feedback)
+
+The owner said the picked FX images looked cut out. Every effect is now drawn live in the reference style, with no image picks. The `dax_fx_*.png` files, their `art.config` entries and their manifest entries are gone; `tools/art-ref/dax/` stays as the reference.
+
+- **Void Beam.** Straight beams, like eye beams: no zigzag. Each beam has a red haze, a black sheath, a red body and a white-hot core, with star flares where it leaves the core and where it hits. The interception beams are straight too.
+- **Ghost and clones.** Real smoke: dark-red particle puffs and red wisps billow off every ghost and trail behind it. The ghost body is the mecha sprite, tinted void red, with hazy drifting edges.
+  - The clones are spread wider at (±150, 50), (±82, −28) and (0, 105), kept on screen.
+- **Void Crescent.** A band of black void with stars and red nebula, a blazing red-and-white rim, and the reference's big star flares. Smoke, black shards and embers peel off its inner edge.
+  - Width 300; it moves at a medium 3.2 units per step (was 1.8).
+  - Its hits follow the drawn band.
+- **Void Cannon.** A column of black void with blazing red walls, red nebula, stars and black shards streaming up. It has a white-hot core line, halo rings and a star-crowned seal at the muzzle, and throws sparks and shards off its walls.
+- **Screenshots:** `screenshots/dax/15_*_polish.png`.

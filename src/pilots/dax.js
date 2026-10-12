@@ -5,11 +5,11 @@ import { FADE_OUT } from '../fx/Particles.js';
 import { daxArt, PAL } from './daxArt.js';
 import {
   daxFxSprites, renderBeams, hitSpark, burst, voidExhaust, renderGhost,
-  renderCrescent, renderRods, renderCannon,
+  renderCrescent, renderRods, renderCannon, ghostSmoke, crescentPts, crescentSmoke, cannonSpray,
 } from './daxFx.js';
 
 // DAX MORROW — OVERCLOCK (void knight) · LEGENDARY
-// Void Beam: instant zigzag beams that chain through every enemy at any range,
+// Void Beam: instant straight beams that chain through every enemy at any range,
 // destroy normal enemies in one hit and erase attacks aimed at him
 // Focus: Ghost Launch (a smoke ghost and five clones fire; he is intangible)
 // Special: Void Crescent · Bomb: Void Rod Rain (5 s) · Ultimate: Void Cannon (7 s)
@@ -24,7 +24,8 @@ const STRIKE_CD = 4;        // a strike every 4 steps (15 / s) from the body or 
 const CLONE_CD = 8;         // each clone strikes every 8 steps, staggered
 const NULL_R = 110;         // attacks this close are chased down and erased
 const LAUNCH = 110;         // the ghost launches this far forward
-const CLONES = [[-66, 28], [-36, -16], [36, -16], [66, 28], [0, 44]];
+const CLONES = [[-150, 50], [-82, -28], [82, -28], [150, 50], [0, 105]]; // well spread around the ghost
+const CRESCENT_SPEED = 3.2;  // units per step (medium)
 
 /** Boss / mid-boss damage per strike (one-hit kills don't apply to them). T4 ≈ 130 DPS. */
 const bossDmg = (t) => 2.5 + 1.8 * t;
@@ -117,7 +118,11 @@ function muzzle(p, w, x, y, size = 30) {
 }
 
 /** Ghost clone positions (world) around the ghost. */
-const clonesOf = (p) => CLONES.map(([dx, dy], k) => [p.x + dx + Math.sin(p.t * 0.05 + k) * 4, p.y + dy + Math.cos(p.t * 0.06 + k * 2) * 3]);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const clonesOf = (p) => CLONES.map(([dx, dy], k) => [
+  clamp(p.x + dx + Math.sin(p.t * 0.05 + k) * 4, 24, W - 24),
+  clamp(p.y + dy + Math.cos(p.t * 0.06 + k * 2) * 3, 30, H - 30),
+]);
 
 /** Smoke puffs (alpha-blended black-red) for the ghost launch and the body's return. */
 function smokeBurst(w, x, y, n = 10, ring = true) {
@@ -151,7 +156,7 @@ export default {
   // Procedural fallback, matched to pilot-portrait.jpg (white hair, orange shades, tattoos, black jacket).
   portrait: { skin: '#c89070', hair: '#eeeeee', style: 'spiky', eyes: 'goggles', accent: 'tattoo', suit: '#0c0a0e' },
   weapons: {
-    main: 'Void Beam — instant beams that chain through every enemy at any range, one-hit kills (not bosses), erase attacks aimed at him',
+    main: 'Void Beam — instant straight beams that chain through every enemy at any range, one-hit kills (not bosses), erase attacks aimed at him',
     focus: 'Ghost Launch — a smoke ghost and five clones fire void beams; completely intangible',
   },
   art: daxArt,
@@ -161,7 +166,7 @@ export default {
     cooldown: 600,
     duration: 300,
     activate(p, w) {
-      p.ps.crescent = { x: p.x, y: p.y - 70, w: 260, t: 0, life: 300 };
+      p.ps.crescent = { x: p.x, y: p.y - 70, w: 300, t: 0, life: 300 };
       w.r.post.flash(1, 0.15, 0.2, 0.25, 0.06);
       w.r.post.shockwave(p.x, p.y - 70, 0.04, 0.02, 0.5);
       w.g.camera.addTrauma(0.3);
@@ -170,13 +175,14 @@ export default {
       const c = p.ps.crescent;
       if (!c) return;
       c.t = t;
-      c.y -= 1.8;
-      // The crescent's arc as nine circles: attacks touching it vanish; what it crosses burns.
-      const R = c.w * 0.42, hit = new Set();
-      for (let k = 0; k <= 8; k++) {
-        const a = -Math.PI / 2 + (k / 8 - 0.5) * 2.2, px = c.x + Math.cos(a) * R, py = c.y + 30 + Math.sin(a) * R * 0.75;
-        w.cancelCircle(px, py, 40);
-        if (t % 5 === 0) for (const e of targets(w)) if ((e.x - px) ** 2 + (e.y - py) ** 2 < (40 + e.r) ** 2) hit.add(e);
+      c.y -= CRESCENT_SPEED;
+      crescentSmoke(w, c);
+      // The crescent's band as circles: attacks touching it vanish; what it crosses burns.
+      const hit = new Set();
+      for (const q of crescentPts(c, 12)) {
+        const r = q.th / 2 + 18;
+        w.cancelCircle(q.mx, q.my, r);
+        if (t % 5 === 0) for (const e of targets(w)) if ((e.x - q.mx) ** 2 + (e.y - q.my) ** 2 < (r + e.r) ** 2) hit.add(e);
       }
       for (const e of hit) { w.damage(e, 5, DMG_IGNORES_SHIELDS); if (!e.alive) burst(w, e.x, e.y, 0.8); }
     },
@@ -221,6 +227,7 @@ export default {
       const bm = w.beam(p.x, p.y - 20, p.x, -30, u.w, 2.6, RED, 1, DMG_IGNORES_SHIELDS);
       bm.skin = true;
       w.cancelLine(p.x, p.y - 20, p.x, -30, u.w * 1.1);
+      cannonSpray(w, p.x, p.y - 24, u.w);
       if (t % 30 === 0) { w.g.camera.addTrauma(0.2); w.r.post.shockwave(p.x, p.y - 60, 0.02, 0.02, 0.4); }
     },
     end(p) { p.ps.cannon = null; },
@@ -255,6 +262,7 @@ export default {
   init(p, w) {
     const ps = p.ps;
     ps.fRod = w.r.frame('dx_rod');
+    ps.fShard = w.r.frame('dx_shard');
     ps.bolts = [];
     ps.arcs = [];
     ps.rods = [];
@@ -283,7 +291,9 @@ export default {
     if (ps.ghost) {
       const g = ps.ghost;
       if (g.t++ < 8) p.y += (g.ty - p.y) * 0.4;
-      if (p.t % 3 === 0) smokeBurst(w, p.x + w.fxRng.range(-14, 14), p.y + 18, 1, false);
+      // Real smoke billowing off the ghost and each clone.
+      ghostSmoke(w, p.x, p.y, 3);
+      for (const [cx, cy] of clonesOf(p)) ghostSmoke(w, cx, cy, 2);
     }
     for (const s of ps.bolts) s.t++;
     if (ps.bolts.length) ps.bolts = ps.bolts.filter((s) => s.t < s.life);

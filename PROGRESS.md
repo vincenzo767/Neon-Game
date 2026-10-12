@@ -867,11 +867,11 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Dax%20Morrow/ASS
 
 - **Art.** Checkerboard cut-out, 90 units tall, feet-first (the legs never fire). The lower blade wings move. Void plumes: black, red and white-hot.
 - **Legendary, as the owner wrote it** (marked LEGENDARY like Vincenzo).
-  - **Void Beam.** Instant zigzag beams from the chest core chain through every enemy at any range. Normal enemies die in one hit through shields; bosses take normal damage. They erase bullets along the path and every bullet within 110 units.
+  - **Void Beam.** Instant straight beams from the chest core chain through every enemy at any range. Normal enemies die in one hit through shields; bosses take normal damage. They erase bullets along the path and every bullet within 110 units.
   - **Ghost Launch.** Focus sends a smoke ghost forward with 5 smoke clones, all firing; he is intangible while focused. The body stays parked and flashes to the ghost on release.
   - **Void Crescent** (drifting, erases attacks, burns). **Void Rod Rain** (5 s, 3 bombs). **Void Cannon** (7 s, 150 wide, invulnerable).
 - **Balance.** Boss DPS at T4: beam 131, ghost focus 137. Normal enemies don't matter: they die in one hit.
-- **FX.** The owner's five picks (`tools/art-ref/dax/`, un-blended with a red tint) and `ultimate-fx.png` (real alpha).
+- **FX.** Drawn live after the owner's references, with no cut-out images (polish round): straight eye-beam style void beams, real-smoke ghosts and clones spread wide, a starry black crescent at medium speed, and a cosmic void column for the cannon.
 - **Frame rate.** Storm: about 57 FPS with art versus 53 procedural.
 
 ## Run

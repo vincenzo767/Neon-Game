@@ -78,11 +78,6 @@ export const ART_MANIFEST = {
       outline2x: 'dax_back_outline@2x.png',
       wings2x: 'dax_wings@2x.png',
       wingsOutline2x: 'dax_wings_outline@2x.png',
-      fxBeam: 'dax_fx_beam.png',              // owner's FX picks (tools/art-ref/dax/): void beam,
-      fxBent: 'dax_fx_bent.png',              // short arcs at enemy attacks,
-      fxGhost: 'dax_fx_ghost.png',            // ghost-clone smoke,
-      fxCrescent: 'dax_fx_crescent.png',      // Void Crescent,
-      fxUlt: 'dax_fx_ult.png',                // Void Cannon (ultimate-fx.png)
       front: 'dax_front@2x.png',
       portrait: 'dax_portrait.jpg',
     },

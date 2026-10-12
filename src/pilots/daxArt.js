@@ -36,7 +36,5 @@ export const daxArt = createMechaArt({
     { name: 'packR', len: 22, wid: 5, hot: 0.6, i: 5 },
   ],
   exhaust: ['ventL', 'ventR'],
-  // Pilot-texture extras: the owner's big FX picks (drawn a few times per frame).
-  extras: { ghost: 'fxGhost', crescent: 'fxCrescent', ult: 'fxUlt' },
   size: 90,
 });
