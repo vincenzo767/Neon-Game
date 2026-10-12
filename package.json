@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "art:kairo": "node tools/process-art.mjs kairo",
     "art:mira": "node tools/process-art.mjs mira",
-    "art:bruno": "node tools/process-art.mjs bruno"
+    "art:bruno": "node tools/process-art.mjs bruno",
+    "art:tess": "node tools/process-art.mjs tess"
   },
   "devDependencies": {
     "sharp": "^0.35.5",

@@ -264,12 +264,13 @@ async function main() {
     await sharp(path.join(OUT, `${ID}_front@2x.png`)).toBuffer(),
   ]);
 
+  // Portrait: 4:5 crop from the top, or the config's `portraitCrop` box (head and shoulders).
   const pm = await sharp(path.join(SRC, CFG.portrait)).metadata();
-  const ph = Math.min(pm.height, Math.round(pm.width * 5 / 4));
-  const crop = sharp(path.join(SRC, CFG.portrait)).extract({ left: 0, top: 0, width: pm.width, height: ph });
+  const box = CFG.portraitCrop || { left: 0, top: 0, width: pm.width, height: Math.min(pm.height, Math.round(pm.width * 5 / 4)) };
+  const crop = sharp(path.join(SRC, CFG.portrait)).extract(box);
   await crop.clone().resize(432, 540).jpeg({ quality: 92, mozjpeg: true }).toFile(path.join(OUT, `${ID}_portrait.jpg`));
   await crop.clone().resize(240, 300).jpeg({ quality: 90, mozjpeg: true }).toFile(path.join(OUT, `${ID}_portrait_sm.jpg`));
-  log(`${ID}_portrait.jpg 432x540, ${ID}_portrait_sm.jpg 240x300 (from ${pm.width}x${ph} crop)`);
+  log(`${ID}_portrait.jpg 432x540, ${ID}_portrait_sm.jpg 240x300 (from ${box.width}x${box.height} crop at ${box.left},${box.top})`);
 
   // 6. Anchors, scaled to the @2x export (origin = its top-left, padding included).
   const anchorsFile = path.join(OUT, `${ID}.anchors.json`);

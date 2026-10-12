@@ -38,6 +38,15 @@ export const ART_MANIFEST = {
     },
     json: { anchors: 'bruno.anchors.json', layers: 'bruno.layers.json' },
   },
+  tess: {
+    images: {
+      back2x: 'tess_back@2x.png',
+      outline2x: 'tess_back_outline@2x.png',
+      front: 'tess_front@2x.png',
+      portrait: 'tess_portrait.jpg',
+    },
+    json: { anchors: 'tess.anchors.json', layers: 'tess.layers.json' },
+  },
 };
 
 const base = () => {
