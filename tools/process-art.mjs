@@ -13,7 +13,12 @@
 //   <id>_front@2x.png / <id>_front@1x.png            select preview + cut-in (600 / 300 px tall)
 //   <id>_portrait.jpg / <id>_portrait_sm.jpg         4:5 crop (432x540 / 240x300)
 //   <id>.anchors.json                                anchor points in @2x image pixels
-// <id>.layers.json (layer masks) is hand-written; it is only read for the overlay.
+//   <id>_wings@2x.png / <id>_wings_outline@2x.png    (config `wings`) the sprite with wing
+//                                                     pixels hidden under held weapons filled
+//                                                     from the mirrored wing
+//   <id>.layers.json                                 (config `wings`) generated layer masks;
+//                                                     otherwise hand-written, read for the overlay
+//   <id>_turret.png                                  (config `turret`) cut-out from a sheet
 // Previews (screenshots/<id>/process/): before/after sheets + anchor/mask overlay.
 
 import sharp from 'sharp';
@@ -62,6 +67,7 @@ function hasRealAlpha({ data }) {
  * then feather the cut by `feather` px.
  */
 function removeBackground(img, holes = [], tol = 16, feather = 1.5, maxGrad = 10, glowRule = CFG.glowRule) {
+  if (CFG.bg === 'checker') return removeChecker(img, holes, feather);
   const { data, w, h } = img;
   // Local contrast: backgrounds and baked glows are smooth; line art and dark
   // armour panels are not, so the fill stops at the silhouette's outline even
@@ -111,6 +117,143 @@ function removeBackground(img, holes = [], tol = 16, feather = 1.5, maxGrad = 10
     data[p * 4 + 3] = Math.round(Math.min(data[p * 4 + 3], a * 255));
   }
   return img;
+}
+
+const nbrs = (p, w, h) => {
+  const x = p % w, y = (p / w) | 0;
+  return [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1];
+};
+
+/**
+ * Painted checkerboard background (two light neutral greys with sharp edges):
+ * flood-fill light neutral pixels from the edges (the black line art stops
+ * it), remove enclosed pockets (light neutral areas holding both checker
+ * greys), then eat the grey anti-aliasing fringe next to the cut.
+ * `pale`: pale tinted pixels count as background too (a soft glow baked over
+ * the checkerboard, e.g. a concept sheet).
+ */
+function removeChecker(img, holes = [], feather = 1.5, pale = false) {
+  const { data, w, h } = img;
+  const N = w * h;
+  const lum = (p) => 0.3 * data[p * 4] + 0.59 * data[p * 4 + 1] + 0.11 * data[p * 4 + 2];
+  const hi = (p) => Math.max(data[p * 4], data[p * 4 + 1], data[p * 4 + 2]);
+  const lo = (p) => Math.min(data[p * 4], data[p * 4 + 1], data[p * 4 + 2]);
+  const bgLike = (p) => (hi(p) - lo(p) <= 20 && lum(p) >= 180) || (pale && lo(p) >= 150 && lum(p) >= 185);
+  const bg = new Uint8Array(N);
+  const fill = (seeds) => {
+    const stack = [];
+    for (const p of seeds) if (!bg[p] && bgLike(p)) { bg[p] = 1; stack.push(p); }
+    while (stack.length) {
+      for (const q of nbrs(stack.pop(), w, h)) if (q >= 0 && !bg[q] && bgLike(q)) { bg[q] = 1; stack.push(q); }
+    }
+  };
+  const edge = [];
+  for (let x = 0; x < w; x++) edge.push(x, x + (h - 1) * w);
+  for (let y = 0; y < h; y++) edge.push(y * w, w - 1 + y * w);
+  fill(edge);
+  fill(holes.map(([x, y]) => y * w + x));
+  // Enclosed pockets: connected light neutral areas holding both greys.
+  const seen = new Uint8Array(N);
+  let pockets = 0;
+  for (let p0 = 0; p0 < N; p0++) {
+    if (bg[p0] || seen[p0] || !bgLike(p0)) continue;
+    const comp = [p0], stack = [p0];
+    seen[p0] = 1;
+    while (stack.length) {
+      for (const q of nbrs(stack.pop(), w, h)) if (q >= 0 && !seen[q] && !bg[q] && bgLike(q)) { seen[q] = 1; stack.push(q); comp.push(q); }
+    }
+    if (comp.length < 150) continue;
+    let dark = 0, light = 0;
+    for (const p of comp) { const l = lum(p); if (l < 228) dark++; else if (l > 242) light++; }
+    if (dark > comp.length * 0.12 && light > comp.length * 0.12) { for (const p of comp) bg[p] = 1; pockets++; }
+  }
+  // Fringe: grey anti-aliasing between the checkerboard and the line art.
+  for (let pass = 0; pass < 2; pass++) {
+    const add = [];
+    for (let p = 0; p < N; p++) {
+      if (bg[p] || hi(p) - lo(p) > 26 || lum(p) < 110) continue;
+      if (nbrs(p, w, h).some((q) => q >= 0 && bg[q])) add.push(p);
+    }
+    for (const p of add) bg[p] = 1;
+  }
+  const mask = new Float32Array(N);
+  for (let p = 0; p < N; p++) mask[p] = bg[p] ? 0 : 1;
+  const soft = boxBlur(mask, w, h, Math.max(1, Math.round(feather)));
+  for (let p = 0; p < N; p++) {
+    const a = bg[p] ? 0 : Math.min(1, soft[p] * 2);
+    data[p * 4 + 3] = Math.round(Math.min(data[p * 4 + 3], a * 255));
+  }
+  img.pockets = pockets;
+  return img;
+}
+
+/** Clear everything but the largest connected opaque piece (neighbours on a sheet). */
+function largestPiece(img) {
+  const { data, w, h } = img, N = w * h, lab = new Int32Array(N);
+  let best = 0, bestN = 0, id = 0;
+  for (let p0 = 0; p0 < N; p0++) {
+    if (lab[p0] || data[p0 * 4 + 3] < 24) continue;
+    const stack = [p0];
+    lab[p0] = ++id;
+    let n = 0;
+    while (stack.length) {
+      n++;
+      for (const q of nbrs(stack.pop(), w, h)) if (q >= 0 && !lab[q] && data[q * 4 + 3] >= 24) { lab[q] = id; stack.push(q); }
+    }
+    if (n > bestN) { bestN = n; best = id; }
+  }
+  for (let p = 0; p < N; p++) if (lab[p] !== best) data[p * 4 + 3] = 0;
+  return img;
+}
+
+/** Point in polygon (even-odd rule). */
+function inPoly(x, y, poly) {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
+  }
+  return c;
+}
+
+const mirrorPoly = (poly, axis) => poly.map(([x, y]) => [2 * axis - x, y]).reverse();
+
+/**
+ * Wing source for the layer split (config `wings`, source pixels): inside a
+ * wing polygon, pixels covered by a held weapon (`keep` polygons) take the
+ * mirrored wing's pixel; where the mirror is covered too, they are filled
+ * from their neighbours, growing inward.
+ */
+function fillWings(img, cfg) {
+  const { data, w, h } = img;
+  const out = Buffer.from(data);
+  const wings = [cfg.wingL, mirrorPoly(cfg.wingL, cfg.axis)];
+  const covered = (x, y) => cfg.keep.some((k) => inPoly(x, y, k));
+  const left = new Set();
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (!covered(x, y) || !wings.some((wp) => inPoly(x, y, wp))) continue;
+    const mx = Math.round(2 * cfg.axis - x), p = (y * w + x) * 4;
+    if (mx >= 0 && mx < w && !covered(mx, y)) {
+      const q = (y * w + mx) * 4;
+      for (let c = 0; c < 4; c++) out[p + c] = data[q + c];
+    } else left.add(y * w + x);
+  }
+  const filled = left.size;
+  for (let pass = 0; pass < 400 && left.size; pass++) {
+    const done = [];
+    for (const p of left) {
+      let n = 0;
+      const acc = [0, 0, 0, 0];
+      for (const q of nbrs(p, w, h)) {
+        if (q < 0 || left.has(q)) continue;
+        for (let c = 0; c < 4; c++) acc[c] += out[q * 4 + c];
+        n++;
+      }
+      if (n) done.push([p, acc.map((v) => Math.round(v / n))]);
+    }
+    for (const [p, v] of done) { for (let c = 0; c < 4; c++) out[p * 4 + c] = v[c]; left.delete(p); }
+  }
+  return { data: out, w, h, filled };
 }
 
 function boxBlur(src, w, h, r) {
@@ -208,6 +351,12 @@ async function processBack(srcFile, label = 'back') {
   if (!hasRealAlpha(img)) { removeBackground(img, label === 'back' ? CFG.holes : []); removed = true; }
   cleanAlpha(img);
   const box = alphaBox(img);
+  const out = await exportsOf(img, box);
+  return { before, box, out, removed, src: img };
+}
+
+/** Trim to `box`, then the @2x / @1x exports (BACK_H tall plus padding). */
+async function exportsOf(img, box) {
   const trimmed = await fromRaw(img).extract(box).png().toBuffer();
   const out = {};
   for (const k of ['2x', '1x']) {
@@ -219,8 +368,14 @@ async function processBack(srcFile, label = 'back') {
     const r = cleanAlpha({ data: resized.data, w: resized.info.width, h: resized.info.height });
     out[k] = { img: r, scale };
   }
-  return { before, trimmed, box, out, removed };
+  return out;
 }
+
+/** Source px → @2x export px for a processed sprite. */
+const to2x = (back) => ([x, y]) => [
+  +((x - back.box.left) * back.out['2x'].scale + PAD['2x']).toFixed(1),
+  +((y - back.box.top) * back.out['2x'].scale + PAD['2x']).toFixed(1),
+];
 
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
@@ -246,6 +401,51 @@ async function main() {
     await fromRaw(back.out['2x'].img).png().toBuffer(),
     await sharp(path.join(OUT, `${ID}_back_outline@2x.png`)).toBuffer(),
   ]);
+
+  if (back.src.pockets) log(`checkerboard: ${back.src.pockets} enclosed pockets removed`);
+
+  // Wings (config `wings`): weapon-free wing source and generated layer masks.
+  if (CFG.wings) {
+    const Wc = CFG.wings, P = to2x(back);
+    const filled = fillWings(back.src, Wc);
+    const img = (await exportsOf(filled, back.box))['2x'].img;
+    await fromRaw(img).png({ compressionLevel: 9 }).toFile(path.join(OUT, `${ID}_wings@2x.png`));
+    await fromRaw(outlined(img, OUTLINE['2x'])).png({ compressionLevel: 9 }).toFile(path.join(OUT, `${ID}_wings_outline@2x.png`));
+    log(`${ID}_wings@2x.png + outline (${filled.filled} px covered on both sides, filled from neighbours)`);
+    const layers = {
+      version: 1,
+      pilot: ID,
+      space: `${ID}_back@2x.png pixels, origin top-left (same as ${ID}.anchors.json); generated from tools/art.config.mjs`,
+      feather: Wc.feather ?? 3,
+      seam: Wc.seam ?? 10,
+      under: true,
+      keep: Wc.keep.map((k) => k.map(P)),
+      layers: {
+        wingL: { pivot: P(Wc.pivotL), poly: Wc.wingL.map(P) },
+        wingR: { pivot: P([2 * Wc.axis - Wc.pivotL[0], Wc.pivotL[1]]), poly: mirrorPoly(Wc.wingL, Wc.axis).map(P) },
+      },
+    };
+    fs.writeFileSync(path.join(OUT, `${ID}.layers.json`), anchorsJson(layers));
+    log(`${ID}.layers.json written (wings under the body, ${Wc.keep.length} keep polygons)`);
+  }
+
+  // Turret (config `turret`): one cut-out from a concept sheet.
+  if (CFG.turret) {
+    const T = CFG.turret;
+    const tr = await raw(await sharp(path.join(SRC, T.file)).extract(T.box).png().toBuffer());
+    removeChecker(tr, [], 1.5, true);
+    largestPiece(tr);
+    cleanAlpha(tr);
+    let tb = await fromRaw(tr).extract(alphaBox(tr)).png().toBuffer();
+    if (T.rotate) tb = await sharp(tb).rotate(T.rotate).png().toBuffer();
+    const r = await sharp(tb).resize({ height: T.height, kernel: 'lanczos3' }).raw().toBuffer({ resolveWithObject: true });
+    await fromRaw(cleanAlpha({ data: r.data, w: r.info.width, h: r.info.height })).png({ compressionLevel: 9 }).toFile(path.join(OUT, `${ID}_turret.png`));
+    log(`${ID}_turret.png: ${r.info.width}x${r.info.height}`);
+    await sheet(path.join(PREVIEW, 'turret_before_after.png'), [
+      await sharp(path.join(SRC, T.file)).extract(T.box).png().toBuffer(),
+      await sharp(path.join(OUT, `${ID}_turret.png`)).toBuffer(),
+    ], 260);
+  }
 
   // 5. Front view (select preview, cut-in) and portrait.
   const frontRaw = await raw(path.join(SRC, CFG.front));
@@ -307,6 +507,9 @@ async function previewOverlay(log) {
   for (const [k, L] of Object.entries(layers.layers)) {
     svg += `<polygon points="${L.poly.map(([x, y]) => `${x * K},${y * K}`).join(' ')}" fill="${cols[k] || '#ff0'}" fill-opacity="0.18" stroke="${cols[k] || '#ff0'}" stroke-width="1.5"/>`;
     svg += `<circle cx="${L.pivot[0] * K}" cy="${L.pivot[1] * K}" r="4" fill="none" stroke="#fff" stroke-width="1.5"/>`;
+  }
+  for (const poly of layers.keep || []) {
+    svg += `<polygon points="${poly.map(([x, y]) => `${x * K},${y * K}`).join(' ')}" fill="#0f8" fill-opacity="0.15" stroke="#0f8" stroke-width="1" stroke-dasharray="3 2"/>`;
   }
   for (const [k, [x, y]] of Object.entries(anchors)) {
     svg += `<circle cx="${x * K}" cy="${y * K}" r="3.5" fill="#0f0" stroke="#000"/><text x="${x * K + 5}" y="${y * K - 4}" fill="#0f0" font-size="10" font-family="monospace" stroke="#000" stroke-width="2" paint-order="stroke">${k}</text>`;
