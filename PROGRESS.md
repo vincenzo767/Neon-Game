@@ -18,6 +18,7 @@
 | **Art: Mira** | Hand-made art for Mira Solenne (Halo Sprite) on the shared art modules (branch `art/mira-test`, not merged) | ✅ Approved |
 | **Art textures** | Per-pilot art textures, so pilot art no longer fills the shared atlas (branch `art/pilot-textures`, on top of `art/mira-test`) | ✅ Done |
 | **Art: Bruno** | Hand-made art for Bruno Hagen (Ironhound) on the shared art modules (branch `art/bruno-test`, on top of `art/pilot-textures`, not merged) | 🔍 In review |
+| **Art: Tess** | Hand-made art for Tess Kuro (Wireghost) on the shared art modules (branch `art/tess-test`, on top of `art/bruno-test`, not merged) | 🔍 In review |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -798,6 +799,25 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Bruno%20Hagen/AS
 - **UI.** Painted portrait, front-view select preview, art cut-in. The role is "Heavy Mecha" and the UI colour is violet. The fallback portrait now matches the painting (no fur hat: there's no hat style).
 - **Frame rate.** In the 1,500-bullet storm, about 46 FPS with art versus about 49 with the procedural ship (Intel HD 5500).
 
+## Art: Tess Kuro (branch `art/tess-test`)
+
+Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Tess%20Kuro/ASSET_NOTES.md).
+
+- **Art.** The black-background JPEG sprite and front view are cut out automatically. The in-game mecha is 90 units tall and flies feet-first.
+- **Layers.** Each side is the forearm blade and clawed hand, plus the shoulder armour and spikes.
+- **Firing (approved).** Tess has no guns: the wire-blade crescents are thrown from the two forearm blades. **The leg blades (feet) never fire.**
+  - The origins sit 16 units ahead, like the old one. Each crescent crosses its old path 130 units ahead.
+  - Boss, small and line DPS are identical at every tier, normal fire and focus.
+  - At 120 units, sweep coverage is within about 10–20 % (the sweep grid is coarse for short-range piercing crescents).
+- **Ghost Slash (approved).** Same hit area and damage. It is drawn as a big crescent swept by one arm blade, alternating sides. That arm kicks out, and the small crescent leaves that blade.
+- **Shadow Clones and the Cloak decoy (approved).** Full copies of the mecha: the same art, pose, wing animation and thrusters, and the clones throw crescents from their own blades. The clones' damage is unchanged (0.6×).
+- **FX.** Violet outside, orange inside, white-hot edge:
+  - crescent shots and the slash use a new thin crescent texture;
+  - Thousand Cuts lines;
+  - muzzle flares, hit sparks, and plumes from the shoulder armour and beside the head spike.
+- **Data (approved).** Tess is now written as male (bio and lore file) to match the painted portrait. The fallback portrait matches the painting (bandana, scar). The role is "Stealth Mecha".
+- **Frame rate.** In the 1,500-bullet storm, about 53 FPS with art versus about 50 with the procedural ship (within noise; Intel HD 5500).
+
 ## Run
 
 ```
@@ -809,7 +829,7 @@ npm run build      # production bundle in dist/
 Flow right now:
 - **Title** → START → difficulty → **Pilot Select → (Z) endless procedural stages**: intro → waves → mid-boss → waves → boss → tally → next stage...
 - **(C) on pilot select → Test Range**: placeholder waves with a selectable bullet density.
-- **`?test=<id>`** (`kairo`, `mira`, `bruno`): a pilot's art test range (see the *Art* sections above). The art is also live in the normal flow: pick the pilot on pilot select.
+- **`?test=<id>`** (`kairo`, `mira`, `bruno`, `tess`): a pilot's art test range (see the *Art* sections above). The art is also live in the normal flow: pick the pilot on pilot select.
 - **`?noart`**: skip hand-made pilot art (procedural fallback).
 - **Title → PRACTICE**: a single fight against any boss reached so far. **RANKING** and **OPTIONS** are also on the title.
 - Idle on the title for 20 s: attract demo → ranking pages.
@@ -972,4 +992,4 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
-6. Pilot art: review and merge `art/bruno-test` (it contains `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 14 pilots.
+6. Pilot art: review and merge `art/tess-test` (it contains `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 13 pilots.

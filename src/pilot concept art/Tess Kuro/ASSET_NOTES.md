@@ -77,3 +77,44 @@ Same method as the others: feathered polygons plus the exact alpha complement fo
 ## Other notes
 
 - **Data update (step 5).** The role "Stealth Fighter" becomes "Stealth Mecha". The bio mentions the violet blade mecha.
+
+## Decisions at the Step 1 checkpoint (approved by the owner)
+
+1. **Wire Blades: A.** Thrown from the two forearm blades.
+2. **Ghost Slash.** Swept as a crescent by one arm blade, alternating sides.
+3. **Clones and decoy.** Full copies of the mecha, with all its properties.
+4. **Portrait: B.** Tess is written as male, and the fallback portrait matches the painting. The game will not be published.
+5. **Thrusters.** Left to me: wide plumes from the rear of the shoulder armour, smaller ones beside the head's rear spike.
+
+## Steps 2–6: results
+
+- **Processing.** `npm run art:tess` (`glowRule: false`).
+  - Sprite exports: 266×372 @2x and 133×186 @1x, with outline variants.
+  - Front view: 424×600. Portrait: 432×540 / 240×300 (from a 720×900 crop).
+- **Anchors** (`tess.anchors.json`, @2x): `bladeL/R`, `ventL/R`, `packL/R`, `head`, `hitbox`.
+  - The blade anchors moved from mid-blade to (140, 707) / (884, 707) source px.
+  - That is 16 units ahead, like the old origin. From mid-blade (23 ahead), the crescents reached 7 units further and hit targets at 180 that they never reached before.
+- **Layers** (`tess.layers.json`): each side is the forearm blade and hand, plus the shoulder armour and spikes. Pivot at the shoulder.
+- **Code.**
+  - `src/pilots/tessArt.js`: config.
+  - `src/pilots/tessFx.js`: crescent texture, shots, slash, cuts, and the full-mecha copies.
+  - `mechaArt`: optional per-side wing kick (`ps.kickL / kickR`), used for the slash swing.
+- **Aiming.** The crescents cross their old paths 130 units ahead (near the end of their range).
+- **DPS** (`tools/dps.mjs tess`, before → after):
+
+  | Mode | Boss | Small | Line |
+  |---|---|---|---|
+  | Shot T1–T4 | 29 / 58 / 87 / 116 → same | 0 → 0 | 0 → 0 |
+  | Focus T1–T4 | 20 → 20 | 10 → 10 | 0 → 0 |
+
+  - The 120-unit sweep differs by about 10–20 % at T1, T2 and T4 (T3 is identical). The coarse sweep grid is sensitive for short-range piercing shots.
+- **Frame rate.** In the 1,500-bullet storm, about 53 FPS with art versus about 50 procedural (Intel HD 5500, headless).
+- **Test range.** `?test=tess`. Screenshots are in `screenshots/tess/`:
+  - `06_focus_*` show the Ghost Slash;
+  - `07_dash` and `15_cloak` show the Cloak;
+  - `14_clones*` show the Shadow Clones;
+  - `16_bomb` shows Thousand Cuts.
+- **Bug found and fixed on the way.** Tess's art first wasn't drawn at all, because I hadn't added her to `ART_MANIFEST`. ART_PIPELINE.md now warns about this.
+- **Known gaps.**
+  - With five crescents overlapping at tier 4, the orange core reads pinker than on a single crescent.
+  - The fallback portrait has no earrings or green hair (no such styles).

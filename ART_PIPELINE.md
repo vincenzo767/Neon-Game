@@ -90,7 +90,7 @@ screenshots/<id>/                          test-range captures for review
    - Write `<id>.layers.json`; the format is below.
    - Re-run the script and check `screenshots/<id>/process/overlay.png`.
    - The masks should cover only the parts that move (wings, binders, arms holding weapons).
-5. **Register the art** in `ART_MANIFEST` in `src/core/pilotArt.js`.
+5. **Register the art** in `ART_MANIFEST` in `src/core/pilotArt.js`. Without this the game silently keeps the procedural ship.
 6. **Hook up the pilot.**
    - Write `src/pilots/<id>Art.js` (see `miraArt.js`): `createMechaArt({ id, pal, defaults, flames, nozzles, exhaust, wingAnchors })` and `createMechaFx(art, { body, lanceLen })`.
    - In the pilot definition, set `art: <id>Art`, call `buildSprites` from `sprites()` and `animate` from `update()`, and wire the hooks (section 7).
