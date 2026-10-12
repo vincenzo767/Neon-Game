@@ -88,3 +88,53 @@ Same method as the others: feathered polygons plus the exact alpha complement fo
 
 - **Data (step 5).** The role "Hover Tank" becomes "Thunder God Mecha". The bio and lore line are rewritten for an immortal god of thunder. The fallback portrait matches the painting (white beard and hair, laurel, glowing eyes). Bomb stock goes from 3 to 5.
 - The old name "Oduya Rex" stays.
+
+## Decisions at the Step 1 checkpoint (approved by the owner)
+
+1. **Origin: A.** All lightning leaves the two gold fists, alternating.
+2. **Power: A.** Strong but fair: boss DPS near the roster median, with the power showing against waves.
+3. **Strands evolve, not power tiers.** Hits and time add strands, every 10 seconds, up to 10. Power-ups don't change his strength.
+4. **Coils.** No bullets: they throw lightning arcs.
+5. **Ultimate.** Extended to 7 seconds.
+
+## Steps 2–6: results
+
+- **Processing.** `npm run art:oduya`.
+  - Sprite exports: 421×372 @2x and 211×186 @1x, with outline variants. Front view: 681×600.
+  - Portrait: a 480×600 crop at (150, 60): face, crown and beard.
+  - The art texture needs 2048² (the automatic fallback from 1024²), because the sprite is so wide.
+- **Anchors** (`oduya.anchors.json`, @2x): `fistL/R`, `crown`, `ventL/R`, `maneL/R`, `head`, `hitbox`.
+- **Layers** (`oduya.layers.json`): each side is the lightning wing, arm cannon and fist. Pivot at the shoulder.
+- **Code.**
+  - `src/pilots/oduyaArt.js`: config at size 100.
+  - `src/pilots/oduyaFx.js`: bolt renderer, nodes, crackle, sky strikes.
+  - `src/pilots/oduya.js`: the new kit.
+  - `tools/dps.mjs`: optional `dpsLevel(p, tier)` hook for pilots whose strength isn't the power tier.
+- **Strand evolution.**
+  - `EVO_STEP = 600` steps (10 s) per strand; `EVO_PER_HIT = 0.5`.
+  - A toast "THUNDER · n STRANDS" and a ring pulse mark each new strand.
+  - Death costs 2 strands (minimum 3).
+- **DPS** (`tools/dps.mjs oduya`; "T1–T4" = 3 / 5 / 7 / 10 strands):
+
+  | Mode | 3 | 5 | 7 | 10 strands |
+  |---|---|---|---|---|
+  | Strand, boss | 42 | 65 | 73 | 99 |
+  | Strand, line of 6 | 133 | 230 | 277 | 346 |
+  | Spears, boss | 28 | 56 | 71 | 99 |
+
+  - Old kit at full power: shot boss 96 / line 213, focus boss 62.
+- **Special.** The stun uses the shared `stun()`; bosses can't be stunned. The detonation is lethal to normal enemies (`max(30, hp × 4)`) and deals 30 to bosses.
+- **Data.**
+  - The role is "Thunder God Mecha", and the bio and lore line describe an immortal god of thunder.
+  - The fallback portrait has white hair and beard and glowing eyes.
+  - Bomb stock is 5, and the bomb stat bar is maxed.
+- **Frame rate.** Storm: about 58 FPS with art versus 56 procedural. The ultimate holds 60 FPS after its cut-in.
+- **Screenshots** are in `screenshots/oduya/`:
+  - `14_o_strand3` / `14_o_strand10`: strands;
+  - `14_o_spears10`: spears;
+  - `14_o_special_*`: Thundershock;
+  - `14_o_bomb`: Storm Cell;
+  - `14_o_ult`: God Thunder Barrage.
+- **Known gaps.**
+  - The HUD's PWR bar still shows the power tier, which no longer matters for him. The strand count is shown by the toasts.
+  - The coils are the old procedural sprites.
