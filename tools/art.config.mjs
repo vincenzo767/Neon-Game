@@ -93,4 +93,23 @@ export const PILOT_ART = {
       packR: [544, 1215],
     },
   },
+  oduya: {
+    folder: 'Oduya Rex',
+    back: 'top-down-main.jpg',
+    front: 'top-down-front.png',
+    portrait: 'pilot-portrait.jpg',
+    portraitCrop: { left: 150, top: 60, width: 480, height: 600 }, // face, crown and beard (4:5)
+    glowRule: false,
+    anchors: {
+      hitbox: [668, 480],      // chest centre: lands on player.x/y
+      head: [668, 640],        // gold lion head
+      crown: [668, 170],       // central gold spike at the waist front
+      fistL: [305, 430],       // gold fists: lightning origins
+      fistR: [1031, 430],
+      ventL: [380, 900],       // wing roots: wide back plumes
+      ventR: [956, 900],
+      maneL: [640, 1060],      // gold flame mane: smaller plumes
+      maneR: [696, 1060],
+    },
+  },
 };

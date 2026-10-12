@@ -10,7 +10,8 @@
     "art:kairo": "node tools/process-art.mjs kairo",
     "art:mira": "node tools/process-art.mjs mira",
     "art:bruno": "node tools/process-art.mjs bruno",
-    "art:tess": "node tools/process-art.mjs tess"
+    "art:tess": "node tools/process-art.mjs tess",
+    "art:oduya": "node tools/process-art.mjs oduya"
   },
   "devDependencies": {
     "sharp": "^0.35.5",
