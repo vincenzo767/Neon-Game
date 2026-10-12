@@ -74,4 +74,21 @@ export const PILOT_ART = {
       packR: [607, 1430],
     },
   },
+  tess: {
+    folder: 'Tess Kuro',
+    back: 'top-down_main.jpg',
+    front: 'top-down_front.jpg',
+    portrait: 'pilot_portrait.jpg',
+    glowRule: false,           // thin red light lines
+    anchors: {
+      hitbox: [512, 960],      // chest centre: lands on player.x/y
+      head: [512, 1080],
+      bladeL: [105, 600],      // forearm-blade middles: crescent origins
+      bladeR: [919, 600],
+      ventL: [285, 1230],      // rear of the shoulder armour: wide back plumes
+      ventR: [739, 1230],
+      packL: [480, 1215],      // either side of the head's rear spike
+      packR: [544, 1215],
+    },
+  },
 };

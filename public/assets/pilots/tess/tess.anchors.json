@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "pilot": "tess",
+  "space": "tess_back@2x.png pixels, origin top-left (1x = half)",
+  "image": {
+    "w": 266,
+    "h": 372,
+    "artH": 360,
+    "pad": 6
+  },
+  "anchors": {
+    "hitbox": [133.1, 224.5],
+    "head": [133.1, 254.8],
+    "bladeL": [30.3, 133.6],
+    "bladeR": [235.9, 133.6],
+    "ventL": [75.7, 292.7],
+    "ventR": [190.4, 292.7],
+    "packL": [125, 288.9],
+    "packR": [141.2, 288.9]
+  }
+}
