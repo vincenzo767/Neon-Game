@@ -52,10 +52,11 @@ function makeGame(focus) {
 
 const STEPS = 480; // 8 s
 
-function run(def, power, focus, targets) {
+function run(def, power, focus, targets, tier) {
   const g = makeGame(focus);
   const w = new World(g);
   const p = w.setPlayer(def, { power });
+  if (def.dpsLevel) def.dpsLevel(p, tier); // pilots whose strength isn't the power tier
   p.invuln = 1e9;
   const es = targets.map(([dx, dy, r]) => w.spawnEnemy({ x: p.x + dx, y: p.y - dy, r, hp: 1e12, blast: 0 }));
   for (let s = 0; s < STEPS; s++) {
@@ -83,9 +84,9 @@ for (const focus of [false, true]) {
     const power = tier === 4 ? 400 : (tier - 1) * 100;
     const key = `${focus ? 'focus' : 'shot'} T${tier}`;
     const r = {};
-    for (const [name, L] of Object.entries(layouts)) r[name] = run(def, power, focus, L).reduce((a, b) => a + b, 0);
+    for (const [name, L] of Object.entries(layouts)) r[name] = run(def, power, focus, L, tier).reduce((a, b) => a + b, 0);
     // Sweep: one target at a time (shots that pierce would otherwise double count).
-    r.sweep = sweepY.map((dy) => sweepX.map((dx) => run(def, power, focus, [[dx, dy, 14]])[0]));
+    r.sweep = sweepY.map((dy) => sweepX.map((dx) => run(def, power, focus, [[dx, dy, 14]], tier)[0]));
     out[key] = r;
   }
 }

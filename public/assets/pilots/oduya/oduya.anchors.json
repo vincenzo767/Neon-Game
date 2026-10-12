@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "pilot": "oduya",
+  "space": "oduya_back@2x.png pixels, origin top-left (1x = half)",
+  "image": {
+    "w": 421,
+    "h": 372,
+    "artH": 360,
+    "pad": 6
+  },
+  "anchors": {
+    "hitbox": [210.5, 152.9],
+    "head": [210.5, 201.9],
+    "crown": [210.5, 58],
+    "fistL": [99.4, 137.6],
+    "fistR": [321.6, 137.6],
+    "ventL": [122.3, 281.5],
+    "ventR": [298.7, 281.5],
+    "maneL": [201.9, 330.5],
+    "maneR": [219.1, 330.5]
+  }
+}

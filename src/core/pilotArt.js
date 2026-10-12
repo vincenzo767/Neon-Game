@@ -47,6 +47,15 @@ export const ART_MANIFEST = {
     },
     json: { anchors: 'tess.anchors.json', layers: 'tess.layers.json' },
   },
+  oduya: {
+    images: {
+      back2x: 'oduya_back@2x.png',
+      outline2x: 'oduya_back_outline@2x.png',
+      front: 'oduya_front@2x.png',
+      portrait: 'oduya_portrait.jpg',
+    },
+    json: { anchors: 'oduya.anchors.json', layers: 'oduya.layers.json' },
+  },
 };
 
 const base = () => {

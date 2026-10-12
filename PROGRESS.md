@@ -19,6 +19,7 @@
 | **Art textures** | Per-pilot art textures, so pilot art no longer fills the shared atlas (branch `art/pilot-textures`, on top of `art/mira-test`) | ✅ Done |
 | **Art: Bruno** | Hand-made art for Bruno Hagen (Ironhound) on the shared art modules (branch `art/bruno-test`, on top of `art/pilot-textures`, not merged) | 🔍 In review |
 | **Art: Tess** | Hand-made art for Tess Kuro (Wireghost) on the shared art modules (branch `art/tess-test`, on top of `art/bruno-test`, not merged) | 🔍 In review |
+| **Art: Oduya** | Hand-made art and a redesigned kit for Oduya Rex (Thunderjaw), the god of thunder (branch `art/oduya-test`, on top of `art/tess-test`, not merged) | 🔍 In review |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -818,6 +819,23 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Tess%20Kuro/ASSE
 - **Data.** Tess is female. The owner supplied a new portrait (`pilot-portrait-main.jpg`), cropped to head and shoulders with a new `portraitCrop` setting. The fallback portrait matches it (long scarlet hair, red eyes, dark bodysuit). The role is "Stealth Mecha".
 - **Frame rate.** In the 1,500-bullet storm, about 53 FPS with art versus about 50 with the procedural ship (within noise; Intel HD 5500).
 
+## Art: Oduya Rex (branch `art/oduya-test`)
+
+Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Oduya%20Rex/ASSET_NOTES.md).
+
+- **Art.** The landscape sprite (1337×1176) and the RGBA front view are cut out automatically. The biggest mecha: **100 units tall**, about 114 wide. It flies feet-first; the drill legs (feet) never fire.
+- **Redesigned kit (owner's design).** An immortal god of thunder. All lightning leaves the two gold fists.
+  - **Strands evolve, independent of power tiers.** He starts with 3 and gains one every 10 seconds alive, up to 10. Each lightning hit adds half a step of progress. Death costs 2 strands.
+  - **Main: Thunder Strand.** Every 4 steps a thick bolt chains through up to `strands` targets (reach 190). Later hops deal 70 %. Each hit arcs to every enemy within 55 units (50 %). With no target, the bolt cracks straight ahead.
+  - **Focus: Thunder Spears.** Every 7 steps, a volley of 2–5 piercing spears (speed 30).
+  - **Coils.** 2 from 5 strands, 4 from 8. They throw short arcs; nothing in his kit is a bullet except the spears.
+  - **Special: Thundershock.** Stuns and electrifies every enemy on screen for 2 s, then they explode (lethal; bosses take 30).
+  - **Bomb: Storm Cell**, 5 in stock.
+  - **Ultimate: God Thunder Barrage.** 7 s of full-height bolts across the screen, plus a bolt on every enemy twice a second. It clears enemy bullets.
+- **Balance (approved: strong but fair).** At 10 strands, boss DPS is 99 in both modes (roster median about 95). Against six targets in a line it is 346, the best wave clear in the roster. `tools/dps.mjs` "tiers" are strand levels 3 / 5 / 7 / 10 (new `dpsLevel` hook).
+- **FX.** Blue outside, white inside: jagged forked bolts that re-roll every step, bright strike nodes, spears with ring pulses, crackling stun arcs, blue-white plumes from the wing roots and mane.
+- **Frame rate.** In the 1,500-bullet storm, about 58 FPS with art versus 56 procedural. During the ultimate it holds 60 FPS once the cut-in has finished (Intel HD 5500).
+
 ## Run
 
 ```
@@ -829,7 +847,7 @@ npm run build      # production bundle in dist/
 Flow right now:
 - **Title** → START → difficulty → **Pilot Select → (Z) endless procedural stages**: intro → waves → mid-boss → waves → boss → tally → next stage...
 - **(C) on pilot select → Test Range**: placeholder waves with a selectable bullet density.
-- **`?test=<id>`** (`kairo`, `mira`, `bruno`, `tess`): a pilot's art test range (see the *Art* sections above). The art is also live in the normal flow: pick the pilot on pilot select.
+- **`?test=<id>`** (`kairo`, `mira`, `bruno`, `tess`, `oduya`): a pilot's art test range (see the *Art* sections above). The art is also live in the normal flow: pick the pilot on pilot select.
 - **`?noart`**: skip hand-made pilot art (procedural fallback).
 - **Title → PRACTICE**: a single fight against any boss reached so far. **RANKING** and **OPTIONS** are also on the title.
 - Idle on the title for 20 s: attract demo → ranking pages.
@@ -992,4 +1010,4 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
-6. Pilot art: review and merge `art/tess-test` (it contains `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 13 pilots.
+6. Pilot art: review and merge `art/oduya-test` (it contains `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 12 pilots.
