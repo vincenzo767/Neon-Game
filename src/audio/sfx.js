@@ -318,6 +318,17 @@ export const sfx = {
 
   pitchOf(def) { return (PILOT_VOICES[def.id] || DEFAULT_VOICE).pitch; },
 
+  /** Play a pilot voice's own omb / ultimate sound if it has one. */
+  voiceFx(def, kind, s) {
+    const v = PILOT_VOICES[def.id], fn = v && v[kind];
+    if (!fn) return false;
+    const c = audioCtx();
+    if (!c || c.state !== 'running') return true;
+    stats.played[kind] = (stats.played[kind] || 0) + 1;
+    try { fn.call(v, c, bus.sfxIn, c.currentTime + 0.005, s); } catch (err) { console.warn('sfx', kind, err); }
+    return true;
+  },
+
   /** Sustained beam hum: on/off with a pitch; one persistent voice. */
   beam(on, f = 220) {
     const c = audioCtx();
@@ -350,14 +361,17 @@ export const sfx = {
 
   /** Bomb: impact + underwater music sweep for the bomb's length. */
   bomb(def, seconds) {
-    this.play('bomb', { pitch: this.pitchOf(def) });
+    // A pilot voice may bring its own bomb sound (e.g. Oduya's thunderstorm).
+    if (!this.voiceFx(def, 'bomb', { dur: seconds })) this.play('bomb', { pitch: this.pitchOf(def) });
     duck(Math.max(1, seconds), { music: 0.35, underwater: true });
   },
 
   /** Ultimate: riser over the cut-in, impact on release, music ducked. */
   ultimate(def, cutinSeconds, seconds) {
-    this.play('ultimate', { pitch: this.pitchOf(def), delay: cutinSeconds });
-    duck(cutinSeconds + Math.min(4, seconds), { music: 0.25, underwater: true, attack: 0.2 });
+    if (!this.voiceFx(def, 'ultimate', { delay: cutinSeconds, dur: seconds })) this.play('ultimate', { pitch: this.pitchOf(def), delay: cutinSeconds });
+    // A pilot's own (long) ultimate sound keeps the music ducked for its whole length.
+    const hold = PILOT_VOICES[def.id] && PILOT_VOICES[def.id].ultimate ? seconds : Math.min(4, seconds);
+    duck(cutinSeconds + hold, { music: 0.25, underwater: true, attack: 0.2 });
   },
 };
 

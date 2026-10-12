@@ -101,6 +101,7 @@ function skyStrike(p, x0, y0, x1, y1, width, life = 7) {
 /** Main weapon: one strand from a fist through up to `strands` targets. */
 function strike(p, w) {
   const ps = p.ps, n = ps.strands, d = strandDmg(n);
+  w.shotsFired++; // no projectile, but the audio director voices one crackle per strike
   const name = (ps.side = -ps.side) < 0 ? 'fistL' : 'fistR';
   const [fx, fy] = oduyaArt.anchor(name), x0 = p.x + fx, y0 = p.y + fy;
   const chain = chainTargets(w, x0, y0, n, HOP);

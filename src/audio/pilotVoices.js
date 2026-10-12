@@ -14,6 +14,38 @@ import { tone, noise, fm, metal, kick, pad, hz } from './synth.js';
 
 const ECHO = { echo: 0.12 };
 
+// ---------------------------------------------------------------- thunder
+// Real thunder is a sharp crack (the bolt) followed by a long rolling rumble
+// whose loudness wobbles as the sound arrives from different parts of the bolt.
+
+/** Electric crackle: a burst of tiny band-passed clicks. */
+function crackle(c, o, t, { n = 4, span = 0.08, peak = 0.07, pan = 0 } = {}) {
+  for (let k = 0; k < n; k++) {
+    noise(c, o, t + Math.random() * span, { dur: 0.012 + Math.random() * 0.02, peak: peak * (0.6 + Math.random() * 0.6), a: 0.0005, filter: { type: 'bandpass', f: 2500 + Math.random() * 5500, q: 4 }, pan });
+  }
+}
+
+/** Rolling rumble: overlapping low noise swells that wobble and fade. */
+function rumble(c, o, t, { dur = 2.5, peak = 0.3, pan = 0 } = {}) {
+  for (let k = 0; k < 4; k++) {
+    const at = t + k * dur * 0.18 + Math.random() * 0.15, d = dur * (0.85 - k * 0.12);
+    noise(c, o, at, { color: 'brown', dur: d, peak: peak * (1 - k * 0.18), a: 0.04 + Math.random() * 0.08, filter: { type: 'lowpass', f: 420 - k * 60, f2: 70, ft: d }, pan, send: { rev: 0.45 } });
+  }
+}
+
+/**
+ * One lightning strike: crack, crackle, low boom and (with `roll`) a rolling
+ * tail. Storms pass `roll: false` for their many small claps and lay one
+ * continuous rumble bed under them instead (fewer live audio nodes).
+ */
+function thunderclap(c, o, t, { peak = 0.8, big = false, pan = 0, roll = true } = {}) {
+  noise(c, o, t, { dur: big ? 0.18 : 0.1, peak: peak * 0.55, a: 0.0008, filter: { type: 'highpass', f: 1800 }, pan, send: { rev: 0.3 } });
+  noise(c, o, t, { color: 'pink', dur: big ? 0.6 : 0.35, peak: peak * 0.5, a: 0.002, filter: { type: 'lowpass', f: 6000, f2: 400, ft: big ? 0.5 : 0.3 }, pan });
+  crackle(c, o, t + 0.01, { n: big ? 5 : 3, span: big ? 0.2 : 0.12, peak: peak * 0.12, pan });
+  kick(c, o, t, { f0: big ? 90 : 120, f1: 28, dur: big ? 1.1 : 0.6, peak: peak * (big ? 0.85 : 0.5), click: 0, drive: big ? 2 : 1 });
+  if (roll) rumble(c, o, t + 0.05, { dur: big ? 3 : 1.8, peak: peak * (big ? 0.4 : 0.25), pan: pan * 0.5 });
+}
+
 export const PILOT_VOICES = {
   // Rail lances: a bright, fast descending zap with a crack.
   kairo: {
@@ -61,16 +93,48 @@ export const PILOT_VOICES = {
       fm(c, o, t, { f: 1200, f2: 300, ratio: 1.5, index: 2, dur: 0.6, peak: 0.06 });
     },
   },
-  // Plasma mortars: a hollow "thoonk" launch.
+  // God of thunder: crackling strands, whip-crack spears, real thunder for
+  // the special, bomb and ultimate (see the thunder helpers below).
   oduya: {
-    gap: 0.14, pitch: 330, gain: 0.5,
+    gap: 0.09, pitch: 110, gain: 0.75,
     shot(c, o, t, s) {
-      tone(c, o, t, { type: 'sine', f: 520, f2: 130, ft: 0.09, dur: 0.12, peak: 0.1, pan: s.pan });
-      noise(c, o, t, { dur: 0.04, peak: 0.04, filter: { type: 'bandpass', f: 900, q: 2 }, pan: s.pan });
+      if (s.focus) {
+        // Thunder spear: a whip crack with a falling zap.
+        noise(c, o, t, { dur: 0.07, peak: 0.1, a: 0.001, filter: { type: 'highpass', f: 2500 }, pan: s.pan });
+        tone(c, o, t, { type: 'sawtooth', f: 3200, f2: 180, ft: 0.08, dur: 0.1, peak: 0.035, filter: { type: 'bandpass', f: 2200, q: 1.5 }, pan: s.pan });
+      } else {
+        // Strand: an electric crackle with a little body.
+        crackle(c, o, t, { n: 4, span: 0.07, peak: 0.07, pan: s.pan });
+        tone(c, o, t, { type: 'sawtooth', f: 120, f2: 70, ft: 0.08, dur: 0.09, peak: 0.03, drive: 3, filter: { type: 'lowpass', f: 900 }, pan: s.pan });
+      }
+      // Now and then a distant roll, so sustained fire sounds like a storm.
+      if (Math.random() < 0.06) rumble(c, o, t + 0.1, { dur: 1.6, peak: 0.12, pan: s.pan * 0.5 });
     },
-    special(c, o, t) { // ground-slam EMP: thud + electric crackle
-      kick(c, o, t, { f0: 120, f1: 30, dur: 0.6, peak: 0.7, click: 0.3, drive: 2 });
-      for (let k = 0; k < 6; k++) noise(c, o, t + 0.05 + k * 0.04, { dur: 0.03, peak: 0.1, filter: { type: 'bandpass', f: 3000 + k * 600, q: 6 } });
+    special(c, o, t) {
+      // Thundershock: a close thunderclap, 2 s of crackling, then the detonations.
+      thunderclap(c, o, t, { peak: 0.9 });
+      for (let k = 0; k < 14; k++) crackle(c, o, t + 0.15 + k * 0.13, { n: 3, span: 0.08, peak: 0.06, pan: (Math.random() - 0.5) * 0.8 });
+      thunderclap(c, o, t + 2.0, { peak: 1, big: true });
+    },
+    bomb(c, o, t, s) {
+      // Storm Cell: a strike every few tenths of a second over its 2 s, rolling thunder under it.
+      const d = s.dur || 2;
+      thunderclap(c, o, t, { peak: 1, big: true });
+      for (let k = 0.25; k < d; k += 0.18 + Math.random() * 0.22) thunderclap(c, o, t + k, { peak: 0.45 + Math.random() * 0.3, pan: (Math.random() - 0.5) * 1.2, roll: false });
+      rumble(c, o, t + 0.2, { dur: d + 2.5, peak: 0.35 });
+    },
+    ultimate(c, o, t, s) {
+      // Riser through the cut-in (charged air, distant rolls), then 7 s of storm.
+      const pre = s.delay || 1, d = s.dur || 7;
+      noise(c, o, t, { dur: pre, peak: 0.2, a: pre * 0.95, filter: { type: 'bandpass', f: 200, f2: 6000, ft: pre, q: 2 } });
+      for (let k = 0; k < 4; k++) crackle(c, o, t + pre * (0.4 + k * 0.14), { n: 3, span: 0.06, peak: 0.05 });
+      rumble(c, o, t + 0.1, { dur: pre + 1, peak: 0.18 });
+      const g = t + pre;
+      thunderclap(c, o, g, { peak: 1, big: true });
+      for (let k = 0.2; k < d; k += 0.14 + Math.random() * 0.2) thunderclap(c, o, g + k, { peak: 0.35 + Math.random() * 0.35, pan: (Math.random() - 0.5) * 1.4, roll: false });
+      // Twice a second every enemy is struck: heavier claps on that beat.
+      for (let k = 0.5; k < d; k += 0.5) thunderclap(c, o, g + k, { peak: 0.6, big: k % 2 === 0, roll: k % 2 === 0 });
+      for (let k = 0; k < d; k += 2.2) rumble(c, o, g + k, { dur: 3.2, peak: 0.3 });
     },
   },
   // Seed spread: a soft wooden pluck, like a seed pod popping.

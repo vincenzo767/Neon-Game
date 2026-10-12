@@ -138,3 +138,18 @@ Same method as the others: feathered polygons plus the exact alpha complement fo
 - **Known gaps.**
   - The HUD's PWR bar still shows the power tier, which no longer matters for him. The strand count is shown by the toasts.
   - The coils are the old procedural sprites.
+
+## Revision: thunderstorm sound (owner request)
+
+All in `src/audio/pilotVoices.js` (the `oduya` voice plus the thunder helpers `crackle`, `rumble` and `thunderclap`). Every sound is synthesised, with no audio files.
+
+- **Main strand.** An electric crackle with a low buzz on every strike. Each strike counts as a shot for the audio director (`w.shotsFired++`), because strands spawn no projectile. Now and then a distant roll plays, so sustained fire sounds like a storm.
+- **Thunder spears (focus).** A whip crack with a falling zap.
+- **Thundershock.** A close thunderclap, 2 s of crackling over the stunned enemies, then a big clap as they explode.
+- **Storm Cell.** A big clap, then a strike every 0.2–0.4 s for the whole bomb over a continuous rolling rumble.
+- **God Thunder Barrage.**
+  - During the cut-in: charged air, crackles and a distant roll.
+  - Then 7 s of storm: random claps, a heavier clap on every half-second strike, and rolling thunder underneath.
+  - The music stays ducked for the whole 7 s.
+- **Shared change.** `sfx.bomb` and `sfx.ultimate` use a pilot voice's own `bomb` / `ultimate` sound when it has one (new `voiceFx`). Every other pilot keeps the generic sounds.
+- **Levels.** Output peaks are about 0.82–0.87, the same range as the other pilots' bombs and ultimates, and the limiter is never pushed. During the ultimate about 235 sound nodes are live (most of them scheduled ahead).
