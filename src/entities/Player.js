@@ -61,7 +61,8 @@ export class Player {
 
   get tier() { return Math.min(4, 1 + Math.floor(this.power / 100)); }
   get collidable() { return this.state === 'alive'; }
-  get invulnerable() { return this.invuln > 0 || this.bombT > 0 || this.ultT > 0 || this.ps.phase > 0; }
+  // `def.intangible(p)`: optional pilot state in which every attack passes through (e.g. Dax's ghost focus).
+  get invulnerable() { return this.invuln > 0 || this.bombT > 0 || this.ultT > 0 || this.ps.phase > 0 || !!(this.def.intangible && this.def.intangible(this)); }
   get specialReady() { return this.specialCd === 0; }
   get specialFrac() { return this.def.special ? 1 - this.specialCd / this.def.special.cooldown : 1; }
 

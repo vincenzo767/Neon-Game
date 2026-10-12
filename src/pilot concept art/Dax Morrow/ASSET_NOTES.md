@@ -106,3 +106,75 @@ Same method as the others: feathered polygons plus the exact alpha complement fo
 
 - **Data (step 5).** The role "Hot-rod Jet" becomes something like "Void Knight". The bio and lore line are rewritten for the void theme (he keeps his street-racer past). The colour moves from violet to void red.
 - **FX cut-outs (step 2).** The beam head, zigzag body and impact come from `void-beams.png`. The ghost-clone smoke, the cosmic crescent and the ground explosion come from `fx-reference.png`. The ultimate beam is `ultimate-fx.png`. They are un-blended the same way as Lin's FX picks; the glow tint becomes red instead of emerald.
+
+## Decisions at the Step 1 checkpoint (approved by the owner)
+
+1. **Strength: A.** Legendary, exactly as written. He is marked **LEGENDARY** like Vincenzo.
+2. **Beam origin: B.** Every void beam leaves the red chest core.
+3. **Focus: A.** You steer the ghost; the body stays parked and untouchable; when you let go, the body flashes to the ghost.
+4. **Bombs: A.** 3 in stock.
+5. The vehicle name stays **OVERCLOCK**.
+
+## Steps 2–6: results
+
+- **Processing.** `npm run art:dax`.
+  - `bg: 'checker'`; 4 enclosed checker pockets were found automatically.
+  - Sprite exports: 303×372 @2x and 151×186 @1x, with outline variants. Front view: 484×600.
+  - Portrait: a 520×650 crop at (110, 0).
+- **Wings.** Generated `dax.layers.json`: the lower blade wings and their fins move, drawn under the body (no keep areas).
+- **FX picks.** The owner's pictures aren't exact crops of the sheets, so they are stored in `tools/art-ref/dax/` and used directly (as with Lin). They are un-blended with a **red** glow tint (`tint: 'red'`); two have crop boxes.
+  - `dax_fx_beam`: zigzag void beam, the main beam segments.
+  - `dax_fx_bent`: bent beam, the arcs that erase attacks.
+  - `dax_fx_ghost`: the smoke ghost.
+  - `dax_fx_crescent`: the Void Crescent.
+  - `dax_fx_ult`: straight from `ultimate-fx.png`, which has real alpha.
+  - The beam and bent beam are in the shared atlas; the ghost, crescent and cannon are in Dax's own texture.
+- **Code.**
+  - `src/pilots/daxArt.js`: config, void-red palette with `dark`.
+  - `src/pilots/daxFx.js`: beams, arcs, hits, bursts, smoke ghosts, crescent, rods, cannon.
+  - `src/pilots/dax.js`: the new kit.
+- **Shared, all optional; the other pilots are unchanged and were checked.**
+  - `Player`: `intangible(p)` hook.
+  - `mechaArt`: `pal.dark`, a black under-flame for thrusters.
+  - `tools/dps.mjs`: `dpsBossTargets`.
+  - `process-art`: FX `tint`, `box`, and real-alpha passthrough.
+- **The kit.**
+  - **Void Beam.** A strike every 4 steps from the chest core. It chains through every enemy, nearest first, with no range limit, drawn as zigzag void beams.
+    - Normal enemies die in one hit through shields (`DMG_INSTANT_KILL | DMG_IGNORES_SHIELDS`).
+    - Bosses, mid-bosses and boss parts take `2.5 + 1.8 × tier` per strike (70 % on later hops).
+    - Bullets along the beam are erased. Each strike also arcs to the 4 nearest enemy bullets within 110 units and erases every bullet within that radius.
+    - With no enemies on screen, the beam cracks straight ahead.
+  - **Ghost Launch.** Focus launches a smoke ghost 110 units forward; the body stays parked, drawn at 85 %.
+    - The ghost and 5 smoke clones fire void beams. The ghost does 55 % boss damage; the clones strike every 8 steps for 20 %.
+    - While focused he is **intangible** (`def.intangible`): every attack passes through.
+    - On release the body flashes to the ghost.
+  - **Void Crescent.** 260 units wide. It drifts forward 1.8 units per step for 5 s, erases attacks along its arc, and deals 5 every 5 steps through shields. Cooldown 600.
+  - **Void Rod Rain.** 5 s. Two rods a step (a big one every 12), half aimed at enemies. Bursts are 52 units / 5 damage, or 90 / 14 for big rods, through shields. Clears bullets.
+  - **Void Cannon.** 7 s. A 150-unit beam from his chest to the top of the screen that follows him: 2.6 per step through shields, clearing bullets. He is invulnerable throughout.
+- **DPS** (`tools/dps.mjs dax`, dummies flagged as bosses because normal enemies die in one hit):
+
+  | Mode | T1 | T2 | T3 | T4 |
+  |---|---|---|---|---|
+  | Beam, boss | 58 | 82 | 107 | 131 |
+  | Ghost focus, boss | 61 | 86 | 112 | 137 |
+
+  - Old kit at T4: shot 122, focus 83.
+- **Data.**
+  - Role "Void Knight", `legendary: true`.
+  - New bio and lore line (the street racer who came back from the void).
+  - Colour void red, bombs 3, stats 5/5/5/4.
+  - The fallback portrait has white spiky hair, shades and tattoos.
+- **Frame rate.** Storm: about 57 FPS with art versus 53 procedural; 60 FPS during the special and ultimate.
+- **Atlas.** The shared atlas is 84.8 % full (was 86.5 %; his old gun and plasma sprites are gone).
+- **Screenshots** in `screenshots/dax/`:
+  - `14_d_main_kills`: chained one-hit kills;
+  - `14_d_main_storm`: erasing bullets;
+  - `14_d_focus_ghosts`;
+  - `14_d_special_crescent`;
+  - `14_d_bomb_rods`;
+  - `14_d_ult_cannon`;
+  - `14_d_idle`;
+  - plus select, cut-in and fallback.
+- **Known gaps.**
+  - His sounds are still the old Overclock cannon and vent blast.
+  - Enemy lasers aren't erased by the beam; they pass through him while he is focused.
