@@ -191,3 +191,20 @@ The owner said the picked FX images looked cut out. Every effect is now drawn li
   - Its hits follow the drawn band.
 - **Void Cannon.** A column of black void with blazing red walls, red nebula, stars and black shards streaming up. It has a white-hot core line, halo rings and a star-crowned seal at the muzzle, and throws sparks and shards off its walls.
 - **Screenshots:** `screenshots/dax/15_*_polish.png`.
+
+## Polish round 2 (owner's feedback)
+
+- **Chain speed.** The first beam is still instant, from the chest core to the nearest enemy. From there a chain races on from enemy to enemy at 18 units per step (about 0.45 s across the screen), so you can see it travel and bounce.
+  - The chain has a blazing head with a white speed streak, and the hops behind it fade.
+  - It chases moving targets and turns to the next enemy if its target dies first. It hits each enemy once per chain, up to 64 hops, and erases bullets along its path.
+- **Void Crescent.** A canvas-drawn texture (`dx_cres_body`, `dx_cres_rim` in the shared atlas) with a sharp outer edge, a torn, sharp-toothed inner edge and pointed tips.
+  - Inside is mostly black void with red chaos clouds, black voids, torn red veins and stars. Flickering red cracks and twinkles are drawn over it.
+  - Black and dark-red smoke, black shards and embers peel off it.
+- **Focus + special.** The two outermost clones cast a crescent too: three crescents.
+- **Focus + ultimate.** The two outermost clones fire a Void Cannon too: three cannons, each with full damage. The ghost and the other clones keep firing beams. The side cannons fade out if focus is released.
+- **Void Cannon.** A deeper black void column:
+  - black tendrils twisting up, dim red nebula and flickering red chaos cracks;
+  - torn, wavering red walls;
+  - black void smoke and dark-red smoke rolling off it.
+  - The muzzle seal is calmer: flat rings, no spinning ones.
+- **Checks.** DPS is unchanged (boss T4: beam 131, focus 137). With 1,500 bullets the frame rate is 52–60 FPS. Screenshots: `screenshots/dax/16_*`.

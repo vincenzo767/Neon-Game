@@ -34,6 +34,7 @@ function rodTex(ctx, w, h) {
 export function daxFxSprites(atlas) {
   atlas.add('dx_shard', 12, 10, shardTex, { scale: 3 });
   atlas.add('dx_rod', 64, 12, rodTex, { scale: 3 });
+  crescentSprites(atlas);
 }
 
 const star = (b, x, y, s, a, rot = 0, c = PAL.core) => {
@@ -56,14 +57,20 @@ export function beamSeg(p, b, x0, y0, x1, y1, wd, a, glowA = 1) {
   b.draw(F.laser, mx, my, len, wd * 0.5, ang, PAL.core[0], PAL.core[1], PAL.core[2], a, 1);
 }
 
-/** Every live beam (strikes from the body, the ghost and its clones) and every interception beam. */
+export const CHAIN_FADE = 9; // steps a finished chain hop stays lit
+
+/**
+ * Every live beam: the instant shots from the body, the ghost and its clones;
+ * the chains racing from enemy to enemy (a blazing head with a speed streak,
+ * the hops behind it fading); the interception beams.
+ */
 export function renderBeams(p, b) {
   const F = p.F, ps = p.ps, t = p.t, wm = LOOK.widthMul, glowA = LOOK.glowMul * crowdFactor(p.w);
   for (const s of ps.bolts) {
     const a = 1 - s.t / s.life, pulse = 0.9 + 0.1 * Math.sin(t * 1.3 + s.s);
     for (let k = 1; k < s.pts.length; k++) {
       const [ax, ay] = s.pts[k - 1], [bx, by] = s.pts[k];
-      beamSeg(p, b, ax, ay, bx, by, s.w * wm * pulse * (k === 1 ? 1 : 0.8), a, glowA);
+      beamSeg(p, b, ax, ay, bx, by, s.w * wm * pulse, a, glowA);
       b.draw(F.glow, bx, by, s.w * 4, s.w * 4, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.45 * a, 1);
       star(b, bx, by, s.w * 4, a, t * 0.1 + k);
     }
@@ -72,6 +79,24 @@ export function renderBeams(p, b) {
       b.draw(F.glow, x, y, s.w * 3, s.w * 3, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.6 * a, 1);
       star(b, x, y, s.w * 3.6, a, t * 0.13);
     }
+  }
+  for (const c of ps.chains) {
+    const W0 = c.w * wm * 0.8;
+    for (const g of c.segs) {
+      const a = 1 - (t - g.t) / CHAIN_FADE;
+      if (a > 0) beamSeg(p, b, g.x0, g.y0, g.x1, g.y1, W0 * (0.5 + 0.5 * a), a, glowA);
+    }
+    if (!c.e) continue;
+    // The racing head: live hop, a white speed streak behind it, a blazing star.
+    beamSeg(p, b, c.lx, c.ly, c.x, c.y, W0, 1, glowA);
+    const dx = c.x - c.lx, dy = c.y - c.ly, L = Math.hypot(dx, dy);
+    if (L > 1) {
+      const sl = Math.min(L, 70), ux = dx / L, uy = dy / L, ang = Math.atan2(dy, dx);
+      b.draw(F.laser, c.x - ux * sl / 2, c.y - uy * sl / 2, sl, W0 * 3, ang, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.8, 1);
+      b.draw(F.laser, c.x - ux * sl / 2, c.y - uy * sl / 2, sl, W0 * 1.2, ang, PAL.core[0], PAL.core[1], PAL.core[2], 1, 1);
+    }
+    b.draw(F.glow, c.x, c.y, 36, 36, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.8, 1);
+    star(b, c.x, c.y, 30, 1, t * 0.3 + c.s);
   }
   // Interception beams: thin straight beams that snap to enemy attacks and erase them.
   for (const c of ps.arcs) {
@@ -204,34 +229,151 @@ export function renderGhost(p, b, x, y, alpha, seed = 0) {
 
 // ------------------------------------------------------------ special, bomb, ultimate
 
+// The crescent's shape, shared by the texture, the render and the hits: an
+// outer arc of radius R (convex side forward) and a band whose thickness is
+// `d` at the crown and runs to sharp points at the tips.
+const CR_A0 = 0.24, CR_S0 = Math.sin(CR_A0), CR_D = 0.68; // tip angle above horizontal; thickness / R
+const crTh = (ny, d) => Math.max(0, d * (-ny - CR_S0) / (1 - CR_S0));
+const CR_R = 150, CR_M = 16; // texture radius (logical px) and margin
+const CR_TW = CR_R * 2 + CR_M * 2, CR_TH = Math.ceil(CR_R * (1 - CR_S0) + CR_M * 2);
+
 /**
- * The Void Crescent's shape: points along its arc (convex side forward) with
- * the outer rim (ox, oy), the outward normal, the band thickness and the band
- * middle (mx, my). dax.js uses the same points for its hits.
+ * The Void Crescent's shape in the world: points along its arc with the outer
+ * rim (ox, oy), the outward normal, the band thickness and the band middle
+ * (mx, my). dax.js uses the same points for its hits.
  */
 export function crescentPts(c, n = 32) {
-  const R = c.w * 0.5, d = c.w * 0.34, cx = c.x, cy = c.y + R * 0.6, out = [];
+  const R = c.w * 0.5, d = R * CR_D, cx = c.x, cy = c.y + R * 0.6, out = [];
   for (let k = 0; k <= n; k++) {
-    const a = -Math.PI + 0.24 + (Math.PI - 0.48) * (k / n), nx = Math.cos(a), ny = Math.sin(a);
-    const th = Math.max(3, d * -ny), ox = cx + nx * R, oy = cy + ny * R;
+    const a = -Math.PI + CR_A0 + (Math.PI - 2 * CR_A0) * (k / n), nx = Math.cos(a), ny = Math.sin(a);
+    const th = crTh(ny, d), ox = cx + nx * R, oy = cy + ny * R;
     out.push({ ox, oy, nx, ny, th, mx: ox - nx * th / 2, my: oy - ny * th / 2 });
   }
   return out;
 }
 
-/** Smoke and embers peeling off the crescent's inner edge (called each step). */
+/** The crescent outline in texture space: outer arc, then the jagged inner edge back. */
+function crescentPath(ctx, jag = true) {
+  const cx = CR_M + CR_R, cy = CR_M + CR_R, d = CR_R * CR_D, n = 96, inner = [];
+  ctx.beginPath();
+  for (let k = 0; k <= n; k++) {
+    const a = -Math.PI + CR_A0 + (Math.PI - 2 * CR_A0) * (k / n), nx = Math.cos(a), ny = Math.sin(a);
+    const x = cx + nx * CR_R, y = cy + ny * CR_R;
+    k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    // Ragged, sharp-toothed inner edge (the reference's torn void).
+    const th = crTh(ny, d), tooth = jag && k % 2 ? (0.5 + hash(k * 7.3)) * Math.min(9, th * 0.3) : 0;
+    inner.push([x - nx * (th - tooth), y - ny * (th - tooth)]);
+  }
+  for (let k = inner.length - 1; k >= 0; k--) ctx.lineTo(inner[k][0], inner[k][1]);
+  ctx.closePath();
+}
+
+/** Point inside the band in texture space: u along the arc (0..1), v across it (0 = rim). */
+function crescentAt(u, v) {
+  const a = -Math.PI + CR_A0 + (Math.PI - 2 * CR_A0) * u, nx = Math.cos(a), ny = Math.sin(a);
+  const r = CR_R - crTh(ny, CR_R * CR_D) * v;
+  return [CR_M + CR_R + nx * r, CR_M + CR_R + ny * r, a];
+}
+
+/** Body: black void with red chaos (nebula, torn red veins), stars and a hard red rim (drawn alpha-blended). */
+function crescentBodyTex(ctx) {
+  const cx = CR_M + CR_R, cy = CR_M + CR_R;
+  crescentPath(ctx);
+  const g = ctx.createRadialGradient(cx, cy, CR_R * (1 - CR_D), cx, cy, CR_R);
+  g.addColorStop(0, '#0a0003'); g.addColorStop(0.55, '#020001'); g.addColorStop(0.9, '#1a0006'); g.addColorStop(1, '#5a0010');
+  ctx.fillStyle = g; ctx.fill();
+  ctx.save();
+  crescentPath(ctx); ctx.clip();
+  // Red chaos clouds.
+  for (let k = 0; k < 34; k++) {
+    const [x, y] = crescentAt(hash(k * 3.1), 0.1 + 0.85 * hash(k * 5.7)), r = 6 + 22 * hash(k * 1.9);
+    const rg = ctx.createRadialGradient(x, y, 0, x, y, r);
+    rg.addColorStop(0, k % 4 ? 'rgba(150,0,20,0.32)' : 'rgba(230,40,60,0.25)'); rg.addColorStop(1, 'rgba(120,0,15,0)');
+    ctx.fillStyle = rg; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  // Black voids punched through the red.
+  for (let k = 0; k < 16; k++) {
+    const [x, y] = crescentAt(hash(k * 8.3), 0.2 + 0.7 * hash(k * 2.9)), r = 6 + 14 * hash(k * 4.4);
+    const rg = ctx.createRadialGradient(x, y, 0, x, y, r);
+    rg.addColorStop(0, 'rgba(0,0,0,0.9)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rg; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  // Torn red veins following the arc, with jagged kinks.
+  ctx.shadowColor = 'rgba(255,30,50,1)'; ctx.lineCap = 'round';
+  for (let k = 0; k < 18; k++) {
+    const u0 = hash(k * 6.1) * 0.85, span = 0.06 + 0.2 * hash(k * 2.3), v = 0.08 + 0.85 * hash(k * 9.7), steps = 8;
+    ctx.beginPath();
+    for (let j = 0; j <= steps; j++) {
+      const [x, y] = crescentAt(Math.min(1, u0 + span * j / steps), Math.min(0.95, Math.max(0.03, v + (hash(k * 13 + j) - 0.5) * 0.18)));
+      j ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.shadowBlur = 6; ctx.lineWidth = 0.6 + 1.6 * hash(k * 3.3);
+    ctx.strokeStyle = k % 5 ? 'rgba(200,10,30,0.8)' : 'rgba(255,120,130,0.85)'; ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+  // Stars.
+  for (let k = 0; k < 110; k++) {
+    const [x, y] = crescentAt(hash(k * 1.37), 0.05 + 0.9 * hash(k * 4.91)), r = 0.3 + 1.0 * hash(k * 2.2) ** 2;
+    ctx.fillStyle = `rgba(255,${200 + 55 * hash(k)},${210 + 45 * hash(k)},${0.5 + 0.5 * hash(k * 7)})`;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+  // Hard red rim on the outside, a thin red line on the torn inner edge.
+  ctx.save();
+  ctx.shadowColor = 'rgba(255,20,40,1)'; ctx.shadowBlur = 8;
+  ctx.beginPath();
+  for (let k = 0; k <= 96; k++) {
+    const [x, y] = crescentAt(k / 96, 0);
+    k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.lineWidth = 3; ctx.strokeStyle = '#ff1a30'; ctx.stroke();
+  ctx.shadowBlur = 0; ctx.lineWidth = 1; ctx.strokeStyle = '#ffd8dc'; ctx.stroke();
+  ctx.restore();
+}
+
+/** Rim: white outer edge and glow for the additive pass (tinted when drawn). */
+function crescentRimTex(ctx) {
+  ctx.save();
+  ctx.beginPath();
+  for (let k = 0; k <= 96; k++) {
+    const [x, y] = crescentAt(k / 96, 0);
+    k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.shadowColor = '#fff'; ctx.shadowBlur = 12; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.stroke();
+  ctx.shadowBlur = 0; ctx.lineWidth = 1.6; ctx.strokeStyle = '#fff'; ctx.stroke();
+  ctx.restore();
+}
+
+/** Atlas textures for the crescent (part of daxFxSprites). */
+function crescentSprites(atlas) {
+  atlas.add('dx_cres_body', CR_TW, CR_TH, crescentBodyTex, { scale: 1.5 });
+  atlas.add('dx_cres_rim', CR_TW, CR_TH, crescentRimTex, { scale: 1 });
+}
+
+/** Smoke (black and red), shards and embers peeling off a crescent (called each step). */
 export function crescentSmoke(w, c) {
   const Hp = w.fxHigh, R = w.fxRng, F = w.F, sh = w.r.frame('dx_shard'), P = crescentPts(c, 16);
-  for (let k = 0; k < 3; k++) {
-    const q = P[R.int(1, P.length - 2)], ix = q.ox - q.nx * q.th, iy = q.oy - q.ny * q.th;
-    const i = Hp.spawn(F.glow, ix + R.range(-8, 8), iy + R.range(-6, 6), -q.nx * 0.4 + R.range(-0.3, 0.3), 0.8 + R.range(0, 1), R.range(26, 40));
+  for (let k = 0; k < 4; k++) { // black smoke off the torn inner edge
+    const q = P[R.int(2, P.length - 3)], ix = q.ox - q.nx * q.th, iy = q.oy - q.ny * q.th;
+    const i = Hp.spawn(F.glow, ix + R.range(-8, 8), iy + R.range(-6, 6), -q.nx * 0.5 + R.range(-0.3, 0.3), 0.9 + R.range(0, 1.2), R.range(28, 44));
     if (i < 0) return;
-    Hp.size(i, 12, R.range(34, 52)); Hp.color(i, 0.4, 0.02, 0.06, 0.04, 0, 0.01); Hp.phys(i, 0.96); Hp.look(i, 0.45, 0, FADE_INOUT);
+    Hp.size(i, 14, R.range(40, 64)); Hp.color(i, 0.05, 0.0, 0.01, 0.0, 0, 0); Hp.phys(i, 0.96); Hp.spin(i, 0, R.range(-0.05, 0.05)); Hp.look(i, 0.6, 0, FADE_INOUT);
   }
-  if (R.next() < 0.7) {
+  for (let k = 0; k < 2; k++) { // dark-red smoke rolling off the rim and the tips
+    const q = P[R.chance(0.4) ? (R.chance(0.5) ? 0 : P.length - 1) : R.int(0, P.length - 1)];
+    const i = Hp.spawn(F.glow, q.ox + R.range(-6, 6), q.oy + R.range(-6, 6), q.nx * 0.5 + R.range(-0.3, 0.3), 0.6 + R.range(0, 1), R.range(24, 38));
+    if (i < 0) return;
+    Hp.size(i, 12, R.range(34, 50)); Hp.color(i, 0.55, 0.03, 0.07, 0.1, 0, 0.02); Hp.phys(i, 0.96); Hp.look(i, 0.5, 0, FADE_INOUT);
+  }
+  if (R.next() < 0.5) { // faint red wisp (additive)
     const q = P[R.int(0, P.length - 1)];
-    const i = Hp.spawn(sh, q.mx, q.my, q.nx * R.range(0.5, 1.5), 1 + R.range(0, 1), R.range(18, 30));
-    if (i >= 0) { Hp.size(i, R.range(4, 9)); Hp.spin(i, R.range(0, 6), R.range(-0.2, 0.2)); Hp.color(i, DARK[0], DARK[1], DARK[2]); Hp.look(i, 0.9, 0, FADE_OUT); }
+    const i = Hp.spawn(F.glow, q.mx, q.my, R.range(-0.4, 0.4), 0.8, R.range(20, 30));
+    if (i >= 0) { Hp.size(i, 10, 36); Hp.color(i, PAL.mid[0], PAL.mid[1], PAL.mid[2], PAL.edge[0], PAL.edge[1], PAL.edge[2]); Hp.look(i, 0.3, 1, FADE_INOUT); }
+  }
+  if (R.next() < 0.8) {
+    const q = P[R.int(0, P.length - 1)];
+    const i = Hp.spawn(sh, q.mx, q.my, q.nx * R.range(0.5, 1.8), 1 + R.range(0, 1), R.range(18, 30));
+    if (i >= 0) { Hp.size(i, R.range(4, 10)); Hp.spin(i, R.range(0, 6), R.range(-0.2, 0.2)); Hp.color(i, DARK[0], DARK[1], DARK[2]); Hp.look(i, 0.9, 0, FADE_OUT); }
   }
   if (R.next() < 0.6) {
     const q = P[R.int(0, P.length - 1)];
@@ -240,52 +382,59 @@ export function crescentSmoke(w, c) {
   }
 }
 
-/** Void Crescent: a band of starry black space with a blazing red rim and star flares. */
-export function renderCrescent(p, b) {
-  const c = p.ps.crescent;
-  if (!c) return;
-  const F = p.F, t = p.t, P = crescentPts(c);
-  const a = Math.min(1, c.t / 12) * (c.t > c.life - 30 ? (c.life - c.t) / 30 : 1);
-  // Red haze around the band.
-  for (let k = 0; k < P.length; k += 4) {
-    const q = P[k];
-    b.draw(F.glow, q.mx, q.my, q.th * 2.6 + 30, q.th * 2.6 + 30, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.3 * a, 1);
+/** Red chaos crackling inside a band (re-rolled every few steps): short jagged red arcs. */
+function chaosCracks(p, b, pts, seed, n, a, wdMul = 1) {
+  const F = p.F;
+  for (let k = 0; k < n; k++) {
+    const h0 = seed * 13.7 + k * 5.3;
+    let [x, y] = pts(hash(h0), hash(h0 + 1.1));
+    const ang0 = hash(h0 + 2.2) * Math.PI * 2;
+    for (let j = 0; j < 4; j++) {
+      const ang = ang0 + (hash(h0 + j * 3.1) - 0.5) * 1.8, L = 8 + 12 * hash(h0 + j * 4.7);
+      const x1 = x + Math.cos(ang) * L, y1 = y + Math.sin(ang) * L;
+      b.draw(F.laser, (x + x1) / 2, (y + y1) / 2, L + 1, 4 * wdMul, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.75 * a, 1);
+      b.draw(F.laser, (x + x1) / 2, (y + y1) / 2, L + 1, 1.3 * wdMul, ang, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.55 * a, 1);
+      x = x1; y = y1;
+    }
   }
-  // Black void body.
-  for (const q of P) b.draw(F.glow, q.mx, q.my, q.th * 2, q.th * 2, 0, DARK[0], DARK[1], DARK[2], 0.8 * a, 0);
-  for (const q of P) b.draw(F.glow, q.mx, q.my, q.th * 1.4, q.th * 1.4, 0, DARK[0], DARK[1], DARK[2], 0.9 * a, 0);
-  for (const q of P) b.draw(F.glow, q.mx, q.my, q.th, q.th, 0, DARK[0], DARK[1], DARK[2], 0.9 * a, 0);
-  // Red nebula inside the void.
-  for (let k = 0; k < 10; k++) {
-    const q = P[Math.floor(hash(k * 2.3) * P.length)], d = q.th * (0.25 + 0.5 * hash(k * 5.1));
-    const s = q.th * (0.6 + 0.6 * hash(k * 3.7));
-    b.draw(F.glow, q.ox - q.nx * d, q.oy - q.ny * d, s, s, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.14 * a * (0.7 + 0.3 * Math.sin(t * 0.05 + k)), 1);
+}
+
+/** One Void Crescent: sharp-edged black void with red chaos, a blazing rim, star flares and smoke. */
+function renderOneCrescent(p, b, c) {
+  const F = p.F, t = p.t, P = crescentPts(c, 16), Rw = c.w * 0.5, k = Rw / CR_R;
+  const a = Math.min(1, c.t / 10) * (c.t > c.life - 30 ? Math.max(0, (c.life - c.t) / 30) : 1);
+  const body = p.ps.fCresBody, rim = p.ps.fCresRim;
+  // Texture centre in the world (the arc's circle centre is at c.y + 0.6 R).
+  const tx = c.x, ty = c.y + 0.6 * Rw + (CR_TH / 2 - (CR_M + CR_R)) * k, tw = CR_TW * k, th = CR_TH * k;
+  for (let j = 0; j < P.length; j += 3) {
+    const q = P[j];
+    b.draw(F.glow, q.mx, q.my, q.th * 2 + 50, q.th * 2 + 50, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.16 * a, 1);
   }
-  // Stars in the void.
-  for (let k = 0; k < 46; k++) {
-    const q = P[Math.floor(hash(k * 1.7 + 0.3) * P.length)], d = q.th * (0.12 + 0.76 * hash(k * 4.9));
-    const sx = q.ox - q.nx * d, sy = q.oy - q.ny * d, tw = 0.5 + 0.5 * Math.sin(t * 0.25 + k * 1.3);
-    if (k % 9 === 0) star(b, sx, sy, 12 + 6 * tw, a, t * 0.03 + k);
-    else b.draw(F.core, sx, sy, 2.5 + 2 * hash(k), 2.5 + 2 * hash(k), 0, PAL.core[0], PAL.core[1], PAL.core[2], a * (0.4 + 0.6 * tw), 1);
+  b.draw(body, tx, ty, tw, th, 0, 1, 1, 1, a, 0);
+  // Red chaos flickering through the void.
+    chaosCracks(p, b, (u, v) => {
+    const q = P[Math.min(P.length - 1, Math.floor(u * P.length))], d = q.th * (0.15 + 0.7 * v);
+    return [q.ox - q.nx * d, q.oy - q.ny * d];
+  }, (t >> 2) + c.x, 2, a, 0.8);
+  for (let s = 0; s < 8; s++) { // twinkling stars over the painted ones
+    const q = P[Math.floor(hash(s * 1.7 + 0.3) * P.length)], d = q.th * (0.15 + 0.7 * hash(s * 4.9));
+    const tw2 = 0.5 + 0.5 * Math.sin(t * 0.25 + s * 1.3);
+    if (q.th > 8) star(b, q.ox - q.nx * d, q.oy - q.ny * d, 6 + 8 * tw2, a * tw2, t * 0.03 + s);
   }
-  // Blazing rim: red haze, red edge, white-hot line on the outside; a thin red inner edge.
-  for (let k = 1; k < P.length; k++) {
-    const q0 = P[k - 1], q1 = P[k], th = (q0.th + q1.th) / 2;
-    const mx = (q0.ox + q1.ox) / 2, my = (q0.oy + q1.oy) / 2, len = Math.hypot(q1.ox - q0.ox, q1.oy - q0.oy) + 3, ang = Math.atan2(q1.oy - q0.oy, q1.ox - q0.ox);
-    b.draw(F.laser, mx, my, len, 10 + th * 0.5, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.45 * a, 1);
-    b.draw(F.laser, mx, my, len, 4 + th * 0.16, ang, PAL.hot[0], PAL.hot[1], PAL.hot[2], a, 1);
-    b.draw(F.laser, mx, my, len, 1.5 + th * 0.05, ang, PAL.core[0], PAL.core[1], PAL.core[2], a, 1);
-    const ix0 = q0.ox - q0.nx * q0.th, iy0 = q0.oy - q0.ny * q0.th, ix1 = q1.ox - q1.nx * q1.th, iy1 = q1.oy - q1.ny * q1.th;
-    b.draw(F.laser, (ix0 + ix1) / 2, (iy0 + iy1) / 2, Math.hypot(ix1 - ix0, iy1 - iy0) + 3, 3 + th * 0.06, Math.atan2(iy1 - iy0, ix1 - ix0), PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.55 * a, 1);
-  }
-  // The big star flares of the reference: one at the crown, two on the shoulders.
+  b.draw(rim, tx, ty, tw, th, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], a * (0.85 + 0.15 * Math.sin(t * 0.5)), 1);
+  // The reference's star flares: the crown and the shoulders.
   const m = P[P.length >> 1];
-  star(b, m.mx, m.my, 54 + 8 * Math.sin(t * 0.2), a, 0);
-  star(b, m.ox, m.oy, 40, a, t * 0.02);
-  for (const f of [0.25, 0.75]) {
+  star(b, m.mx, m.my, 36 + 6 * Math.sin(t * 0.2), 0.85 * a, 0);
+  star(b, m.ox, m.oy, 26, 0.8 * a, t * 0.02);
+  for (const f of [0.28, 0.72]) {
     const q = P[Math.round(f * (P.length - 1))];
-    star(b, q.mx, q.my, 34 + 8 * Math.sin(t * 0.17 + f * 9), a, 0);
+    star(b, q.mx, q.my, 18 + 4 * Math.sin(t * 0.17 + f * 9), 0.7 * a, 0);
   }
+}
+
+/** Every live Void Crescent (one, or three when cast in focus). */
+export function renderCrescent(p, b) {
+  for (const c of p.ps.crescents) renderOneCrescent(p, b, c);
 }
 
 /** Void Rod Rain: falling glowing rods with long red trails. */
@@ -301,7 +450,7 @@ export function renderRods(p, b) {
   }
 }
 
-/** Sparks and black shards thrown off the Void Cannon's walls (called each step). */
+/** Smoke, sparks and black shards thrown off a Void Cannon (called each step per cannon). */
 export function cannonSpray(w, x, y, wd) {
   const Hp = w.fxHigh, R = w.fxRng, F = w.F, sh = w.r.frame('dx_shard');
   for (let k = 0; k < 2; k++) {
@@ -311,61 +460,87 @@ export function cannonSpray(w, x, y, wd) {
     i = Hp.spawn(F.spark, x + s * wd * 0.5, R.range(0, y), s * R.range(2, 5), R.range(-4, -1), R.range(10, 16));
     if (i >= 0) { Hp.size(i, 6); Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.mid[0], PAL.mid[1], PAL.mid[2]); Hp.phys(i, 0.9); Hp.look(i, 1, 1, FADE_OUT, 0.5); }
   }
+  // Black void smoke billowing inside and over the walls, red smoke rolling off the sides.
+  for (let k = 0; k < 3; k++) {
+    const i = Hp.spawn(F.glow, x + R.range(-wd * 0.55, wd * 0.55), R.range(-20, y), R.range(-1.2, 1.2), R.range(-2.5, -0.5), R.range(26, 40));
+    if (i < 0) return;
+    Hp.size(i, R.range(24, 40), R.range(60, 100)); Hp.color(i, 0.04, 0.0, 0.01, 0.0, 0, 0); Hp.phys(i, 0.95); Hp.spin(i, 0, R.range(-0.04, 0.04)); Hp.look(i, 0.55, 0, FADE_INOUT);
+  }
+  {
+    const s = R.next() < 0.5 ? -1 : 1;
+    const i = Hp.spawn(F.glow, x + s * wd * R.range(0.45, 0.65), R.range(0, y), s * R.range(0.4, 1.4), R.range(-1.5, -0.3), R.range(26, 40));
+    if (i >= 0) { Hp.size(i, 20, R.range(50, 80)); Hp.color(i, 0.6, 0.03, 0.07, 0.1, 0, 0.02); Hp.phys(i, 0.95); Hp.look(i, 0.5, 0, FADE_INOUT); }
+  }
   const i = Hp.spawn(F.glow, x + R.range(-wd * 0.4, wd * 0.4), y - R.range(0, 30), R.range(-1.5, 1.5), R.range(0.5, 1.5), R.range(20, 30));
   if (i >= 0) { Hp.size(i, 20, 50); Hp.color(i, 0.3, 0.0, 0.04, 0.03, 0, 0); Hp.phys(i, 0.95); Hp.look(i, 0.5, 0, FADE_INOUT); }
 }
 
 /**
- * Void Cannon, after ultimate-fx.png: a wide column of black cosmic void with
- * blazing red walls, red nebula and stars streaming up, black shards, a
- * white-hot core line, halo rings running up and a seal at the muzzle.
+ * Void Cannon, after ultimate-fx.png: a wide column of deep black void with
+ * red chaos crackling through it, black tendrils twisting up, red nebula,
+ * stars and black shards streaming up, torn red walls, a white-hot core line,
+ * halo rings and a star-crowned seal at the muzzle. Smoke is cannonSpray.
  */
-export function renderCannon(p, b, x, y) {
-  const u = p.ps.cannon;
-  if (!u) return;
-  const F = p.F, t = p.t, wd = u.w, a = u.fade, top = -30, len = y - top, my = (y + top) / 2, sh = p.ps.fShard;
-  const up = -Math.PI / 2, flick = 0.92 + 0.08 * Math.sin(t * 0.9);
-  b.draw(F.laser, x, my, len, wd * 2.6, up, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.55 * a, 1);
-    for (let k = -4; k <= 4; k++) b.draw(F.laser, x + k * wd * 0.11, my, len, wd * 0.36, up, DARK[0], DARK[1], DARK[2], 0.85 * a, 0);
-  // Red nebula clouds streaming up.
-  for (let k = 0; k < 16; k++) {
-    const sy = y - ((hash(k * 2.9) * len + t * (5 + 3 * hash(k))) % len), sx = x + (hash(k * 1.3) - 0.5) * wd * 0.7;
-    const s = wd * (0.35 + 0.35 * hash(k * 7.7));
-    b.draw(F.glow, sx, sy, s, s * 1.4, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.16 * a, 1);
+export function renderCannon(p, b, x, y, wd, a, seed = 0) {
+  const F = p.F, t = p.t, top = -30, len = y - top, my = (y + top) / 2, sh = p.ps.fShard;
+  const up = -Math.PI / 2, flick = 0.92 + 0.08 * Math.sin(t * 0.9 + seed);
+  b.draw(F.laser, x, my, len, wd * 1.7, up, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.35 * a, 1);
+  // Deep black void body.
+  for (let k = -4; k <= 4; k++) b.draw(F.laser, x + k * wd * 0.11, my, len, wd * 0.36, up, DARK[0], DARK[1], DARK[2], 0.95 * a, 0);
+  for (let k = -2; k <= 2; k++) b.draw(F.laser, x + k * wd * 0.15, my, len, wd * 0.3, up, DARK[0], DARK[1], DARK[2], 0.8 * a, 0);
+  // Dim red nebula streaming up.
+  for (let k = 0; k < 14; k++) {
+    const sy = y - ((hash(k * 2.9 + seed) * len + t * (5 + 3 * hash(k))) % len), sx = x + (hash(k * 1.3 + seed) - 0.5) * wd * 0.8;
+    const s = wd * (0.25 + 0.3 * hash(k * 7.7));
+    b.draw(F.glow, sx, sy, s, s * 1.5, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.13 * a, 1);
   }
+  // Black tendrils twisting up the column (the reference's dark ribbons).
+  for (let r = 0; r < 3; r++) {
+    const ph = r * 2.1 + seed, amp = wd * (0.22 + 0.08 * r), sp = 6 + r * 2;
+    for (let yy = y; yy > top; yy -= 12) {
+      const q = (y - yy + t * sp) * 0.018 + ph, xx = x + Math.sin(q) * amp, s = 16 + 8 * Math.sin(q * 1.7);
+      b.draw(F.glow, xx, yy, s, s * 1.3, 0, DARK[0], DARK[1], DARK[2], 0.75 * a, 0);
+    }
+  }
+  // Red chaos crackling through the void (re-rolled every 3 steps).
+  chaosCracks(p, b, (u, v) => [x + (u - 0.5) * wd * 0.9, top + v * len], (t / 3 | 0) + seed * 31, 3 + (len / 200 | 0), a, 1.1);
   // Black shards streaming up through it.
   if (sh) for (let k = 0; k < 26; k++) {
-    const sy = y - ((hash(k * 3.1) * len + t * (8 + 8 * hash(k * 0.7))) % len), sx = x + (hash(k * 4.1) - 0.5) * wd;
+    const sy = y - ((hash(k * 3.1 + seed) * len + t * (8 + 8 * hash(k * 0.7))) % len), sx = x + (hash(k * 4.1 + seed) - 0.5) * wd;
     const s = 6 + 9 * hash(k * 2.2);
     b.draw(sh, sx, sy, s, s * 0.8, t * 0.05 * (hash(k) - 0.5) + k, DARK[0], DARK[1], DARK[2], 0.9 * a, 0);
   }
   // Stars.
   for (let k = 0; k < 30; k++) {
-    const sy = y - ((hash(k * 3.7) * H + t * (3 + hash(k) * 4)) % len), sx = x + (hash(k * 1.9) - 0.5) * wd * 0.95;
+    const sy = y - ((hash(k * 3.7 + seed) * H + t * (3 + hash(k) * 4)) % len), sx = x + (hash(k * 1.9 + seed) - 0.5) * wd * 0.95;
     const tw = 0.5 + 0.5 * Math.sin(t * 0.3 + k);
     if (k % 5 === 0) star(b, sx, sy, 10 + 12 * hash(k * 5.3), a * tw, k);
     else b.draw(F.core, sx, sy, 2.5 + 2 * hash(k), 2.5 + 2 * hash(k), 0, PAL.core[0], PAL.core[1], PAL.core[2], a * (0.3 + 0.7 * tw), 1);
   }
-  // Blazing red walls.
+  // Torn red walls: segments that waver.
   for (const s of [-1, 1]) {
-    const ex = x + s * wd * 0.55;
-    b.draw(F.laser, ex, my, len, 26, up, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.5 * a, 1);
-    b.draw(F.laser, ex, my, len, 8 * flick, up, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.9 * a, 1);
-    b.draw(F.laser, ex, my, len, 2.5, up, PAL.core[0], PAL.core[1], PAL.core[2], 0.6 * a, 1);
+    for (let yy = y; yy > top; yy -= 40) {
+      const y1 = Math.max(top, yy - 40), j0 = Math.sin(yy * 0.05 + t * 0.4 + s + seed) * 5, j1 = Math.sin(y1 * 0.05 + t * 0.4 + s + seed) * 5;
+      const x0 = x + s * wd * 0.55 + j0, x1 = x + s * wd * 0.55 + j1, L = Math.hypot(x1 - x0, y1 - yy) + 2, ang = Math.atan2(y1 - yy, x1 - x0);
+      const mx = (x0 + x1) / 2, mmy = (yy + y1) / 2;
+      b.draw(F.laser, mx, mmy, L, 24, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.45 * a, 1);
+      b.draw(F.laser, mx, mmy, L, 7 * flick, ang, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.9 * a, 1);
+      b.draw(F.laser, mx, mmy, L, 2.2, ang, PAL.core[0], PAL.core[1], PAL.core[2], 0.55 * a, 1);
+    }
   }
   // White-hot core line.
-  b.draw(F.laser, x, my, len, wd * 0.24, up, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.8 * a, 1);
-  b.draw(F.laser, x, my, len, wd * 0.08 * flick, up, PAL.core[0], PAL.core[1], PAL.core[2], a, 1);
+  b.draw(F.laser, x, my, len, wd * 0.2, up, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.75 * a, 1);
+  b.draw(F.laser, x, my, len, wd * 0.07 * flick, up, PAL.core[0], PAL.core[1], PAL.core[2], a, 1);
   // Halo rings running up.
   for (let k = 0; k < 5; k++) {
-    const ry = y - ((k * 140 + t * 7) % (len + 40));
+    const ry = y - ((k * 140 + t * 7 + seed * 50) % (len + 40));
     b.draw(F.ring, x, ry, wd * 1.2, 30, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.4 * a, 1);
   }
   // The seal at the muzzle and the star crown around it.
-  b.draw(F.glow, x, y, wd * 1.4, wd * 0.9, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.6 * a, 1);
-  b.draw(F.ring, x, y, wd * 1.1, 40, t * 0.05, PAL.core[0], PAL.core[1], PAL.core[2], 0.8 * a, 1);
-  b.draw(F.ring, x, y + 8, wd * 0.8, 26, -t * 0.07, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.7 * a, 1);
-  star(b, x, y, wd * 1.1, a, t * 0.04);
+  b.draw(F.glow, x, y, wd * 1.2, wd * 0.7, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.3 * a, 1);
+  b.draw(F.ring, x, y, wd * 1.1, 34, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.7 * a, 1);
+  b.draw(F.ring, x, y + 8, wd * (0.75 + 0.1 * Math.sin(t * 0.2)), 24, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.7 * a, 1);
+  star(b, x, y, wd * 0.8, 0.8 * a, t * 0.04);
   for (let k = 0; k < 6; k++) {
     const ang = Math.PI + (k / 5) * Math.PI, r = wd * 0.7;
     star(b, x + Math.cos(ang) * r, y + 10 + Math.sin(ang) * r * 0.35, 20 + 8 * Math.sin(t * 0.2 + k), a, k);
