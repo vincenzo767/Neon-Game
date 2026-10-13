@@ -306,6 +306,7 @@ export default {
     ps.fShard = w.r.frame('dx_shard');
     ps.fCresBody = w.r.frame('dx_cres_body');
     ps.fCresRim = w.r.frame('dx_cres_rim');
+    ps.fOrb = w.r.frame('dx_orb');
     ps.chains = [];
     ps.bolts = [];
     ps.arcs = [];

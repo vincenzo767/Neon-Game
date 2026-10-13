@@ -226,12 +226,22 @@ The owner supplied a new crescent reference: a black cosmic crescent moon with a
 - **Smoke.** Black, smoky-grey and blood-red ink smoke boils off the rim, the tips and the hollow, swirling as it drifts with the moon. Red wisps, black ink shards and embers come off it too.
 - It now spawns 110 units ahead of him (was 70).
 
-## Polish round 4 (redone): dark chaos crescent with a smoke edge
+## Polish round 4: Getsuga-style slash (owner's `void-crescent.png`)
 
-This replaces the earlier rounds 4–7 (black flame); their file changes had been rolled back.
+The black-flame rounds (commits `3c859ce` to `53a757f`) were rolled back to the crescent moon (`d567227`), and the crescent was rebuilt after the owner's new reference, `void-crescent.png` in this folder. It is drawn live, not cut out.
 
-- **Red edge glow minimized.** The rim is a thin dark-red line with no glow; the additive rim pass is about 14 %, the red haze about 8 %, and the running glints are gone. The red inside, the veins, the stars, the crown star and the seals are all dimmer.
-- **The edge is glowing black chaos smoke.** It is drawn every frame and rides with the crescent: a back row of 30 puffs and a front row of 36. Each puff is born on the edge, billows out and streams back behind the launch, growing and fading. Each has a dim red under-glow so the black reads on a dark stage.
-- **The tips are buried in thick black smoke.** 14 big puffs sit over each tip and stream back. Smoke particles shed from the tips hang where they were shed, leaving a thick black trail along the path.
-- **The particle smoke is mostly black,** with some grey and only a little red. Red wisps and embers are rarer.
-- **Screenshots:** `screenshots/dax/22_*`.
+- **Shape.** A thick inverted-U arch (crown 46 % of the radius), with blade tips sweeping well below the horizontal and tapering to points. Hits follow the same shape.
+- **Body texture** (`dx_cres_body`): ink-brush strokes, black-dominant with a ragged silhouette, dark-red and blood-red currents, white-hot highlights near the leading edge, and ink and red spatter.
+- **Rim texture** (`dx_cres_rim`): a blazing, brushy leading edge with white spray.
+- **New `dx_orb`:** small black void orbs with a red rim light.
+- **Motion:**
+  - Plasma currents race along the arc from the crown out to the tips.
+  - Lightning filaments follow the curve.
+  - A dark smear and red motion-blur copies trail behind, with speed streaks stretching back.
+  - Energy nodes flare along the arc and throw sparks.
+  - An overcharged core in the hollow has pulsing rings, long horizontal and vertical spikes, and red lightning.
+  - The crown star and two side flares twinkle.
+  - Black orbs drift and bob around the slash.
+- **Smoke.** Ink-black, charcoal and some crimson smoke tears off the edge, peels off the tips and boils in the hollow. It lags behind as the slash moves. White-hot vapour and black ink shards come off it too.
+- **Frame rate.** Headless test: 59 FPS idle, 53 with the crescent, 57 with three in focus.
+- **Screenshot:** `screenshots/dax/23_crescent_getsuga.png`.
