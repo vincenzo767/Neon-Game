@@ -30,30 +30,10 @@ function rodTex(ctx, w, h) {
   ctx.lineTo(w * 0.72, cy + h * 0.45); ctx.lineTo(w * 0.7, cy + h * 0.18); ctx.closePath(); ctx.fill();
 }
 
-function flameTex(ctx, w, h) {
-  // One tongue of black flame pointing up: a round base, wavy sides, a sharp
-  // licking tip; black with a dark-red heart, soft smoky edges.
-  const X = (u) => w * (0.12 + 0.76 * u), Y = (v) => h * (0.06 + 0.9 * v);
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(X(0.55), Y(0));
-  ctx.bezierCurveTo(X(0.66), Y(0.2), X(0.4), Y(0.3), X(0.8), Y(0.5));
-  ctx.bezierCurveTo(X(1.04), Y(0.68), X(0.98), Y(0.98), X(0.5), Y(1));
-  ctx.bezierCurveTo(X(0.02), Y(0.98), X(-0.02), Y(0.66), X(0.22), Y(0.47));
-  ctx.bezierCurveTo(X(0.46), Y(0.3), X(0.34), Y(0.2), X(0.55), Y(0));
-  ctx.closePath();
-  const g = ctx.createRadialGradient(X(0.5), Y(0.8), 0, X(0.5), Y(0.8), h * 0.55);
-  g.addColorStop(0, '#5a000e'); g.addColorStop(0.3, '#1a0004'); g.addColorStop(0.6, '#050001'); g.addColorStop(1, '#000');
-  ctx.shadowColor = 'rgba(0,0,0,0.85)'; ctx.shadowBlur = w * 0.2;
-  ctx.fillStyle = g; ctx.fill();
-  ctx.restore();
-}
-
 /** Atlas textures (part of dax.js `sprites`). */
 export function daxFxSprites(atlas) {
   atlas.add('dx_shard', 12, 10, shardTex, { scale: 3 });
   atlas.add('dx_rod', 64, 12, rodTex, { scale: 3 });
-  atlas.add('dx_flame', 32, 64, flameTex, { scale: 3 });
   crescentSprites(atlas);
 }
 
@@ -305,8 +285,8 @@ function crescentBodyTex(ctx) {
   const cx = CR_M + CR_R, cy = CR_M + CR_R;
   crescentPath(ctx);
   const g = ctx.createRadialGradient(cx, cy, CR_R * (1 - CR_D), cx, cy, CR_R);
-  g.addColorStop(0, '#5a000e'); g.addColorStop(0.18, '#140004'); g.addColorStop(0.4, '#030001');
-  g.addColorStop(0.9, '#050002'); g.addColorStop(1, '#3a0009');
+  g.addColorStop(0, '#2a0006'); g.addColorStop(0.18, '#0a0002'); g.addColorStop(0.4, '#030001');
+  g.addColorStop(0.9, '#030001'); g.addColorStop(1, '#1a0004');
   ctx.fillStyle = g; ctx.fill();
   ctx.save();
   crescentPath(ctx); ctx.clip();
@@ -323,7 +303,7 @@ function crescentBodyTex(ctx) {
   // Red torn glow and splatter along the inner edge of the crown.
   for (let k = 0; k < 40; k++) {
     const u = 0.15 + 0.7 * hash(k * 4.3), [x, y] = crescentAt(u, 0.7 + 0.3 * hash(k * 1.7));
-    blob(x, y, 4 + 14 * hash(k * 9.1), k % 3 ? 'rgba(150,5,22,0.45)' : 'rgba(200,40,55,0.32)');
+    blob(x, y, 4 + 14 * hash(k * 9.1), k % 3 ? 'rgba(150,5,20,0.4)' : 'rgba(190,40,50,0.3)');
   }
   // Thin red veins flowing along the arc.
   ctx.shadowColor = 'rgba(255,20,40,1)'; ctx.lineCap = 'round';
@@ -334,8 +314,8 @@ function crescentBodyTex(ctx) {
       const [x, y] = crescentAt(Math.min(1, u0 + span * j / steps), Math.min(0.97, Math.max(0.03, v + (hash(k * 13 + j) - 0.5) * 0.1)));
       j ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
     }
-    ctx.shadowBlur = 5; ctx.lineWidth = 0.5 + 1.1 * hash(k * 3.3);
-    ctx.strokeStyle = k % 4 ? 'rgba(210,10,30,0.8)' : 'rgba(255,110,120,0.85)'; ctx.stroke();
+    ctx.shadowBlur = 2; ctx.lineWidth = 0.5 + 1.1 * hash(k * 3.3);
+    ctx.strokeStyle = k % 4 ? 'rgba(150,5,20,0.65)' : 'rgba(200,50,60,0.6)'; ctx.stroke();
   }
   ctx.shadowBlur = 0;
   // Stars.
@@ -345,22 +325,20 @@ function crescentBodyTex(ctx) {
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
   }
   ctx.restore();
-  // Sharp dark-red rim outside (the glow is smoke now), a dim red line along the inner edge.
+  // A thin dark-red rim outside and along the inner edge (no glow: the edge is smoke now).
   ctx.save();
-  ctx.shadowColor = 'rgba(120,0,15,1)'; ctx.shadowBlur = 3;
   ctx.beginPath();
   for (let k = 0; k <= 140; k++) {
     const [x, y] = crescentAt(k / 140, 0);
     k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
   }
-  ctx.lineWidth = 2.2; ctx.strokeStyle = '#6a000e'; ctx.stroke();
-  ctx.shadowBlur = 0; ctx.lineWidth = 0.7; ctx.strokeStyle = '#c0182a'; ctx.stroke();
+  ctx.lineWidth = 1.6; ctx.strokeStyle = '#7a0010'; ctx.stroke();
   ctx.beginPath();
   for (let k = 0; k <= 140; k++) {
     const [x, y] = crescentAt(k / 140, 1);
     k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
   }
-  ctx.shadowBlur = 4; ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(170,10,28,0.8)'; ctx.stroke();
+  ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(140,10,25,0.7)'; ctx.stroke();
   ctx.restore();
 }
 
@@ -372,8 +350,7 @@ function crescentRimTex(ctx) {
     const [x, y] = crescentAt(k / 140, 0);
     k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
   }
-  ctx.shadowColor = '#fff'; ctx.shadowBlur = 12; ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.stroke();
-  ctx.shadowBlur = 0; ctx.lineWidth = 1.4; ctx.strokeStyle = '#fff'; ctx.stroke();
+  ctx.shadowColor = '#fff'; ctx.shadowBlur = 4; ctx.lineWidth = 1.2; ctx.strokeStyle = '#fff'; ctx.stroke();
   ctx.restore();
 }
 
@@ -391,8 +368,8 @@ function crescentSprites(atlas) {
 export function crescentSmoke(w, c) {
   const Hp = w.fxHigh, R = w.fxRng, F = w.F, sh = w.r.frame('dx_shard'), P = crescentPts(c, 20);
   const drift = -1.8; // follows the crescent part of the way (it moves 3.2 a step)
-  // Smoke: smoky grey and blood red (the black is the crescent's flame).
-  const INK = [[0.26, 0.23, 0.25, 0.06, 0.04, 0.05, 0.6], [0.34, 0.3, 0.32, 0.08, 0.05, 0.06, 0.62], [0.55, 0.02, 0.06, 0.12, 0, 0.02, 0.5]];
+  // Ink smoke: black, smoky grey and blood red (black alone vanishes on a dark stage).
+  const INK = [[0.03, 0, 0.01, 0, 0, 0, 0.82], [0.14, 0.1, 0.11, 0.02, 0.01, 0.01, 0.7], [0.4, 0.02, 0.05, 0.05, 0, 0.01, 0.6]];
   const puff = (x, y, nx, ny, kind) => {
     const sw = R.range(-1, 1) * 1.2, out = R.range(0.2, 1.1); // swirl along the arc, push outwards
     const i = Hp.spawn(F.glow, x, y, nx * out - ny * sw, ny * out + nx * sw + drift, R.range(30, 50));
@@ -403,27 +380,33 @@ export function crescentSmoke(w, c) {
   };
   for (let k = 0; k < 8; k++) { // over the outer rim
     const q = P[R.int(0, P.length - 1)], o = R.range(0, 30);
-    puff(q.ox + q.nx * o, q.oy + q.ny * o, q.nx, q.ny, k === 7 ? 2 : k % 2);
+    puff(q.ox + q.nx * o, q.oy + q.ny * o, q.nx, q.ny, k === 7 ? 2 : k % 4 === 3 ? 1 : 0);
   }
-  for (let k = 0; k < 2; k++) { // off the needle tips
-    const q = P[R.chance(0.5) ? 1 : P.length - 2];
-    puff(q.ox + R.range(-8, 8), q.oy + R.range(-8, 8), q.nx, q.ny, R.int(0, 1));
+  // The tips: thick black chaos smoke left behind along the path (it hangs where it was shed).
+  for (const q of [P[0], P[1], P[P.length - 2], P[P.length - 1]]) {
+    for (let k = 0; k < 2; k++) {
+      const i = Hp.spawn(F.glow, q.ox + R.range(-12, 12), q.oy + R.range(-10, 14), q.nx * R.range(0.1, 0.7) + R.range(-0.4, 0.4), R.range(-0.3, 0.6), R.range(44, 70));
+      if (i < 0) return;
+      Hp.size(i, R.range(20, 30), R.range(70, 120)); Hp.phys(i, 0.95); Hp.spin(i, R.range(0, 6), R.range(-0.06, 0.06));
+      const c = INK[R.chance(0.15) ? 2 : R.chance(0.25) ? 1 : 0];
+      Hp.color(i, c[0], c[1], c[2], c[3], c[4], c[5]); Hp.look(i, c[6], 0, FADE_INOUT);
+    }
   }
   for (let k = 0; k < 3; k++) { // boiling in the hollow under the crown
     const q = P[R.int(4, P.length - 5)], d = q.th + R.range(10, q.R * 0.5);
-    puff(q.ox - q.nx * d, q.oy - q.ny * d, -q.nx * 0.3, -q.ny * 0.3 + 0.4, R.int(0, 1));
+    puff(q.ox - q.nx * d, q.oy - q.ny * d, -q.nx * 0.3, -q.ny * 0.3 + 0.4, R.chance(0.7) ? 0 : 1);
   }
-  if (R.next() < 0.7) { // red wisp (additive)
+  if (R.next() < 0.25) { // faint red wisp (additive)
     const q = P[R.int(0, P.length - 1)], o = R.range(-10, 30);
     const i = Hp.spawn(F.glow, q.ox + q.nx * o, q.oy + q.ny * o, -q.ny * R.range(-1, 1), q.nx * R.range(-1, 1) + drift, R.range(20, 32));
-    if (i >= 0) { Hp.size(i, 10, 40); Hp.color(i, PAL.mid[0], PAL.mid[1], PAL.mid[2], PAL.edge[0], PAL.edge[1], PAL.edge[2]); Hp.phys(i, 0.95); Hp.look(i, 0.35, 1, FADE_INOUT); }
+    if (i >= 0) { Hp.size(i, 10, 40); Hp.color(i, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.2, 0, 0.01); Hp.phys(i, 0.95); Hp.look(i, 0.25, 1, FADE_INOUT); }
   }
   if (R.next() < 0.8) { // black ink shards flung off
     const q = P[R.int(0, P.length - 1)];
     const i = Hp.spawn(sh, q.ox, q.oy, q.nx * R.range(0.8, 2.4), q.ny * R.range(0.8, 2.4) + drift, R.range(18, 30));
     if (i >= 0) { Hp.size(i, R.range(3, 8)); Hp.spin(i, R.range(0, 6), R.range(-0.3, 0.3)); Hp.color(i, DARK[0], DARK[1], DARK[2]); Hp.look(i, 0.9, 0, FADE_OUT); }
   }
-  if (R.next() < 0.7) { // red embers
+  if (R.next() < 0.3) { // red embers
     const q = P[R.int(0, P.length - 1)];
     const i = Hp.spawn(F.core, q.ox, q.oy, q.nx * 1.2, q.ny * 1.2 + drift, R.range(14, 24));
     if (i >= 0) { Hp.size(i, R.range(2, 3.5)); Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.hot[0], PAL.hot[1], PAL.hot[2]); Hp.look(i, 1, 1, FADE_OUT); }
@@ -460,146 +443,97 @@ function seal(p, b, x, y, s, a, spin, flat = 1) {
 }
 
 /**
- * Living grey and red chaos smoke (render-time, so it rides with the crescent
- * and is always moving): puffs born at (x, y) that boil out, grow and stream
- * back behind the launch, with a faint red glow under them. `redEvery`: every
- * n-th puff is blood red, the rest smoky grey. `back`: how far they stream behind.
+ * Black chaos smoke riding on a crescent, drawn every frame so it moves with
+ * it: puffs are born on the edge, billow outwards and stream back behind the
+ * launch, growing and fading; each has a dim red under-glow so the black reads
+ * on a dark stage. `back`: the row behind the moon (bigger, trails further).
  */
-function chaosSmoke(p, b, pts, n, seed, a, size = 1, back = 46, redEvery = 2) {
-  const F = p.F, t = p.t;
-  for (let k = 0; k < n; k++) {
-    const h = seed * 7.13 + k * 3.71, ph = (t * (0.022 + 0.014 * hash(h)) + hash(h + 0.5)) % 1;
-    const [x0, y0, nx, ny] = pts(hash(h + 1.3), k);
-    const wob = Math.sin(t * 0.09 + h) * 6, out = ph * (8 + 14 * hash(h + 2.1));
-    const x = x0 + nx * out - ny * wob, y = y0 + ny * out + nx * wob + ph * back;
-    const s = (16 + 26 * hash(h + 3.3)) * size * (0.45 + ph), al = Math.sin(Math.PI * Math.min(1, ph * 1.15)) * a;
-    const rot = h + t * 0.03 * (hash(h + 4.4) - 0.5);
-    b.draw(F.glow, x, y, s * 1.6, s * 1.4, rot, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.08 * al, 1);
-    if (k % redEvery === 0) b.draw(F.glow, x, y, s * 1.1, s * 0.9, rot, 0.5, 0.02, 0.05, 0.8 * al, 0);
-    else b.draw(F.glow, x, y, s * 1.1, s * 0.9, rot, 0.3, 0.27, 0.29, 0.55 * al, 0);
+function edgeSmoke(p, b, c, P, a, t, back) {
+  const F = p.F, n = back ? 30 : 36, k = P[0].R / CR_R;
+  for (let j = 0; j < n; j++) {
+    const h = hash(j * 3.7 + (back ? 50 : 0));
+    const ph = (t * (0.011 + 0.006 * h) + h) % 1;
+    const u = (j + 0.5 * hash(j * 1.3)) / n, q = P[Math.min(P.length - 1, Math.round(u * (P.length - 1)))];
+    const out = (back ? 6 : 2) + (back ? 22 : 14) * ph, trail = ph * ph * (back ? 70 : 40);
+    const x = q.ox + q.nx * out + Math.sin(t * 0.05 + j) * 4, y = q.oy + q.ny * out + trail;
+    const sz = ((back ? 40 : 28) + (back ? 60 : 40) * ph) * k, al = Math.sin(Math.PI * ph) * a;
+    b.draw(F.glow, x, y, sz * 1.45, sz * 1.25, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], (back ? 0.12 : 0.1) * al, 1);
+    b.draw(F.glow, x, y, sz * 1.3, sz, h * 6 + t * 0.01, 0.02, 0, 0.005, (back ? 0.85 : 0.95) * al, 0);
   }
 }
 
-/**
- * One tongue of thick black chaos flame rooted at (x, y), heading (dx, dy)
- * and curling back behind the launch: the flame texture, licking through its
- * own grow-and-fall cycle with a sway, plus a faint red halo on every other
- * tongue so the black reads on a dark stage.
- */
-function blackFlame(p, b, x, y, dx, dy, L, W, h, a, back = 0.9) {
-  const F = p.F, t = p.t, fl = p.ps.fFlame;
-  // Each lick is born at the edge, stretches out, then tears off and streams
-  // down behind the launch, thinning and fading, while the next one is born.
-  const ph = (t * (0.035 + 0.03 * hash(h)) + hash(h + 0.3)) % 1;
-  const len = L * (0.6 + 0.7 * Math.sin(Math.PI * Math.min(1, ph * 1.3)));
-  const wd = W * (1 - 0.45 * ph) * (0.9 + 0.15 * Math.sin(t * 0.3 + h * 7));
-  const fade = (ph < 0.12 ? ph / 0.12 : 1 - Math.max(0, (ph - 0.6) / 0.4)) * a;
-  let vx = dx, vy = dy + back; // lean back behind the launch
-  const m = Math.hypot(vx, vy) || 1; vx /= m; vy /= m;
-  const ang = Math.atan2(vy, vx) + (hash(h + 6) - 0.5) * 0.6 + Math.sin(t * 0.17 + h * 3) * 0.25;
-  const sx = x + vx * ph * L * 0.3, sy = y + ph * ph * L * 1.2; // streaming down
-  const cx = sx + Math.cos(ang) * len * 0.38, cy = sy + Math.sin(ang) * len * 0.38;
-  if (hash(h + 9) < 0.5) b.draw(F.glow, cx, cy, wd * 2, len * 1.3, ang + Math.PI / 2, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.1 * fade, 1);
-  b.draw(fl, cx, cy, hash(h + 8) < 0.5 ? -wd : wd, len, ang + Math.PI / 2, 1, 1, 1, 0.95 * fade, 0);
+/** The two tips buried in thick black chaos smoke that streams back along the path. */
+function tipSmoke(p, b, c, P, a, t) {
+  const F = p.F, k = P[0].R / CR_R;
+  for (const [ti, q] of [P[1], P[P.length - 2]].entries()) {
+    for (let j = 0; j < 14; j++) {
+      const h = hash(j * 5.1 + ti * 17), ph = (t * (0.014 + 0.008 * h) + h) % 1;
+      const x = q.ox + (hash(j * 2.3 + ti) - 0.5) * 34 + q.nx * 10 * ph, y = q.oy - 6 + ph * ph * 90 + (hash(j * 7.7) - 0.5) * 16;
+      const sz = (48 + 70 * ph) * k, al = Math.sin(Math.PI * Math.min(1, ph * 1.3 + 0.05)) * a;
+      if (j % 2 === 0) b.draw(F.glow, x, y, sz * 1.4, sz * 1.5, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.1 * al, 1);
+      b.draw(F.glow, x, y, sz, sz * 1.2, h * 6, 0.02, 0, 0.005, al, 0);
+    }
+  }
 }
 
-/**
- * One Void Crescent: a dark cosmic-void crescent moon wrapped in thick black
- * chaos flame (outer edge, inner edge and both tips), with grey and red
- * smoke boiling through it, red chaos inside and three dim star seals.
- */
-function renderOneCrescent(p, b, c, lod = 1) {
+/** One Void Crescent: a dark cosmic-void crescent moon wrapped in glowing black chaos smoke, with dim red chaos and three star seals. */
+function renderOneCrescent(p, b, c) {
   const F = p.F, t = p.t + c.x * 0.37, P = crescentPts(c, 24), Rw = c.w * 0.5, k = Rw / CR_R, cy0 = P[0].cy;
   const a = Math.min(1, c.t / 10) * (c.t > c.life - 30 ? Math.max(0, (c.life - c.t) / 30) : 1);
-  const body = p.ps.fCresBody, rim = p.ps.fCresRim, seed = c.x * 0.13;
-  const N = (n) => Math.round(n * lod); // fewer tongues when three crescents are out
+  const body = p.ps.fCresBody, rim = p.ps.fCresRim;
   const tx = c.x, ty = cy0 + (CR_TH / 2 - (CR_M + CR_R)) * k, tw = CR_TW * k, th = CR_TH * k;
-  const at = (u) => P[Math.min(P.length - 1, Math.max(0, Math.round(u * (P.length - 1))))];
   const inBand = (u, v) => {
     const q = P[Math.min(P.length - 1, Math.floor(u * P.length))];
     return [q.ox - q.nx * q.th * v, q.oy - q.ny * q.th * v, q.th];
   };
-  const onRim = (u) => {
-    const q = P[Math.min(P.length - 1, Math.floor(u * P.length))];
-    return [q.ox, q.oy, q.nx, q.ny];
-  };
-  // A faint dark-red ember haze (kept low: the crescent is dark, not glowing).
+  // A faint red haze, then the black smoke behind the moon.
   for (let j = 0; j < P.length; j += 4) {
-    const q = P[j], br = 0.08 + 0.03 * Math.sin(t * 0.07 + j);
-    b.draw(F.glow, q.mx, q.my, q.th * 2 + 60, q.th * 2 + 60, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], br * a, 1);
+    const q = P[j], br = 0.07 + 0.03 * Math.sin(t * 0.07 + j);
+    b.draw(F.glow, q.mx, q.my, q.th * 2.2 + 60, q.th * 2.2 + 60, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], br * a, 1);
   }
-  // Grey and red smoke streaming back behind the moon as it launches.
-  chaosSmoke(p, b, (u) => { const [x, y, nx, ny] = onRim(u); return [x - nx * 20, y - ny * 20, nx, ny]; }, 10, seed + 1, a, 1.6, 70);
-  for (let j = 0, n = N(34); j < n; j++) { // back row of black flame: long tongues behind the moon
-    const h = seed + 200 + j * 2.71, q = at((j + hash(h)) / n);
-    blackFlame(p, b, q.ox - q.nx * 12, q.oy - q.ny * 12, q.nx, q.ny, (62 + 36 * hash(h + 1)) * k, (44 + 14 * hash(h + 2)) * k, h, a, 1.2);
-  }
-  for (let j = 0; j < P.length; j++) { // the flame's continuous black root along the edge
-    const q = P[j], s2 = (34 + 10 * Math.sin(t * 0.13 + j * 1.7)) * k;
-    b.draw(F.glow, q.ox + q.nx * 6, q.oy + q.ny * 6, s2 * 1.6, s2 * 1.2, Math.atan2(q.ny, q.nx), DARK[0], DARK[1], DARK[2], 0.85 * a, 0);
-  }
+  edgeSmoke(p, b, c, P, a, t, true);
+  // A slight sway so the moon never sits still.
   const rot = Math.sin(t * 0.03) * 0.025;
   b.draw(body, tx, ty, tw, th, rot, 1, 1, 1, a, 0);
-  // Dim nebula and stars drifting along the arc.
-  for (let s = 0; s < 5; s++) {
+  // Nebula and stars drifting along the arc.
+  for (let s = 0; s < 6; s++) {
     const u = (hash(s * 2.1) + t * 0.0018 * (1 + (s % 3))) % 1, [x, y, qt] = inBand(u, 0.25 + 0.5 * hash(s * 5.5));
     if (qt < 10) continue;
-    const col = s % 3 === 0 ? [0.3, 0.1, 0.45] : PAL.edge;
-    b.draw(F.glow, x, y, qt * 1.2, qt, 0, col[0], col[1], col[2], 0.12 * a, 1);
+    const vio = s % 3 === 0, col = vio ? [0.4, 0.15, 0.6] : PAL.mid;
+    b.draw(F.glow, x, y, qt * 1.3, qt * 1.1, 0, col[0], col[1], col[2], 0.08 * a, 1);
   }
-  for (let s = 0; s < 16; s++) {
-    const u = (hash(s * 1.7 + 0.3) + t * 0.0012 * (1 + hash(s))) % 1, [x, y, qt] = inBand(u, 0.15 + 0.6 * hash(s * 4.9));
+  for (let s = 0; s < 20; s++) {
+    const u = (hash(s * 1.7 + 0.3) + t * 0.0012 * (1 + hash(s))) % 1, [x, y, qt] = inBand(u, 0.1 + 0.7 * hash(s * 4.9));
     if (qt < 8) continue;
     const tw2 = 0.5 + 0.5 * Math.sin(t * 0.25 + s * 1.3);
-    if (s % 8 === 0) star(b, x, y, 6 + 6 * tw2, 0.6 * a * tw2, t * 0.03 + s);
-    else b.draw(F.core, x, y, 1.8 + 1.6 * tw2, 1.8 + 1.6 * tw2, 0, PAL.core[0], PAL.core[1], PAL.core[2], a * (0.25 + 0.5 * tw2), 1);
+    if (s % 6 === 0) star(b, x, y, 6 + 6 * tw2, 0.6 * a * tw2, t * 0.03 + s);
+    else b.draw(F.core, x, y, 1.6 + 1.6 * tw2, 1.6 + 1.6 * tw2, 0, PAL.core[0], PAL.core[1], PAL.core[2], 0.7 * a * (0.3 + 0.7 * tw2), 1);
   }
-  // Red chaos inside the band (dim).
-  chaosCracks(p, b, (u, v) => inBand(0.15 + u * 0.7, 0.25 + 0.65 * v), (p.t >> 2) + c.x, 2, 0.55 * a, 0.7);
-  b.draw(rim, tx, ty, tw, th, rot, PAL.mid[0], PAL.mid[1], PAL.mid[2], a * (0.1 + 0.04 * Math.sin(t * 0.4)), 1);
-  // Thick black chaos flame wrapped around the whole crescent.
-  for (let j = 0, n = N(34); j < n; j++) { // front row on the outer edge: licking outwards and curling back
-    const h = seed + j * 1.91, q = at((j + hash(h) * 0.8) / n);
-    blackFlame(p, b, q.ox - q.nx * 2, q.oy - q.ny * 2, q.nx, q.ny, (34 + 26 * hash(h + 1)) * k, (32 + 10 * hash(h + 2)) * k, h, a, 0.75);
-  }
-  for (let j = 0, n = N(14); j < n; j++) { // inner edge: licking into the hollow
-    const h = seed + 50 + j * 2.37, q = at(0.08 + 0.84 * (j + hash(h) * 0.8) / n);
-    const ix = q.ox - q.nx * q.th, iy = q.oy - q.ny * q.th;
-    blackFlame(p, b, ix + q.nx * 4, iy + q.ny * 4, -q.nx, -q.ny, (28 + 18 * hash(h + 1)) * k, (20 + 8 * hash(h + 2)) * k, h, 0.95 * a, 0.6);
-  }
-  for (const side of [0, 1]) { // the tips: a dense, roaring bundle so the points never show
-    const tip = side ? P[P.length - 1] : P[0], q = side ? P[P.length - 3] : P[2];
-    for (let j = 0, n = N(10); j < n; j++) {
-      const h = seed + 90 + side * 40 + j * 3.13, f = hash(h + 4), ang = Math.atan2(tip.ny, tip.nx) + (hash(h + 5) - 0.5) * 2.6;
-      const x = tip.ox + (q.ox - tip.ox) * f, y = tip.oy + (q.oy - tip.oy) * f;
-      blackFlame(p, b, x, y, Math.cos(ang), Math.sin(ang), (50 + 34 * hash(h + 1)) * k, (34 + 12 * hash(h + 2)) * k, h, a, 1.3);
-    }
-    chaosSmoke(p, b, (u) => {
-      const x = tip.ox + (q.ox - tip.ox) * u, y = tip.oy + (q.oy - tip.oy) * u;
-      return [x, y, tip.nx, tip.ny];
-    }, 6, seed + 5 + side * 9, a, 1.5, 60);
-  }
-  // Grey and red smoke boiling through the flames along the edge.
-  chaosSmoke(p, b, onRim, 16, seed + 2, a, 1.3, 40);
-  // Red streaks lashing through the flame (dim, re-rolled often).
+  // Red chaos inside the band and red streaks lashing around it.
+  chaosCracks(p, b, (u, v) => inBand(0.12 + u * 0.76, 0.2 + 0.7 * v), (p.t >> 2) + c.x, 2, 0.5 * a, 0.7);
   chaosCracks(p, b, (u, v) => {
-    const q = P[Math.min(P.length - 1, Math.floor(u * P.length))], o = 10 + 40 * v;
+    const q = P[Math.min(P.length - 1, Math.floor(u * P.length))], o = v < 0.5 ? 14 + 50 * v : -(q.th + 20 + 60 * (v - 0.5));
     return [q.ox + q.nx * o, q.oy + q.ny * o];
-  }, (p.t / 3 | 0) + c.x * 3, 2, 0.45 * a, 0.9);
-  // The crown star with its needle and the three seals in the hollow, kept dim.
+  }, (p.t / 3 | 0) + c.x * 3, 2, 0.4 * a, 0.8);
+  // A faint rim line, then the glowing black smoke over the edge and the smoke-buried tips.
+  b.draw(rim, tx, ty, tw, th, rot, PAL.mid[0], PAL.mid[1], PAL.mid[2], a * (0.12 + 0.04 * Math.sin(t * 0.4)), 1);
+  edgeSmoke(p, b, c, P, a, t, false);
+  tipSmoke(p, b, c, P, a, t);
+  // The crown star with its long vertical needle, and the three seals in the hollow.
   const m = P[P.length >> 1], R = P[0].R, sp = t * 0.04;
-  const nx0 = c.x, ny0 = m.oy - 20, ny1 = cy0 + R * 0.25;
-  b.draw(F.laser, nx0, (ny0 + ny1) / 2, ny1 - ny0, 4, Math.PI / 2, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.6 * a, 1);
-  star(b, m.mx, m.my, 28 + 5 * Math.sin(t * 0.2), 0.6 * a, 0, PAL.mid);
-  seal(p, b, c.x, cy0 - R * 0.28, 20 * k, 0.55 * a, sp);
-  seal(p, b, c.x - R * 0.52, cy0 - R * 0.06, 14 * k, 0.5 * a, -sp * 1.3, 0.6);
-  seal(p, b, c.x + R * 0.52, cy0 - R * 0.06, 14 * k, 0.5 * a, sp * 1.3, 0.6);
+  const nx0 = c.x, ny0 = m.oy - 26, ny1 = cy0 + R * 0.25;
+  b.draw(F.laser, nx0, (ny0 + ny1) / 2, ny1 - ny0, 4, Math.PI / 2, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.5 * a, 1);
+  b.draw(F.laser, nx0, (ny0 + ny1) / 2, ny1 - ny0, 1, Math.PI / 2, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.25 * a, 1);
+  star(b, m.mx, m.my, 34 + 6 * Math.sin(t * 0.2), 0.6 * a, 0, PAL.mid);
+  star(b, m.mx, m.my, 14, 0.5 * a, sp);
+  seal(p, b, c.x, cy0 - R * 0.28, 22 * k, 0.65 * a, sp);
+  seal(p, b, c.x - R * 0.52, cy0 - R * 0.06, 15 * k, 0.6 * a, -sp * 1.3, 0.6);
+  seal(p, b, c.x + R * 0.52, cy0 - R * 0.06, 15 * k, 0.6 * a, sp * 1.3, 0.6);
 }
 
 /** Every live Void Crescent (one, or three when cast in focus). */
 export function renderCrescent(p, b) {
-  const lod = p.ps.crescents.length > 1 ? 0.7 : 1;
-  for (const c of p.ps.crescents) renderOneCrescent(p, b, c, lod);
+  for (const c of p.ps.crescents) renderOneCrescent(p, b, c);
 }
 
 /** Void Rod Rain: falling glowing rods with long red trails. */

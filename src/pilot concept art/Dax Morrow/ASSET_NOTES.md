@@ -226,38 +226,12 @@ The owner supplied a new crescent reference: a black cosmic crescent moon with a
 - **Smoke.** Black, smoky-grey and blood-red ink smoke boils off the rim, the tips and the hollow, swirling as it drifts with the moon. Red wisps, black ink shards and embers come off it too.
 - It now spawns 110 units ahead of him (was 70).
 
-## Polish round 4: a darker crescent with a smoke edge
+## Polish round 4 (redone): dark chaos crescent with a smoke edge
 
-- **The red edge glow is minimized.** The texture rim is now a thin dark-red line, the additive rim pass is down to about 12 %, the red haze is down to about 8 %, and the bright glints are gone. The red inside, the seals and the crown star are dimmed too.
-- **The edge is glowing black chaos smoke.** It is drawn every frame and rides with the crescent: 42 black puffs, each with a dim red under-glow, boil out along the whole edge. As it launches forward they stream back behind it, and more black smoke streams from behind the moon.
-- **The two tips are buried in black chaos smoke and black-and-red chaos flame:** tongues that lick outwards and back, flickering.
-- **The particle smoke is now mostly black and grey,** with red only rarely.
-- **Screenshots:** `screenshots/dax/18_*`.
+This replaces the earlier rounds 4–7 (black flame); their file changes had been rolled back.
 
-## Polish round 5: thicker smoke, no flame at the tips
-
-- **Thicker edge smoke, black and red.** The edge has 40 bigger puffs; every third one is blood-red smoke and the rest are black, each with a faint red under-glow. More black smoke streams from behind the moon.
-- **The tips are smoke, not flame.** The flame tongues are gone. Each tip sits under a steady, breathing knot of three big black and red smoke clouds, plus 16 billowing puffs streaming back, so the points never show.
-- **Frame rate.** Three crescents in focus run at 48–60 FPS; extra smoke layers were trimmed to keep it there.
-- **Screenshot:** `screenshots/dax/19_focus_thick_smoke.png`.
-
-## Polish round 6: thick black flame around the crescent
-
-- **The black smoke is replaced by thick black flame.**
-  - **Texture** (`dx_flame` in the shared atlas): a flame tongue drawn on canvas, solid black with a dark-red heart and soft smoky edges.
-  - **Tongues** wrap the whole crescent: a back row of 34 long tongues behind the moon, a continuous black root along the edge, a front row of 34, 14 licking into the hollow, and a dense bundle of 10 big tongues over each tip, so the points never show.
-  - **Motion:** each tongue grows and falls on its own cycle, sways, leans at random and curls back behind the launch. Every other tongue has a faint red halo so the black reads on a dark stage.
-- **The grey and red smoke stays:** drawn smoke boils through the flames and streams behind, and the smoke particles are grey and red only (no black).
-- **Frame rate** (headless, 2 s samples): one crescent 57–60 FPS, three crescents in focus about 52 FPS. With three out, each draws about 70 % of the tongues.
-- **Screenshots:** `screenshots/dax/20_*`.
-
-## Polish round 7: the flame streams back as it launches
-
-- **Each tongue is now a lick with a life.**
-  - It is born at the edge and stretches out.
-  - It then tears off and streams down behind the launch (`ph² × 1.2 × length` back), thinning and fading while the next lick is born.
-- **The tongues lean back.**
-  - The back row leans most (1.2), then the tips (1.3), the front row (0.75) and the inner edge (0.6).
-  - On the sides the fire hangs and trails downward.
-- **Result.** The fire flows backward as the crescent moves forward, instead of standing still.
-- **Frame-sequence screenshots:** `screenshots/dax/21_flame_motion_t26/32/38.png`.
+- **Red edge glow minimized.** The rim is a thin dark-red line with no glow; the additive rim pass is about 14 %, the red haze about 8 %, and the running glints are gone. The red inside, the veins, the stars, the crown star and the seals are all dimmer.
+- **The edge is glowing black chaos smoke.** It is drawn every frame and rides with the crescent: a back row of 30 puffs and a front row of 36. Each puff is born on the edge, billows out and streams back behind the launch, growing and fading. Each has a dim red under-glow so the black reads on a dark stage.
+- **The tips are buried in thick black smoke.** 14 big puffs sit over each tip and stream back. Smoke particles shed from the tips hang where they were shed, leaving a thick black trail along the path.
+- **The particle smoke is mostly black,** with some grey and only a little red. Red wisps and embers are rarer.
+- **Screenshots:** `screenshots/dax/22_*`.
