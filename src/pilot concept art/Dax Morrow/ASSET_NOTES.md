@@ -240,3 +240,13 @@ The owner supplied a new crescent reference: a black cosmic crescent moon with a
 - **The tips are smoke, not flame.** The flame tongues are gone. Each tip sits under a steady, breathing knot of three big black and red smoke clouds, plus 16 billowing puffs streaming back, so the points never show.
 - **Frame rate.** Three crescents in focus run at 48–60 FPS; extra smoke layers were trimmed to keep it there.
 - **Screenshot:** `screenshots/dax/19_focus_thick_smoke.png`.
+
+## Polish round 6: thick black flame around the crescent
+
+- **The black smoke is replaced by thick black flame.**
+  - **Texture** (`dx_flame` in the shared atlas): a flame tongue drawn on canvas, solid black with a dark-red heart and soft smoky edges.
+  - **Tongues** wrap the whole crescent: a back row of 34 long tongues behind the moon, a continuous black root along the edge, a front row of 34, 14 licking into the hollow, and a dense bundle of 10 big tongues over each tip, so the points never show.
+  - **Motion:** each tongue grows and falls on its own cycle, sways, leans at random and curls back behind the launch. Every other tongue has a faint red halo so the black reads on a dark stage.
+- **The grey and red smoke stays:** drawn smoke boils through the flames and streams behind, and the smoke particles are grey and red only (no black).
+- **Frame rate** (headless, 2 s samples): one crescent 57–60 FPS, three crescents in focus about 52 FPS. With three out, each draws about 70 % of the tongues.
+- **Screenshots:** `screenshots/dax/20_*`.
