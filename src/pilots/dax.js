@@ -201,7 +201,7 @@ export default {
       // In focus the two outermost clones cast one too.
       const at = [[p.x, p.y]];
       if (p.ps.ghost) for (const k of SIDE) at.push(clonesOf(p)[k]);
-      p.ps.crescents = at.map(([x, y]) => ({ x, y: y - 70, w: 300, t: 0, life: 300 }));
+      p.ps.crescents = at.map(([x, y]) => ({ x, y: y - 110, w: 300, t: 0, life: 300 }));
       w.r.post.flash(1, 0.15, 0.2, 0.25, 0.06);
       w.r.post.shockwave(p.x, p.y - 70, 0.04, 0.02, 0.5);
       w.g.camera.addTrauma(0.3);

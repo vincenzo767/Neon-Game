@@ -208,3 +208,20 @@ The owner said the picked FX images looked cut out. Every effect is now drawn li
   - black void smoke and dark-red smoke rolling off it.
   - The muzzle seal is calmer: flat rings, no spinning ones.
 - **Checks.** DPS is unchanged (boss T4: beam 131, focus 137). With 1,500 bullets the frame rate is 52–60 FPS. Screenshots: `screenshots/dax/16_*`.
+
+## Polish round 3: the crescent moon (owner's reference picture)
+
+The owner supplied a new crescent reference: a black cosmic crescent moon with a red edge, star seals and chaotic black and red ink smoke. It is followed live, not cut out.
+
+- **Shape.** A real crescent moon: thick at the crown (60 % of the radius, slightly heavier on the right, as in the reference), tapering to needle-sharp tips that sweep past the horizontal. The inner edge is torn under the crown. Hits follow the same shape.
+- **Body texture** (`dx_cres_body`): black cosmic void with a faint violet haze, stars, red torn glow and splatter along the inner crown, thin red veins, a sharp red rim and a red inner line.
+- **Everything moves:**
+  - the moon sways a little;
+  - nebula and stars drift along the arc and twinkle;
+  - red chaos cracks flicker inside it and red streaks lash around it;
+  - the rim pulses, and two glints run from tip to tip;
+  - the crown star has a long vertical needle;
+  - the three red star seals in the hollow spin and pulse;
+  - the red haze breathes.
+- **Smoke.** Black, smoky-grey and blood-red ink smoke boils off the rim, the tips and the hollow, swirling as it drifts with the moon. Red wisps, black ink shards and embers come off it too.
+- It now spawns 110 units ahead of him (was 70).
