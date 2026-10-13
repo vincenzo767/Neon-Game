@@ -292,3 +292,22 @@ The owner asked for no transparency and full light, following `enhance-ultimate.
 - **Rims.** Ring rims are a deeper crimson. Sphere and orb rims, compression rings and cross spikes are deep red instead of pink-white. Rocks have a dark-red edge.
 - **Still opaque.** Nothing became see-through.
 - **Screenshots:** `screenshots/dax/26_*`.
+
+## Kit changes: chaos (owner's request)
+
+- **Focus: progressive damage.** While he holds focus, every ghost and ghost-clone beam builds up from ×1 to ×3 boss damage over 4 s (`FOCUS_RAMP`). It resets when focus is released. Regular enemies still die in one hit.
+- **Bomb: CHAOS CLONE** (replaces Void Rod Rain).
+  - Each bomb summons **six Chaos Clones**: ghosts like the focus clones, but with thicker, darker smoke.
+  - They are placed far from him, on a wide hexagon around the middle of the screen, turned a little per bomb, and drift slowly in place.
+  - They are intangible: they have no hitbox and nothing targets them.
+  - Each fires its own void beams every 6 steps (staggered) at 0.45 × boss damage, more than a focus clone (0.2).
+  - They stay through deaths until the stage is cleared. Recasting adds six more, up to 30 (five bombs); a sixth bomb replaces the oldest six.
+  - The 1 s cast still gives the usual bomb bullet clear and cover.
+  - Their total smoke stays about six clones' worth however many there are, for the frame rate.
+  - New optional pilot hook `stageClear(p, w)`, called by `StageDirector` when the tally starts. It also works in practice runs. Dax's clones dissolve into smoke there.
+  - The old rod-rain code and the `dx_rod` sprite are gone.
+- **Special: CRESCENT OF CHAOS** (was Void Crescent). Regular enemies it touches die instantly through shields. Bosses and mid-bosses take 9 every 5 steps (was 5).
+- **Ultimate: BREATHE OF THE CHAOS** (was Void Cannon). 4 damage per step per beam (was 2.6). Three beams in focus, as before.
+- **DPS** (`tools/dps.mjs dax`, boss dummies). Beam T4: 131 (unchanged). Ghost focus T4: 343 averaged over the test window (was 137), because the ramp builds up.
+- **Frame rate (headless, noisy).** 60 idle; about 50–57 with 6 clones and enemies; about 41–49 with 12; 37–58 with 30.
+- **Screenshot:** `screenshots/dax/27_chaos_clones.png`.

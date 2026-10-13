@@ -22,18 +22,9 @@ function shardTex(ctx, w, h) {
   ctx.fillStyle = '#fff'; ctx.fill();
 }
 
-function rodTex(ctx, w, h) {
-  // A void rod pointing right: long tapered shaft, diamond head, guard ring.
-  const cy = h / 2;
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w * 0.7, cy - h * 0.18); ctx.lineTo(w * 0.72, cy - h * 0.45); ctx.lineTo(w, cy);
-  ctx.lineTo(w * 0.72, cy + h * 0.45); ctx.lineTo(w * 0.7, cy + h * 0.18); ctx.closePath(); ctx.fill();
-}
-
 /** Atlas textures (part of dax.js `sprites`). */
 export function daxFxSprites(atlas) {
   atlas.add('dx_shard', 12, 10, shardTex, { scale: 3 });
-  atlas.add('dx_rod', 64, 12, rodTex, { scale: 3 });
   crescentSprites(atlas);
   cannonSprites(atlas);
 }
@@ -133,7 +124,7 @@ export function hitSpark(w, x, y, angle) {
 }
 
 /**
- * Void explosion (one-hit kills, rods, crescent, cannon): black smoke and
+ * Void explosion (one-hit kills, Chaos Clone arrivals, crescent, cannon): black smoke and
  * black shards, a red fireball with a white core, red rings, star flares and
  * tiny white cosmic dots. `s` scales it (1 ≈ a normal enemy).
  */
@@ -190,13 +181,16 @@ export function voidExhaust(p, w) {
  * Real smoke for a ghost at (x, y), emitted every step: dark-red puffs that
  * billow out of the body and trail behind, plus faint red wisps.
  */
-export function ghostSmoke(w, x, y, n = 2) {
-  const Hp = w.fxHigh, R = w.fxRng, F = w.F;
+export function ghostSmoke(w, x, y, n = 2, thick = false) {
+  const Hp = w.fxHigh, R = w.fxRng, F = w.F, m = thick ? 1.5 : 1;
   for (let k = 0; k < n; k++) {
-    const i = Hp.spawn(F.glow, x + R.range(-20, 20), y + R.range(-26, 34), R.range(-0.5, 0.5), R.range(0.5, 1.6), R.range(24, 40));
+    const i = Hp.spawn(F.glow, x + R.range(-20, 20) * m, y + R.range(-26, 34) * m, R.range(-0.5, 0.5), R.range(0.5, 1.6), R.range(24, 40) * (thick ? 1.15 : 1));
     if (i < 0) return;
-    Hp.size(i, R.range(10, 16), R.range(34, 52)); Hp.color(i, 0.6, 0.04, 0.08, 0.1, 0.0, 0.02);
-    Hp.phys(i, 0.96); Hp.spin(i, 0, R.range(-0.05, 0.05)); Hp.look(i, 0.55, 0, FADE_INOUT);
+    Hp.size(i, R.range(10, 16) * m, R.range(34, 52) * m);
+    // Chaos Clones: thicker, darker smoke (every other puff near black).
+    if (thick && k % 2) Hp.color(i, 0.12, 0.0, 0.02, 0.02, 0.0, 0.0);
+    else Hp.color(i, 0.6, 0.04, 0.08, 0.1, 0.0, 0.02);
+    Hp.phys(i, 0.96); Hp.spin(i, 0, R.range(-0.05, 0.05)); Hp.look(i, thick ? 0.72 : 0.55, 0, FADE_INOUT);
   }
   for (let k = 0; k < n; k++) {
     const i = Hp.spawn(F.glow, x + R.range(-18, 18), y + R.range(-24, 30), R.range(-0.4, 0.4), R.range(0.3, 1.2), R.range(18, 30));
@@ -559,19 +553,6 @@ function renderOneCrescent(p, b, c) {
 /** Every live Void Crescent (one, or three when cast in focus). */
 export function renderCrescent(p, b) {
   for (const c of p.ps.crescents) renderOneCrescent(p, b, c);
-}
-
-/** Void Rod Rain: falling glowing rods with long red trails. */
-export function renderRods(p, b) {
-  const F = p.F, rod = p.ps.fRod, glowA = crowdFactor(p.w);
-  for (const r of p.ps.rods) {
-    const L = r.big ? 96 : 70, wd = r.big ? 20 : 15, ang = Math.atan2(r.vy, r.vx), cx = r.x - Math.cos(ang) * L / 2, cy = r.y - Math.sin(ang) * L / 2;
-    b.draw(F.laser, r.x - r.vx * 3, r.y - 70, 5, 130, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.3 * glowA, 1);
-    b.draw(rod, cx, cy, L * 1.08, wd * 1.6, ang, DARK[0], DARK[1], DARK[2], 0.85, 0);
-    b.draw(rod, cx, cy, L, wd, ang, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.95, 1);
-    b.draw(rod, cx + Math.cos(ang) * 4, cy + Math.sin(ang) * 4, L * 0.85, wd * 0.35, ang, PAL.core[0], PAL.core[1], PAL.core[2], 1, 1);
-    star(b, r.x, r.y, r.big ? 34 : 22, 1, r.x);
-  }
 }
 
 /**

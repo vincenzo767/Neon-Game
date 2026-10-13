@@ -5,15 +5,18 @@ import { FADE_OUT } from '../fx/Particles.js';
 import { daxArt, PAL } from './daxArt.js';
 import {
   daxFxSprites, renderBeams, hitSpark, burst, voidExhaust, renderGhost,
-  renderCrescent, renderRods, renderCannon, ghostSmoke, crescentPts, crescentSmoke, cannonSpray, CHAIN_FADE,
+  renderCrescent, renderCannon, ghostSmoke, crescentPts, crescentSmoke, cannonSpray, CHAIN_FADE,
 } from './daxFx.js';
 
 // DAX MORROW — OVERCLOCK (void knight) · LEGENDARY
 // Void Beam: an instant straight beam to the nearest enemy; from there it races
 // on, enemy to enemy, at any range (a visible chain), destroying normal enemies
 // in one hit and erasing attacks in its path and around him
-// Focus: Ghost Launch (a smoke ghost and five clones fire; he is intangible)
-// Special: Void Crescent · Bomb: Void Rod Rain (5 s) · Ultimate: Void Cannon (7 s)
+// Focus: Ghost Launch (a smoke ghost and five clones fire, harder the longer
+// he holds it; he is intangible)
+// Special: Crescent of Chaos (kills regular enemies outright)
+// Bomb: Chaos Clone (six thick-smoke clones far from him, firing until the
+// stage is cleared; each bomb adds six more) · Ultimate: Breathe of the Chaos (7 s)
 // In focus the two outermost clones cast the crescent and fire the cannon too.
 //
 // DAX ART TEST: the hand-made mecha art (daxArt.js) replaces drawShip() when it
@@ -31,6 +34,13 @@ const SIDE = [0, 3];        // the two outermost clones: they also cast the cres
 const CRESCENT_SPEED = 3.2;  // units per step (medium)
 const CHAIN_SPEED = 18;     // units per step the chain races between enemies (~0.45 s across the screen)
 const CHAIN_MAX = 64;       // hops per chain
+const FOCUS_RAMP = 240;     // focus beams build up to ×3 damage over this many steps (4 s)
+const CHAOS_PER = 6;        // Chaos Clones per bomb
+const CHAOS_MAX = 30;       // at most five bombs' worth on screen
+const CHAOS_CD = 6;         // each Chaos Clone strikes every 6 steps, staggered
+const CHAOS_MUL = 0.45;     // its boss damage per strike (× bossDmg)
+const CRESCENT_BOSS = 9;    // Crescent of Chaos damage to bosses every 5 steps
+const BREATH_DMG = 4;       // Breathe of the Chaos damage per step (was 2.6)
 
 /** Boss / mid-boss damage per strike (one-hit kills don't apply to them). T4 ≈ 130 DPS. */
 const bossDmg = (t) => 2.5 + 1.8 * t;
@@ -156,6 +166,22 @@ const clonesOf = (p) => CLONES.map(([dx, dy], k) => [
   clamp(p.y + dy + Math.cos(p.t * 0.06 + k * 2) * 3, 30, H - 30),
 ]);
 
+/**
+ * Chaos Clone slots for bomb number n: a wide hexagon around the middle of
+ * the screen, far from where he usually flies, turned a little per bomb.
+ */
+function chaosSlots(n) {
+  const out = [], r = 170 + (n % 2) * 40, rot = n * 0.52;
+  for (let k = 0; k < CHAOS_PER; k++) {
+    const a = rot + (k / CHAOS_PER) * TAU;
+    out.push([clamp(W / 2 + Math.cos(a) * r, 30, W - 30), clamp(H * 0.4 + Math.sin(a) * r * 0.85, 40, H - 140)]);
+  }
+  return out;
+}
+
+/** Chaos Clone positions now (they drift slowly where they were placed). */
+const chaosPos = (p, c) => [c.x + Math.sin(p.t * 0.03 + c.seed) * 10, c.y + Math.cos(p.t * 0.025 + c.seed * 2) * 8];
+
 /** Smoke puffs (alpha-blended black-red) for the ghost launch and the body's return. */
 function smokeBurst(w, x, y, n = 10, ring = true) {
   const Hp = w.fxHigh, R = w.fxRng, F = w.F;
@@ -189,12 +215,12 @@ export default {
   portrait: { skin: '#c89070', hair: '#eeeeee', style: 'spiky', eyes: 'goggles', accent: 'tattoo', suit: '#0c0a0e' },
   weapons: {
     main: 'Void Beam — an instant straight beam, then a chain racing through every enemy at any range; one-hit kills (not bosses); erases attacks aimed at him',
-    focus: 'Ghost Launch — a smoke ghost and five clones fire void beams; completely intangible',
+    focus: 'Ghost Launch — a smoke ghost and five clones fire void beams that grow stronger the longer he holds focus; completely intangible',
   },
   art: daxArt,
   special: {
-    name: 'VOID CRESCENT',
-    desc: 'A gigantic void crescent sweeps forward, erasing every attack it touches and burning what it crosses (three in focus)',
+    name: 'CRESCENT OF CHAOS',
+    desc: 'A gigantic chaos crescent sweeps forward, erasing every attack it touches, killing regular enemies outright and burning bosses (three in focus)',
     cooldown: 600,
     duration: 300,
     activate(p, w) {
@@ -211,45 +237,42 @@ export default {
         c.t = t;
         c.y -= CRESCENT_SPEED;
         crescentSmoke(w, c);
-        // The crescent's band as circles: attacks touching it vanish; what it crosses burns.
+        // The crescent's band as circles: attacks touching it vanish; regular enemies it
+        // touches die outright (through shields); bosses and mid-bosses burn every 5 steps.
         const hit = new Set();
         for (const q of crescentPts(c, 12)) {
           const r = q.th / 2 + 18;
           w.cancelCircle(q.mx, q.my, r);
-          if (t % 5 === 0) for (const e of targets(w)) if ((e.x - q.mx) ** 2 + (e.y - q.my) ** 2 < (r + e.r) ** 2) hit.add(e);
+          for (const e of targets(w)) if ((e.x - q.mx) ** 2 + (e.y - q.my) ** 2 < (r + e.r) ** 2) hit.add(e);
         }
-        for (const e of hit) { w.damage(e, 5, DMG_IGNORES_SHIELDS); if (!e.alive) burst(w, e.x, e.y, 0.8); }
+        for (const e of hit) {
+          if (isBoss(e)) { if (t % 5 === 0) w.damage(e, CRESCENT_BOSS, DMG_IGNORES_SHIELDS); }
+          else w.damage(e, 1, KILL);
+          if (!e.alive) burst(w, e.x, e.y, 0.8);
+        }
       }
     },
     end(p) { p.ps.crescents = []; },
   },
   bomb: {
-    name: 'VOID ROD RAIN',
-    duration: 300, // 5 s
-    activate(p, w) { p.ps.rods = []; w.r.post.flash(1, 0.1, 0.15, 0.3, 0.06); },
-    update(p, w, t) {
-      w.cancelAll();
-      const ps = p.ps, R = w.rng;
-      // Countless rods: two a step (a big one every 12), half aimed at enemies.
-      if (t <= 288) for (let k = 0; k < 2; k++) {
-        const T = targets(w), e = T.length && R.chance(0.5) ? R.pick(T) : null;
-        const tx = e ? e.x + R.range(-10, 10) : R.range(10, W - 10), ty = e ? e.y : R.range(30, H - 110);
-        ps.rods.push({ x: tx - 2 * (ty + 60) / 30, y: -40 - R.range(0, 60), tx, ty, vx: 2, vy: 30, big: k === 0 && t % 12 === 0 });
-      }
-      for (const r of ps.rods) {
-        r.x += r.vx; r.y += r.vy;
-        if (r.y < r.ty) continue;
-        r.dead = true;
-        w.damageCircle(r.tx, r.ty, r.big ? 90 : 52, r.big ? 14 : 5, DMG_IGNORES_SHIELDS);
-        burst(w, r.tx, r.ty, r.big ? 1.6 : 0.75);
-        if (r.big) w.g.camera.addTrauma(0.12);
-      }
-      ps.rods = ps.rods.filter((r) => !r.dead);
+    name: 'CHAOS CLONE',
+    // A short cast (the Player's bomb clears bullets and covers him); the clones stay until the stage is cleared.
+    duration: 60,
+    activate(p, w) {
+      const ps = p.ps, n = Math.floor(ps.chaos.length / CHAOS_PER);
+      if (ps.chaos.length + CHAOS_PER > CHAOS_MAX) ps.chaos.splice(0, CHAOS_PER); // the oldest six make room
+      chaosSlots(n).forEach(([x, y], k) => {
+        ps.chaos.push({ x, y, t: 0, seed: ps.chaos.length * 1.7 + k });
+        smokeBurst(w, x, y, 14);
+        burst(w, x, y, 0.8);
+      });
+      w.r.post.flash(1, 0.05, 0.1, 0.35, 0.05);
+      w.g.camera.addTrauma(0.3);
     },
-    end(p) { p.ps.rods = []; },
+    update() {},
   },
   ultimate: {
-    name: 'VOID CANNON',
+    name: 'BREATHE OF THE CHAOS',
     duration: 420, // 7 s; the Player is invulnerable for all of it
     // In focus the two outermost clones fire a cannon too (three in all).
     activate(p, w) {
@@ -264,7 +287,7 @@ export default {
       const guns = [[p.x, p.y]];
       if (p.ps.ghost) for (const k of SIDE) guns.push(clonesOf(p)[k]);
       for (const [gx, gy] of guns) {
-        const bm = w.beam(gx, gy - 20, gx, -30, u.w, 2.6, RED, 1, DMG_IGNORES_SHIELDS);
+        const bm = w.beam(gx, gy - 20, gx, -30, u.w, BREATH_DMG, RED, 1, DMG_IGNORES_SHIELDS);
         bm.skin = true;
         w.cancelLine(gx, gy - 20, gx, -30, u.w * 1.1);
         cannonSpray(w, gx, gy - 24, u.w, gx !== p.x || gy !== p.y);
@@ -284,6 +307,11 @@ export default {
   // Hand-made art hooks (each returns false without the art → procedural look).
   renderShip(p, b, x, y, a) {
     const g = p.ps.ghost;
+    // Chaos Clones (bomb): thick-smoke ghosts placed far from him.
+    p.ps.chaos.forEach((c, k) => {
+      const [cx, cy] = chaosPos(p, c), grow = Math.min(1, c.t / 20);
+      renderGhost(p, b, cx + (x - p.x), cy + (y - p.y), 0.85 * a * grow, 20 + k);
+    });
     if (!g) return daxArt.renderMecha(p, b, x, y, a);
     // Focus: the body stays parked (untargetable); the ghost and its clones are smoke.
     const body = Object.create(p);
@@ -297,12 +325,16 @@ export default {
   hitSpark,
   /** Focus: completely intangible (every attack passes through; the body can't be targeted). */
   intangible: (p) => !!p.ps.ghost,
+  /** The stage is cleared: the Chaos Clones dissolve into smoke. */
+  stageClear(p, w) {
+    for (const c of p.ps.chaos) { const [cx, cy] = chaosPos(p, c); smokeBurst(w, cx, cy, 10); }
+    p.ps.chaos = [];
+  },
   /** tools/dps.mjs: normal enemies die in one hit, so measure against boss-flagged dummies. */
   dpsBossTargets: true,
 
   init(p, w) {
     const ps = p.ps;
-    ps.fRod = w.r.frame('dx_rod');
     ps.fShard = w.r.frame('dx_shard');
     ps.fCresBody = w.r.frame('dx_cres_body');
     ps.fCresRim = w.r.frame('dx_cres_rim');
@@ -312,7 +344,7 @@ export default {
     ps.chains = [];
     ps.bolts = [];
     ps.arcs = [];
-    ps.rods = [];
+    ps.chaos = [];
     ps.ghost = null;
     ps.crescents = [];
     ps.cannon = null;
@@ -342,6 +374,17 @@ export default {
       ghostSmoke(w, p.x, p.y, 3);
       for (const [cx, cy] of clonesOf(p)) ghostSmoke(w, cx, cy, 2);
     }
+    // Chaos Clones: thick smoke (the total stays about six clones' worth however many there are), and their own void beams.
+    const every = Math.ceil(ps.chaos.length / CHAOS_PER);
+    ps.chaos.forEach((c, k) => {
+      c.t++;
+      const [cx, cy] = chaosPos(p, c);
+      if ((p.t + k) % every === 0) ghostSmoke(w, cx, cy, 2, true);
+      if (p.state === 'alive' && c.t > 20 && (p.t + k * 3) % CHAOS_CD === 0 && targets(w).length) {
+        strike(p, w, cx, cy, CHAOS_MUL, 0.9);
+        muzzle(p, w, cx, cy, 22);
+      }
+    });
     stepChains(p, w);
     for (const s of ps.bolts) s.t++;
     if (ps.bolts.length) ps.bolts = ps.bolts.filter((s) => s.t < s.life);
@@ -357,12 +400,14 @@ export default {
     w.shotsFired++; // no projectile, but the audio director voices one per strike
     const ps = p.ps;
     if (ps.ghost) {
-      strike(p, w, p.x, p.y, 0.55);
+      // Focus beams build up the longer he holds it: ×1 → ×3 over FOCUS_RAMP steps.
+      const ramp = 1 + 2 * Math.min(1, ps.ghost.t / FOCUS_RAMP);
+      strike(p, w, p.x, p.y, 0.55 * ramp);
       muzzle(p, w, p.x, p.y, 26);
       // Five clones, staggered over the clone cycle (the outer two are busy firing cannons during the ultimate).
       clonesOf(p).forEach(([cx, cy], k) => {
         if (ps.cannon && SIDE.includes(k)) return;
-        if ((p.t + k * 2) % CLONE_CD < STRIKE_CD) strike(p, w, cx, cy, 0.2, 0.7);
+        if ((p.t + k * 2) % CLONE_CD < STRIKE_CD) strike(p, w, cx, cy, 0.2 * ramp, 0.7);
       });
     } else {
       const [cx, cy] = daxArt.anchor('core');
@@ -385,6 +430,5 @@ export default {
   renderFx(p, b) {
     renderCrescent(p, b);
     renderBeams(p, b);
-    renderRods(p, b);
   },
 };

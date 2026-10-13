@@ -250,6 +250,7 @@ All hooks are optional. A pilot without them runs the original code paths.
 | `renderOptions(p, b, alpha)` | `Player.render` | `true` = drew the options itself (e.g. Lin's drones from the art texture) |
 | `renderUnder(p, b, alpha)` | `World.renderMid` | draws under the air enemies (e.g. Lin's starry void path) |
 | `intangible(p)` | `Player.invulnerable` | `true` = every attack passes through (e.g. Dax's ghost focus) |
+| `stageClear(p, w)` | `StageDirector` (tally) | the stage is cleared (e.g. Dax's Chaos Clones dissolve) |
 | `dpsBossTargets` | `tools/dps.mjs` | the dummies count as bosses (for pilots that one-hit-kill normal enemies) |
 
 **Extra images.**
