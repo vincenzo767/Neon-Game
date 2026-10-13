@@ -233,3 +233,10 @@ The owner supplied a new crescent reference: a black cosmic crescent moon with a
 - **The two tips are buried in black chaos smoke and black-and-red chaos flame:** tongues that lick outwards and back, flickering.
 - **The particle smoke is now mostly black and grey,** with red only rarely.
 - **Screenshots:** `screenshots/dax/18_*`.
+
+## Polish round 5: thicker smoke, no flame at the tips
+
+- **Thicker edge smoke, black and red.** The edge has 40 bigger puffs; every third one is blood-red smoke and the rest are black, each with a faint red under-glow. More black smoke streams from behind the moon.
+- **The tips are smoke, not flame.** The flame tongues are gone. Each tip sits under a steady, breathing knot of three big black and red smoke clouds, plus 16 billowing puffs streaming back, so the points never show.
+- **Frame rate.** Three crescents in focus run at 48–60 FPS; extra smoke layers were trimmed to keep it there.
+- **Screenshot:** `screenshots/dax/19_focus_thick_smoke.png`.

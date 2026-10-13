@@ -445,7 +445,7 @@ function seal(p, b, x, y, s, a, spin, flat = 1) {
  * behind the launch, each with a faint red ember glow under the black.
  * `n` puffs, `spread` how far they wander, `back` how far they stream behind.
  */
-function chaosSmoke(p, b, pts, n, seed, a, size = 1, back = 46) {
+function chaosSmoke(p, b, pts, n, seed, a, size = 1, back = 46, redEvery = 3) {
   const F = p.F, t = p.t;
   for (let k = 0; k < n; k++) {
     const h = seed * 7.13 + k * 3.71, ph = (t * (0.022 + 0.014 * hash(h)) + hash(h + 0.5)) % 1;
@@ -454,22 +454,9 @@ function chaosSmoke(p, b, pts, n, seed, a, size = 1, back = 46) {
     const x = x0 + nx * out - ny * wob, y = y0 + ny * out + nx * wob + ph * back;
     const s = (16 + 26 * hash(h + 3.3)) * size * (0.45 + ph), al = Math.sin(Math.PI * Math.min(1, ph * 1.15)) * a;
     const rot = h + t * 0.03 * (hash(h + 4.4) - 0.5);
-    b.draw(F.glow, x, y, s * 1.7, s * 1.5, rot, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.2 * al, 1);
-    b.draw(F.glow, x, y, s, s * 0.8, rot, DARK[0], DARK[1], DARK[2], 0.9 * al, 0);
-  }
-}
-
-/** Black-and-red chaos flame tongues licking back from a point (the crescent's tips). */
-function chaosFlame(p, b, x, y, nx, ny, n, seed, a) {
-  const F = p.F, t = p.t;
-  for (let k = 0; k < n; k++) {
-    const h = seed * 5.3 + k * 2.9, ph = (t * (0.05 + 0.03 * hash(h)) + hash(h + 0.7)) % 1;
-    const L = (18 + 26 * hash(h + 1.9)) * (0.5 + ph), sway = Math.sin(t * 0.2 + h) * 0.5;
-    // Tongues lick outwards from the tip and back behind the launch.
-    const ang = Math.atan2(ny + 1.2, nx) + sway + (hash(h + 2.7) - 0.5) * 0.8;
-    const cx = x + Math.cos(ang) * L * 0.5, cy = y + Math.sin(ang) * L * 0.5, al = Math.sin(Math.PI * ph) * a;
-    b.draw(F.glow, cx, cy, L, 10 + 6 * hash(h), ang, DARK[0], DARK[1], DARK[2], 0.8 * al, 0);
-    if (k % 2) b.draw(F.laser, cx, cy, L * 0.8, 5, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.45 * al, 1);
+    b.draw(F.glow, x, y, s * 1.6, s * 1.4, rot, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.1 * al, 1);
+    if (redEvery && k % redEvery === 0) b.draw(F.glow, x, y, s * 1.1, s * 0.9, rot, 0.5, 0.02, 0.05, 0.85 * al, 0);
+    else b.draw(F.glow, x, y, s * 1.1, s * 0.9, rot, DARK[0], DARK[1], DARK[2], al, 0);
   }
 }
 
@@ -497,7 +484,7 @@ function renderOneCrescent(p, b, c) {
     b.draw(F.glow, q.mx, q.my, q.th * 2 + 50, q.th * 2 + 50, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], br * a, 1);
   }
   // Black smoke behind the moon, streaming back as it launches.
-  chaosSmoke(p, b, (u) => { const [x, y, nx, ny] = onRim(u); return [x - nx * 20, y - ny * 20, nx, ny]; }, 18, seed + 1, 0.9 * a, 1.3, 70);
+  chaosSmoke(p, b, (u) => { const [x, y, nx, ny] = onRim(u); return [x - nx * 20, y - ny * 20, nx, ny]; }, 14, seed + 1, a, 1.7, 70);
   const rot = Math.sin(t * 0.03) * 0.025;
   b.draw(body, tx, ty, tw, th, rot, 1, 1, 1, a, 0);
   // Dim nebula and stars drifting along the arc.
@@ -519,15 +506,20 @@ function renderOneCrescent(p, b, c) {
   // The rim: only a thin, faint red line now; the edge itself is smoke.
   b.draw(rim, tx, ty, tw, th, rot, PAL.mid[0], PAL.mid[1], PAL.mid[2], a * (0.12 + 0.04 * Math.sin(t * 0.4)), 1);
   // Glowing black chaos smoke boiling along the whole edge.
-  chaosSmoke(p, b, onRim, 42, seed + 2, a, 0.95, 40);
-  // The two tips buried in black chaos smoke and black-red chaos flame.
-  for (const [q, side] of [[P[1], 0], [P[P.length - 2], 1]]) {
-    const tip = side ? P[P.length - 1] : P[0];
+  chaosSmoke(p, b, onRim, 40, seed + 2, a, 1.4, 40);
+  // The two tips buried in a dense knot of black and red smoke, so the points never show.
+  for (const side of [0, 1]) {
+    const tip = side ? P[P.length - 1] : P[0], q = side ? P[P.length - 4] : P[3];
+    for (let j = 0; j < 3; j++) { // a steady, breathing core over the tip
+      const f = j / 2, x = tip.ox + (q.ox - tip.ox) * f, y = tip.oy + (q.oy - tip.oy) * f + 6;
+      const s = (58 - j * 8) * (1 + 0.08 * Math.sin(t * 0.11 + j + side * 2));
+      b.draw(F.glow, x, y, s * 1.5, s * 1.4, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.08 * a, 1);
+      b.draw(F.glow, x, y, s, s * 0.9, t * 0.01 + j, j === 1 ? 0.45 : DARK[0], j === 1 ? 0.02 : DARK[1], j === 1 ? 0.05 : DARK[2], 0.95 * a, 0);
+    }
     chaosSmoke(p, b, (u) => {
-      const f = u * 0.9, x = tip.ox + (q.ox - tip.ox) * f * 3, y = tip.oy + (q.oy - tip.oy) * f * 3;
+      const f = u, x = tip.ox + (q.ox - tip.ox) * f, y = tip.oy + (q.oy - tip.oy) * f;
       return [x, y, tip.nx, tip.ny];
-    }, 12, seed + 5 + side * 9, a, 1.1, 55);
-    chaosFlame(p, b, tip.ox, tip.oy, tip.nx, tip.ny, 8, seed + side * 4, a);
+    }, 16, seed + 5 + side * 9, a, 1.7, 60, 3);
   }
   // Red streaks lashing through the smoke (dim, re-rolled often).
   chaosCracks(p, b, (u, v) => {
