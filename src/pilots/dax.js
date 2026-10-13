@@ -1,210 +1,434 @@
-import { mirrorPath, chrome, neonLines, outline, canopy, glowDot, drawBolt } from '../fx/art.js';
-import { UP, W, muzzle, mote, shipScale } from './common.js';
+import { mirrorPath, chrome, neonLines, outline, canopy, glowDot } from '../fx/art.js';
+import { TAU, W, H, ringPulse, targets, shipScale } from './common.js';
+import { DMG_IGNORES_SHIELDS, DMG_INSTANT_KILL } from '../core/damage.js';
+import { FADE_OUT } from '../fx/Particles.js';
+import { daxArt, PAL } from './daxArt.js';
+import {
+  daxFxSprites, renderBeams, hitSpark, burst, voidExhaust, renderGhost,
+  renderCrescent, renderCannon, ghostSmoke, crescentPts, crescentSmoke, cannonSpray, CHAIN_FADE,
+} from './daxFx.js';
 
-// DAX MORROW — OVERCLOCK (hot-rod jet)
-// Fire rate ramps up with heat (0–100) while the trigger is held; heat bleeds
-// off when you stop. Focus: Heat Lance, a beam that widens with heat.
-// Special: Vent Blast (dump all heat as a forward cone, damage ∝ heat)
-// Bomb: Nitro Wall · Ultimate: Meltdown Nova (heat locked at max, nova rings)
+// DAX MORROW — OVERCLOCK (void knight) · LEGENDARY
+// Void Beam: an instant straight beam to the nearest enemy; from there it races
+// on, enemy to enemy, at any range (a visible chain), destroying normal enemies
+// in one hit and erasing attacks in its path and around him
+// Focus: Ghost Launch (a smoke ghost and five clones fire, harder the longer
+// he holds it; he is intangible)
+// Special: Crescent of Chaos (kills regular enemies outright)
+// Bomb: Chaos Clone (six thick-smoke clones far from him, firing until the
+// stage is cleared; each bomb adds six more) · Ultimate: Breathe of the Chaos (7 s)
+// In focus the two outermost clones cast the crescent and fire the cannon too.
 //
-// Shots run from cool white-blue to violet as heat builds (§4.5: player
-// shots stay cool so they never hide enemy bullets).
+// DAX ART TEST: the hand-made mecha art (daxArt.js) replaces drawShip() when it
+// loads; drawShip() stays as the automatic fallback. Every beam leaves the red
+// chest core (owner's choice); the legs (feet) never fire.
 
-const COOL = [0.6, 0.85, 1.0];
-const HOT = [0.85, 0.5, 1.0];
-const mix = (k) => [COOL[0] + (HOT[0] - COOL[0]) * k, COOL[1] + (HOT[1] - COOL[1]) * k, COOL[2] + (HOT[2] - COOL[2]) * k];
+const RED = [1.0, 0.15, 0.18];
+const KILL = DMG_INSTANT_KILL | DMG_IGNORES_SHIELDS;
+const STRIKE_CD = 4;        // a strike every 4 steps (15 / s) from the body or the ghost
+const CLONE_CD = 8;         // each clone strikes every 8 steps, staggered
+const NULL_R = 110;         // attacks this close are chased down and erased
+const LAUNCH = 110;         // the ghost launches this far forward
+const CLONES = [[-150, 50], [-82, -28], [82, -28], [150, 50], [0, 105]]; // well spread around the ghost
+const SIDE = [0, 3];        // the two outermost clones: they also cast the crescent and fire the cannon
+const CRESCENT_SPEED = 3.2;  // units per step (medium)
+const CHAIN_SPEED = 18;     // units per step the chain races between enemies (~0.45 s across the screen)
+const CHAIN_MAX = 64;       // hops per chain
+const FOCUS_RAMP = 240;     // focus beams build up to ×3 damage over this many steps (4 s)
+const CHAOS_PER = 6;        // Chaos Clones per bomb
+const CHAOS_MAX = 30;       // at most five bombs' worth on screen
+const CHAOS_CD = 6;         // each Chaos Clone strikes every 6 steps, staggered
+const CHAOS_MUL = 0.45;     // its boss damage per strike (× bossDmg)
+const CRESCENT_BOSS = 9;    // Crescent of Chaos damage to bosses every 5 steps
+const BREATH_DMG = 4;       // Breathe of the Chaos damage per step (was 2.6)
+
+/** Boss / mid-boss damage per strike (one-hit kills don't apply to them). T4 ≈ 130 DPS. */
+const bossDmg = (t) => 2.5 + 1.8 * t;
+const isBoss = (e) => !!(e.boss || e.ctrl || e.kind === 'bosspart');
 
 function drawShip(ctx, w, h, tier) {
   const cx = w / 2;
-  // Tier 2+: canards.
-  if (tier >= 2) { mirrorPath(ctx, cx, [4, 14, 14, 18, 14, 21, 4, 21]); ctx.fillStyle = '#1a1424'; ctx.fill(); outline(ctx, 0.6); }
-  // Long hot-rod hull with exposed engine block at the back.
-  mirrorPath(ctx, cx, [0, 1, 3, 8, 5, 22, 16, 34, 18, 40, 9, 41, 8, 50, 0, 51]);
-  ctx.fillStyle = chrome(ctx, cx - 18, cx + 18, '#120a18', '#4a3a5e', '#c8b4e4'); ctx.fill(); outline(ctx);
-  // Racing stripes.
-  ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillRect(cx - 2.2, 6, 1.2, 30); ctx.fillRect(cx + 1, 6, 1.2, 30);
-  // Exhaust manifolds (more with tier).
-  const pipes = 1 + Math.min(3, tier - 1);
-  for (const s of [-1, 1]) for (let k = 0; k < pipes; k++) {
-    ctx.fillStyle = '#2a2232'; ctx.fillRect(cx + s * (6 + k * 3) - 1, 38 + k, 2, 10);
-    glowDot(ctx, cx + s * (6 + k * 3), 49 + k, 2, 'rgba(190,140,255,1)');
+  // Blade wings.
+  for (const s of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(cx + s * 5, 30); ctx.lineTo(cx + s * 22, 50); ctx.lineTo(cx + s * 9, 38); ctx.closePath();
+    ctx.fillStyle = '#0c0a0e'; ctx.fill(); outline(ctx, 0.6);
   }
-  // Tier 3+: supercharger scoop.
-  if (tier >= 3) { ctx.beginPath(); ctx.roundRect(cx - 4, 24, 8, 9, 2); ctx.fillStyle = chrome(ctx, cx - 4, cx + 4); ctx.fill(); outline(ctx, 0.6); }
-  // Tier 4: heat fins.
-  if (tier >= 4) neonLines(ctx, cx, [16, 34, 22, 44, 18, 40, 22, 47], 'rgba(200,140,255,1)', 0.9, 6);
-  canopy(ctx, cx, 16, 2.6, 5, '#ffffff', '#b89aff', '#160a2a');
-  neonLines(ctx, cx, [5, 22, 16, 34], 'rgba(200,160,255,1)', 0.7, 5);
+  if (tier >= 2) for (const s of [-1, 1]) { mirrorPath(ctx, cx, [4, 14, 14, 18, 14, 21, 4, 21]); ctx.fillStyle = '#1a0a0e'; ctx.fill(); outline(ctx, 0.6); }
+  mirrorPath(ctx, cx, [0, 1, 3, 8, 5, 22, 16, 34, 18, 40, 9, 41, 8, 50, 0, 51]);
+  ctx.fillStyle = chrome(ctx, cx - 18, cx + 18, '#0a0608', '#2a1a20', '#6a4a52'); ctx.fill(); outline(ctx);
+  ctx.fillStyle = 'rgba(255,40,50,0.85)'; ctx.fillRect(cx - 0.8, 8, 1.6, 26);
+  glowDot(ctx, cx, 28, 3.2, 'rgba(255,40,60,1)');
+  if (tier >= 4) neonLines(ctx, cx, [16, 34, 22, 44, 18, 40, 22, 47], 'rgba(255,60,70,1)', 0.9, 6);
+  canopy(ctx, cx, 16, 2.6, 5, '#ffffff', '#ff6a6a', '#2a0608');
+  neonLines(ctx, cx, [5, 22, 16, 34], 'rgba(255,50,60,1)', 0.7, 5);
 }
 
-function drawGun(ctx, w, h) {
-  const cx = w / 2;
-  mirrorPath(ctx, cx, [0, 1, 3, 4, 3, h - 2, 0, h - 1]);
-  ctx.fillStyle = chrome(ctx, cx - 3, cx + 3); ctx.fill(); outline(ctx, 0.5);
-  glowDot(ctx, cx, 2, 2, 'rgba(200,170,255,1)');
+// ------------------------------------------------------------- the kit
+
+/** Nearest live target to (x, y) that this chain hasn't hit yet (no range limit). */
+function nextTarget(w, x, y, hit) {
+  let best = null, bd = Infinity;
+  for (const e of targets(w)) {
+    if (hit.has(e)) continue;
+    const d = (e.x - x) ** 2 + (e.y - y) ** 2;
+    if (d < bd) { bd = d; best = e; }
+  }
+  return best;
 }
 
-const plasmaSprite = (ctx, w, h) => drawBolt(ctx, w, h, 'rgba(200,190,255,0.9)');
+/** A void hit: normal enemies die (through shields); bosses and mid-bosses take bossDmg × mul. */
+function hitEnemy(p, w, e, mul) {
+  if (isBoss(e)) w.damage(e, bossDmg(p.tier) * mul, DMG_IGNORES_SHIELDS);
+  else { w.damage(e, 1, KILL); if (!e.alive) burst(w, e.x, e.y, 0.7); }
+}
 
-const heatOf = (p) => (p.ps.nova ? 100 : p.ps.heat);
+/**
+ * One void strike from (x0, y0): an instant straight beam to the nearest
+ * enemy, then a chain that races on from enemy to enemy (stepChains).
+ * Bullets the beam crosses are erased.
+ */
+function strike(p, w, x0, y0, bossMul, wide = 1) {
+  const ps = p.ps, R = w.fxRng, e = nextTarget(w, x0, y0, new Set());
+  if (!e) {
+    // Nothing to chase: the beam cracks straight ahead.
+    const tx = x0 + R.range(-30, 30), ty = y0 - 320;
+    w.damageLine(x0, y0, tx, ty, 12, bossDmg(p.tier) * bossMul);
+    w.cancelLine(x0, y0, tx, ty, 14);
+    ps.bolts.push({ pts: [[x0, y0], [tx, ty]], t: 0, life: 6, w: 9 * wide, s: R.next() * 100 });
+    return;
+  }
+  const ex = e.x, ey = e.y;
+  w.cancelLine(x0, y0, ex, ey, 14);
+  hitEnemy(p, w, e, bossMul);
+  if ((p.t >> 2) & 1) hitSpark(w, ex, ey + e.r * 0.4, Math.PI / 2);
+  ps.bolts.push({ pts: [[x0, y0], [ex, ey]], t: 0, life: 6, w: 9 * wide, s: R.next() * 100 });
+  const hit = new Set([e]);
+  const next = nextTarget(w, ex, ey, hit);
+  if (next) ps.chains.push({ x: ex, y: ey, lx: ex, ly: ey, e: next, hit, hops: 1, segs: [], w: 9 * wide, mul: bossMul * 0.7, s: R.next() * 100 });
+}
+
+/** Chains race toward their next enemy; on arrival they hit it and pick the next one. */
+function stepChains(p, w) {
+  const ps = p.ps;
+  for (const c of ps.chains) {
+    let move = CHAIN_SPEED;
+    while (c.e && move > 0) {
+      if (!c.e.alive) { // someone else got it: turn toward the next one from here
+        if (Math.hypot(c.x - c.lx, c.y - c.ly) > 2) { c.segs.push({ x0: c.lx, y0: c.ly, x1: c.x, y1: c.y, t: p.t }); c.lx = c.x; c.ly = c.y; }
+        c.e = nextTarget(w, c.x, c.y, c.hit);
+        continue;
+      }
+      const dx = c.e.x - c.x, dy = c.e.y - c.y, d = Math.hypot(dx, dy), px = c.x, py = c.y;
+      if (d <= move) {
+        c.x = c.e.x; c.y = c.e.y; move -= d;
+        w.cancelLine(px, py, c.x, c.y, 14);
+        hitEnemy(p, w, c.e, c.mul);
+        c.segs.push({ x0: c.lx, y0: c.ly, x1: c.x, y1: c.y, t: p.t });
+        c.lx = c.x; c.ly = c.y;
+        c.hit.add(c.e);
+        c.e = ++c.hops < CHAIN_MAX ? nextTarget(w, c.x, c.y, c.hit) : null;
+      } else {
+        c.x += dx / d * move; c.y += dy / d * move; move = 0;
+        w.cancelLine(px, py, c.x, c.y, 14);
+      }
+    }
+  }
+  if (ps.chains.length) ps.chains = ps.chains.filter((c) => c.e || (c.segs.length && p.t - c.segs[c.segs.length - 1].t < CHAIN_FADE));
+  for (const c of ps.chains) if (c.segs.length > 6) c.segs = c.segs.filter((g) => p.t - g.t < CHAIN_FADE);
+}
+
+/** The beam also chases down attacks coming at (x, y): arcs to the nearest bullets, then erases all close ones. */
+function nullify(p, w, x, y) {
+  const B = w.bullets, near = [];
+  for (let i = 0; i < B.count; i++) {
+    const d = (B.x[i] - x) ** 2 + (B.y[i] - y) ** 2;
+    if (d < NULL_R * NULL_R) near.push([d, B.x[i], B.y[i]]);
+  }
+  if (!near.length) return;
+  near.sort((a, b) => a[0] - b[0]);
+  for (const [, bx, by] of near.slice(0, 4)) p.ps.arcs.push({ x0: x, y0: y, x1: bx, y1: by, t: 0, life: 5 });
+  w.cancelCircle(x, y, NULL_R);
+}
+
+function muzzle(p, w, x, y, size = 30) {
+  const fx = daxArt.frames().fx, Hp = w.fxHigh;
+  if (!fx) return;
+  let i = Hp.spawn(p.F.glow, x, y, 0, 0, 3);
+  if (i >= 0) { Hp.size(i, size, size * 0.6); Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.hot[0], PAL.hot[1], PAL.hot[2]); Hp.look(i, 0.6, 1, FADE_OUT); }
+  i = Hp.spawn(fx.flare, x, y, 0, 0, 4);
+  if (i >= 0) { Hp.size(i, size * 1.2, size * 0.6); Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.mid[0], PAL.mid[1], PAL.mid[2]); Hp.look(i, 0.8, 1, FADE_OUT); }
+}
+
+/** Ghost clone positions (world) around the ghost. */
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const clonesOf = (p) => CLONES.map(([dx, dy], k) => [
+  clamp(p.x + dx + Math.sin(p.t * 0.05 + k) * 4, 24, W - 24),
+  clamp(p.y + dy + Math.cos(p.t * 0.06 + k * 2) * 3, 30, H - 30),
+]);
+
+/**
+ * Chaos Clone slots for bomb number n: a wide hexagon around the middle of
+ * the screen, far from where he usually flies, turned a little per bomb.
+ */
+function chaosSlots(n) {
+  const out = [], r = 170 + (n % 2) * 40, rot = n * 0.52;
+  for (let k = 0; k < CHAOS_PER; k++) {
+    const a = rot + (k / CHAOS_PER) * TAU;
+    out.push([clamp(W / 2 + Math.cos(a) * r, 30, W - 30), clamp(H * 0.4 + Math.sin(a) * r * 0.85, 40, H - 140)]);
+  }
+  return out;
+}
+
+/** Chaos Clone positions now (they drift slowly where they were placed). */
+const chaosPos = (p, c) => [c.x + Math.sin(p.t * 0.03 + c.seed) * 10, c.y + Math.cos(p.t * 0.025 + c.seed * 2) * 8];
+
+/** Smoke puffs (alpha-blended black-red) for the ghost launch and the body's return. */
+function smokeBurst(w, x, y, n = 10, ring = true) {
+  const Hp = w.fxHigh, R = w.fxRng, F = w.F;
+  for (let k = 0; k < n; k++) {
+    const a = R.range(0, TAU), sp = R.range(0.5, 2.5);
+    const i = Hp.spawn(F.glow, x + R.range(-12, 12), y + R.range(-16, 16), Math.cos(a) * sp, Math.sin(a) * sp, R.range(20, 34));
+    if (i < 0) return;
+    Hp.size(i, 16, 40); Hp.color(i, 0.25, 0.0, 0.03, 0.03, 0, 0); Hp.phys(i, 0.94); Hp.look(i, 0.6, 0, FADE_OUT);
+  }
+  if (ring) ringPulse(w, x, y, RED, 8, 60, 16);
+}
 
 export default {
   id: 'dax',
   name: 'DAX MORROW',
   vehicle: 'OVERCLOCK',
-  role: 'Hot-rod Jet',
-  bio: 'Street racer with more tickets than flight hours. The Precinct recruited Dax instead of jailing him, on the condition that he only red-lines the engine at criminals.',
-  color: HOT,
-  css: '#c08aff',
-  stats: { speed: 5, power: 4, range: 3, bomb: 2 },
+  role: 'Void Knight',
+  legendary: true,
+  bio: 'Street racer with more tickets than flight hours, until he crashed through the edge of the Grid into the void and something answered. Dax came back flying the Overclock, a black-and-red void knight whose beams never miss and never stop.',
+  color: RED,
+  css: '#ff2a3a',
+  // Art test: the Overclock's paint (black armour, red light).
+  palette: { armour: '#141016', frame: '#060406', trim: '#ff2a3a', energy: '#ff3040' },
+  stats: { speed: 5, power: 5, range: 5, bomb: 4 },
   speed: { normal: 5.4, focus: 2.3 },
   hitbox: 2.3,
-  bombStock: 2,
+  bombStock: 3,
   engines: [[-6, 26], [6, 26]],
-  engineColor: [0.8, 0.5, 1.0],
-  optionSprite: 'd_gun',
-  portrait: { skin: '#c88c64', hair: '#e8e4ff', style: 'undercut', eyes: 'goggles', accent: 'tattoo', suit: '#2c2238' },
+  engineColor: [1.0, 0.15, 0.2],
+  // Procedural fallback, matched to pilot-portrait.jpg (white hair, orange shades, tattoos, black jacket).
+  portrait: { skin: '#c89070', hair: '#eeeeee', style: 'spiky', eyes: 'goggles', accent: 'tattoo', suit: '#0c0a0e' },
   weapons: {
-    main: 'Overclock Cannons — fire rate climbs with engine heat',
-    focus: 'Heat Lance — piercing beam that widens as the engine heats',
+    main: 'Void Beam — an instant straight beam, then a chain racing through every enemy at any range; one-hit kills (not bosses); erases attacks aimed at him',
+    focus: 'Ghost Launch — a smoke ghost and five clones fire void beams that grow stronger the longer he holds focus; completely intangible',
   },
+  art: daxArt,
   special: {
-    name: 'VENT BLAST',
-    desc: 'Dump all heat as a forward cone; hotter = harder',
-    cooldown: 240,
-    duration: 14,
+    name: 'CRESCENT OF CHAOS',
+    desc: 'A gigantic chaos crescent sweeps forward, erasing every attack it touches, killing regular enemies outright and burning bosses (three in focus)',
+    cooldown: 600,
+    duration: 300,
     activate(p, w) {
-      p.ps.vent = Math.max(15, heatOf(p));
-      if (!p.ps.nova) p.ps.heat = 0;
-      w.g.camera.addTrauma(0.25);
-      w.r.post.shockwave(p.x, p.y - 40, 0.03, 0.02, 0.4);
+      // In focus the two outermost clones cast one too.
+      const at = [[p.x, p.y]];
+      if (p.ps.ghost) for (const k of SIDE) at.push(clonesOf(p)[k]);
+      p.ps.crescents = at.map(([x, y]) => ({ x, y: y - 110, w: 300, t: 0, life: 300 }));
+      w.r.post.flash(1, 0.15, 0.2, 0.25, 0.06);
+      w.r.post.shockwave(p.x, p.y - 70, 0.04, 0.02, 0.5);
+      w.g.camera.addTrauma(0.3);
     },
     update(p, w, t) {
-      const k = p.ps.vent / 100, reach = 120 + 220 * k;
-      // Cone: three lines fanning forward.
-      for (const da of [-0.35, 0, 0.35]) {
-        const a = UP + da, x1 = p.x + Math.cos(a) * reach, y1 = p.y + Math.sin(a) * reach;
-        w.cancelLine(p.x, p.y, x1, y1, 30 + 40 * k);
-        if (t % 3 === 1) w.damageLine(p.x, p.y, x1, y1, 26, 2 + 10 * k);
-      }
-      for (let n = 0; n < 4; n++) {
-        const a = UP + w.fxRng.range(-0.4, 0.4), s = w.fxRng.range(6, 12);
-        mote(w, p.x, p.y - 16, Math.cos(a) * s, Math.sin(a) * s, mix(k), 12, 18);
-      }
-    },
-  },
-  bomb: {
-    name: 'NITRO WALL',
-    duration: 100,
-    activate(p) { p.ps.wall = { y: p.y }; },
-    update(p, w, t) {
-      w.cancelAll();
-      const wl = p.ps.wall;
-      wl.y = p.y - t * 7;
-      w.damageLine(-10, wl.y, W + 10, wl.y, 30, 14, w.bombId);
-      for (let k = 0; k < 8; k++) mote(w, w.fxRng.range(0, W), wl.y + w.fxRng.range(-10, 10), w.fxRng.range(-1, 1), 3, mix(0.8), 14, 20);
-    },
-    end(p) { p.ps.wall = null; },
-  },
-  ultimate: {
-    name: 'MELTDOWN NOVA',
-    duration: 280,
-    activate(p, w) { p.ps.nova = { rings: [] }; w.r.post.heat(0.8); },
-    update(p, w, t) {
-      w.cancelAll();
-      const nv = p.ps.nova;
-      if (t % 18 === 0) { nv.rings.push({ x: p.x, y: p.y, r: 10 }); w.g.camera.addTrauma(0.2); }
-      for (const r of nv.rings) {
-        r.r += 9;
-        w.cancelCircle(r.x, r.y, r.r);
-        for (const e of w.enemies.active) {
-          if (!e.alive || e.untargetable) continue;
-          const d = Math.hypot(e.x - r.x, e.y - r.y);
-          if (Math.abs(d - r.r) < 14 + e.r) w.damage(e, 2.4);
+      for (const c of p.ps.crescents) {
+        c.t = t;
+        c.y -= CRESCENT_SPEED;
+        crescentSmoke(w, c);
+        // The crescent's band as circles: attacks touching it vanish; regular enemies it
+        // touches die outright (through shields); bosses and mid-bosses burn every 5 steps.
+        const hit = new Set();
+        for (const q of crescentPts(c, 12)) {
+          const r = q.th / 2 + 18;
+          w.cancelCircle(q.mx, q.my, r);
+          for (const e of targets(w)) if ((e.x - q.mx) ** 2 + (e.y - q.my) ** 2 < (r + e.r) ** 2) hit.add(e);
+        }
+        for (const e of hit) {
+          if (isBoss(e)) { if (t % 5 === 0) w.damage(e, CRESCENT_BOSS, DMG_IGNORES_SHIELDS); }
+          else w.damage(e, 1, KILL);
+          if (!e.alive) burst(w, e.x, e.y, 0.8);
         }
       }
-      nv.rings = nv.rings.filter((r) => r.r < 720);
-      if (t % 30 === 0) w.r.post.heat(0.5);
     },
-    end(p) { p.ps.nova = null; },
+    end(p) { p.ps.crescents = []; },
+  },
+  bomb: {
+    name: 'CHAOS CLONE',
+    // A short cast (the Player's bomb clears bullets and covers him); the clones stay until the stage is cleared.
+    duration: 60,
+    activate(p, w) {
+      const ps = p.ps, n = Math.floor(ps.chaos.length / CHAOS_PER);
+      if (ps.chaos.length + CHAOS_PER > CHAOS_MAX) ps.chaos.splice(0, CHAOS_PER); // the oldest six make room
+      chaosSlots(n).forEach(([x, y], k) => {
+        ps.chaos.push({ x, y, t: 0, seed: ps.chaos.length * 1.7 + k });
+        smokeBurst(w, x, y, 14);
+        burst(w, x, y, 0.8);
+      });
+      w.r.post.flash(1, 0.05, 0.1, 0.35, 0.05);
+      w.g.camera.addTrauma(0.3);
+    },
+    update() {},
+  },
+  ultimate: {
+    name: 'BREATHE OF THE CHAOS',
+    duration: 420, // 7 s; the Player is invulnerable for all of it
+    // In focus the two outermost clones fire a cannon too (three in all).
+    activate(p, w) {
+      p.ps.cannon = { w: 150, fade: 0, side: p.ps.ghost ? 1 : 0 };
+      w.r.post.flash(1, 0.1, 0.15, 0.5, 0.05);
+    },
+    update(p, w, t) {
+      const u = p.ps.cannon;
+      if (!u) return;
+      u.fade = Math.min(1, t / 12) * (t > 400 ? (420 - t) / 20 : 1);
+      u.side += ((p.ps.ghost ? 1 : 0) - u.side) * 0.15;
+      const guns = [[p.x, p.y]];
+      if (p.ps.ghost) for (const k of SIDE) guns.push(clonesOf(p)[k]);
+      for (const [gx, gy] of guns) {
+        const bm = w.beam(gx, gy - 20, gx, -30, u.w, BREATH_DMG, RED, 1, DMG_IGNORES_SHIELDS);
+        bm.skin = true;
+        w.cancelLine(gx, gy - 20, gx, -30, u.w * 1.1);
+        cannonSpray(w, gx, gy - 24, u.w, gx !== p.x || gy !== p.y);
+      }
+      if (t % 30 === 0) { w.g.camera.addTrauma(0.2); w.r.post.shockwave(p.x, p.y - 60, 0.02, 0.02, 0.4); }
+    },
+    end(p) { p.ps.cannon = null; },
   },
 
   sprites(atlas) {
     const s = shipScale(atlas);
     for (let t = 1; t <= 4; t++) atlas.add(`ship_dax_${t}`, 46, 54, (c, w, h) => drawShip(c, w, h, t), { scale: s });
-    atlas.add('d_gun', 6, 14, drawGun, { scale: s });
-    atlas.add('d_plasma', 20, 6, plasmaSprite, { scale: s });
+    daxFxSprites(atlas);
+    daxArt.buildSprites(atlas);
   },
+
+  // Hand-made art hooks (each returns false without the art → procedural look).
+  renderShip(p, b, x, y, a) {
+    const g = p.ps.ghost;
+    // Chaos Clones (bomb): thick-smoke ghosts placed far from him.
+    p.ps.chaos.forEach((c, k) => {
+      const [cx, cy] = chaosPos(p, c), grow = Math.min(1, c.t / 20);
+      renderGhost(p, b, cx + (x - p.x), cy + (y - p.y), 0.85 * a * grow, 20 + k);
+    });
+    if (!g) return daxArt.renderMecha(p, b, x, y, a);
+    // Focus: the body stays parked (untargetable); the ghost and its clones are smoke.
+    const body = Object.create(p);
+    body.focus = false;
+    if (!daxArt.renderMecha(body, b, g.bx, g.by, a * 0.85)) return false;
+    for (const [k, [cx, cy]] of clonesOf(p).entries()) renderGhost(p, b, cx, cy, 0.75 * a, k + 1);
+    renderGhost(p, b, x, y, a, 0);
+    return true;
+  },
+  exhaust: voidExhaust,
+  hitSpark,
+  /** Focus: completely intangible (every attack passes through; the body can't be targeted). */
+  intangible: (p) => !!p.ps.ghost,
+  /** The stage is cleared: the Chaos Clones dissolve into smoke. */
+  stageClear(p, w) {
+    for (const c of p.ps.chaos) { const [cx, cy] = chaosPos(p, c); smokeBurst(w, cx, cy, 10); }
+    p.ps.chaos = [];
+  },
+  /** tools/dps.mjs: normal enemies die in one hit, so measure against boss-flagged dummies. */
+  dpsBossTargets: true,
 
   init(p, w) {
-    p.ps.fPlasma = w.r.frame('d_plasma');
-    p.ps.heat = 0;
-    p.ps.vent = 0;
+    const ps = p.ps;
+    ps.fShard = w.r.frame('dx_shard');
+    ps.fCresBody = w.r.frame('dx_cres_body');
+    ps.fCresRim = w.r.frame('dx_cres_rim');
+    ps.fOrb = w.r.frame('dx_orb');
+    ps.fColumn = w.r.frame('dx_column');
+    ps.fBar = w.r.frame('dx_bar');
+    ps.chains = [];
+    ps.bolts = [];
+    ps.arcs = [];
+    ps.chaos = [];
+    ps.ghost = null;
+    ps.crescents = [];
+    ps.cannon = null;
   },
 
-  reset(p) { p.ps.heat = 0; p.ps.nova = null; },
+  reset(p) { p.ps.ghost = null; p.ps.bolts = []; p.ps.chains = []; p.ps.arcs = []; },
 
   update(p, w) {
-    if (p.ps.nova) return;
-    if (p.firing) p.ps.heat = Math.min(100, p.ps.heat + 0.55);
-    else p.ps.heat = Math.max(0, p.ps.heat - 1.6);
-    if (p.ps.heat >= 100 && p.t % 6 === 0) mote(w, p.x + w.fxRng.range(-10, 10), p.y + 20, 0, 2, HOT, 6, 14);
+    daxArt.animate(p);
+    const ps = p.ps;
+    // Ghost Launch: on focus the ghost dashes forward; the body stays where it was.
+    const focusing = p.focus && p.state === 'alive';
+    if (focusing && !ps.ghost) {
+      ps.ghost = { bx: p.x, by: p.y, t: 0, ty: Math.max(50, p.y - LAUNCH) };
+      smokeBurst(w, p.x, p.y);
+      w.g.camera.addTrauma(0.12);
+    } else if (!focusing && ps.ghost) {
+      // Release: the body flashes to the ghost.
+      smokeBurst(w, ps.ghost.bx, ps.ghost.by, 8);
+      smokeBurst(w, p.x, p.y, 6);
+      ps.ghost = null;
+    }
+    if (ps.ghost) {
+      const g = ps.ghost;
+      if (g.t++ < 8) p.y += (g.ty - p.y) * 0.4;
+      // Real smoke billowing off the ghost and each clone.
+      ghostSmoke(w, p.x, p.y, 3);
+      for (const [cx, cy] of clonesOf(p)) ghostSmoke(w, cx, cy, 2);
+    }
+    // Chaos Clones: thick smoke (the total stays about six clones' worth however many there are), and their own void beams.
+    const every = Math.ceil(ps.chaos.length / CHAOS_PER);
+    ps.chaos.forEach((c, k) => {
+      c.t++;
+      const [cx, cy] = chaosPos(p, c);
+      if ((p.t + k) % every === 0) ghostSmoke(w, cx, cy, 2, true);
+      if (p.state === 'alive' && c.t > 20 && (p.t + k * 3) % CHAOS_CD === 0 && targets(w).length) {
+        strike(p, w, cx, cy, CHAOS_MUL, 0.9);
+        muzzle(p, w, cx, cy, 22);
+      }
+    });
+    stepChains(p, w);
+    for (const s of ps.bolts) s.t++;
+    if (ps.bolts.length) ps.bolts = ps.bolts.filter((s) => s.t < s.life);
+    for (const c of ps.arcs) c.t++;
+    if (ps.arcs.length) ps.arcs = ps.arcs.filter((c) => c.t < c.life);
   },
 
-  optionLayout(p) {
-    const t = p.tier;
-    if (t < 2) return [];
-    const o = p.focus ? [[-9, -6], [9, -6]] : [[-16, 0], [16, 0]];
-    return t >= 4 ? [...o, ...(p.focus ? [[-15, 4], [15, 4]] : [[-26, 10], [26, 10]])] : o;
-  },
+  optionLayout: () => [],
 
   fire(p, w) {
-    const t = p.tier, S = w.shots, k = heatOf(p) / 100, col = mix(k);
-    if (p.focus) {
-      const wd = 4 + t + 16 * k;
-      w.beam(p.x, p.y - 24, p.x, -20, wd, 0.16 + 0.05 * t + 0.25 * k, col);
-    }
     if (p.fireCd > 0) return;
-    p.fireCd = Math.round(9 - 6.5 * k); // 9 → 2-3 steps as the engine heats
-    const dmg = 0.8 + 0.4 * k;
-    const n = p.focus ? 1 : 1 + t;
-    for (let i = 0; i < n; i++) {
-      const off = (i - (n - 1) / 2) * 6, a = UP + (p.focus ? 0 : (i - (n - 1) / 2) * 0.05);
-      const j = w.shot(p.x + off, p.y - 24, a, 15, p.ps.fPlasma, dmg, 5, 0.9 + 0.4 * k);
-      if (j >= 0) S.behave(j, dmg);
+    p.fireCd = STRIKE_CD;
+    w.shotsFired++; // no projectile, but the audio director voices one per strike
+    const ps = p.ps;
+    if (ps.ghost) {
+      // Focus beams build up the longer he holds it: ×1 → ×3 over FOCUS_RAMP steps.
+      const ramp = 1 + 2 * Math.min(1, ps.ghost.t / FOCUS_RAMP);
+      strike(p, w, p.x, p.y, 0.55 * ramp);
+      muzzle(p, w, p.x, p.y, 26);
+      // Five clones, staggered over the clone cycle (the outer two are busy firing cannons during the ultimate).
+      clonesOf(p).forEach(([cx, cy], k) => {
+        if (ps.cannon && SIDE.includes(k)) return;
+        if ((p.t + k * 2) % CLONE_CD < STRIKE_CD) strike(p, w, cx, cy, 0.2 * ramp, 0.7);
+      });
+    } else {
+      const [cx, cy] = daxArt.anchor('core');
+      strike(p, w, p.x + cx, p.y + cy, 1);
+      muzzle(p, w, p.x + cx, p.y + cy, 30);
     }
-    muzzle(w, p.x, p.y - 26, col, 10 + 8 * k);
-    for (const o of p.options) {
-      const j = w.shot(o.x, o.y - 8, UP, 15, p.ps.fPlasma, 0.6, 5, 0.8);
-      if (j >= 0) S.behave(j, 0.6);
-    }
+    nullify(p, w, p.x, p.y);
   },
 
-  renderAbove(p, b, x, y) {
-    // Heat gauge arc under the ship.
-    const F = p.F, k = heatOf(p) / 100, c = mix(k);
-    if (k > 0.02) b.draw(F.glow, x, y + 22, 26 + 30 * k, 14 + 10 * k, 0, c[0], c[1], c[2], 0.25 + 0.5 * k, 1);
-    const segs = Math.round(k * 10);
-    for (let s = 0; s < 10; s++) {
-      const a = Math.PI * (0.15 + 0.07 * s);
-      b.draw(F.white, x + Math.cos(a) * 26, y + Math.sin(a) * 26, 2.6, 2.6, 0, s < segs ? c[0] * 2 : 0.2, s < segs ? c[1] * 2 : 0.2, s < segs ? c[2] * 2 : 0.25, s < segs ? 0.9 : 0.35, s < segs ? 1 : 0);
+  renderBelow(p, b, x, y) {
+    const u = p.ps.cannon;
+    if (!u) return;
+    renderCannon(p, b, x, y - 24, u.w, u.fade, 0);
+    if (u.side > 0.02) {
+      const cl = clonesOf(p);
+      for (const k of SIDE) renderCannon(p, b, cl[k][0] + (x - p.x), cl[k][1] + (y - p.y) - 24, u.w, u.fade * u.side, k + 1);
     }
   },
 
   renderFx(p, b) {
-    const F = p.F;
-    if (p.ps.wall) b.draw(F.laser, W / 2, p.ps.wall.y, W + 40, 50, 0, HOT[0] * 1.6, HOT[1] * 1.6, HOT[2] * 1.6, 0.8, 1);
-    for (const r of p.ps.nova ? p.ps.nova.rings : []) {
-      const a = Math.max(0, 1 - r.r / 720);
-      b.draw(F.ring, r.x, r.y, r.r * 2.15, r.r * 2.15, 0, 1.6, 1.0, 2.2, a, 1);
-    }
-    if (p.specialT > 0) {
-      const k = p.ps.vent / 100, reach = 120 + 220 * k;
-      for (const da of [-0.35, 0, 0.35]) {
-        const a = UP + da;
-        b.draw(F.laser, p.x + Math.cos(a) * reach / 2, p.y + Math.sin(a) * reach / 2, reach, 30 + 30 * k, a, 1.2, 1, 2, 0.5 * (p.specialT / 14), 1);
-      }
-    }
+    renderCrescent(p, b);
+    renderBeams(p, b);
   },
 };
-

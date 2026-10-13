@@ -72,6 +72,17 @@ export const ART_MANIFEST = {
     },
     json: { anchors: 'lin.anchors.json', layers: 'lin.layers.json' },
   },
+  dax: {
+    images: {
+      back2x: 'dax_back@2x.png',
+      outline2x: 'dax_back_outline@2x.png',
+      wings2x: 'dax_wings@2x.png',
+      wingsOutline2x: 'dax_wings_outline@2x.png',
+      front: 'dax_front@2x.png',
+      portrait: 'dax_portrait.jpg',
+    },
+    json: { anchors: 'dax.anchors.json', layers: 'dax.layers.json' },
+  },
 };
 
 const base = () => {

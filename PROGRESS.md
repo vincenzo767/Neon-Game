@@ -21,6 +21,7 @@
 | **Art: Tess** | Hand-made art for Tess Kuro (Wireghost) on the shared art modules (branch `art/tess-test`, on top of `art/bruno-test`, not merged) | 🔍 In review |
 | **Art: Oduya** | Hand-made art and a redesigned kit for Oduya Rex (Thunderjaw), the god of thunder (branch `art/oduya-test`, on top of `art/tess-test`, not merged) | 🔍 In review |
 | **Art: Lin** | Hand-made art and a redesigned kit for Lin Hayase (Petal Engine), an emerald crystal knight on butterfly wings (branch `art/lin-test`, on top of `art/oduya-test`, not merged) | 🔍 In review |
+| **Art: Dax** | Hand-made art and a Legendary void kit for Dax Morrow (Overclock), a black-and-red void knight (branch `art/dax-test`, on top of `art/lin-test`, not merged) | 🔍 In review |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -860,6 +861,21 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Lin%20Hayase/ASS
 - **FX from the owner's picks** (`tools/art-ref/lin/`, un-blended by `process-art.mjs` `fx`): main-shot arrows, focus / split / rain spears, the star seal on every Spear Rain hit, and the Cosmic Spear. Its path is a black void of stars, drawn under the enemies (new World hook `renderUnder`).
 - **Frame rate.** In the 1,500-bullet storm, about 53 FPS with art versus 49 procedural (Intel HD 5500).
 
+## Art: Dax Morrow (branch `art/dax-test`)
+
+Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Dax%20Morrow/ASSET_NOTES.md).
+
+- **Art.** Checkerboard cut-out, 90 units tall, feet-first (the legs never fire). The lower blade wings move. Void plumes: black, red and white-hot.
+- **Legendary, as the owner wrote it** (marked LEGENDARY like Vincenzo).
+  - **Void Beam.** Instant straight beams from the chest core chain through every enemy at any range. Normal enemies die in one hit through shields; bosses take normal damage. They erase bullets along the path and every bullet within 110 units.
+  - **Ghost Launch.** Focus sends a smoke ghost forward with 5 smoke clones, all firing; he is intangible while focused. The body stays parked and flashes to the ghost on release.
+  - **Crescent of Chaos** (sweeps forward, erases attacks, kills regular enemies outright). **Chaos Clone** bomb (six thick-smoke clones far from him that fire until the stage is cleared; each bomb adds six, up to 30). **Breathe of the Chaos** (7 s, 150 wide, invulnerable, harder-hitting). In focus the two outermost clones cast the crescent and fire the ultimate too.
+  - Focus beams build up to ×3 boss damage over 4 s of holding focus.
+  - The first beam is instant; the chain then visibly races from enemy to enemy.
+- **Balance.** Boss DPS at T4: beam 131, ghost focus 137. Normal enemies don't matter: they die in one hit.
+- **FX.** Drawn live after the owner's references, with no cut-out images (polish round): straight eye-beam style void beams, real-smoke ghosts and clones spread wide, a starry black crescent at medium speed, and a cosmic void column for the cannon.
+- **Frame rate.** Storm: about 57 FPS with art versus 53 procedural.
+
 ## Run
 
 ```
@@ -871,7 +887,7 @@ npm run build      # production bundle in dist/
 Flow right now:
 - **Title** → START → difficulty → **Pilot Select → (Z) endless procedural stages**: intro → waves → mid-boss → waves → boss → tally → next stage...
 - **(C) on pilot select → Test Range**: placeholder waves with a selectable bullet density.
-- **`?test=<id>`** (`kairo`, `mira`, `bruno`, `tess`, `oduya`, `lin`): a pilot's art test range (see the *Art* sections above). The art is also live in the normal flow: pick the pilot on pilot select.
+- **`?test=<id>`** (`kairo`, `mira`, `bruno`, `tess`, `oduya`, `lin`, `dax`): a pilot's art test range (see the *Art* sections above). The art is also live in the normal flow: pick the pilot on pilot select.
 - **`?noart`**: skip hand-made pilot art (procedural fallback).
 - **Title → PRACTICE**: a single fight against any boss reached so far. **RANKING** and **OPTIONS** are also on the title.
 - Idle on the title for 20 s: attract demo → ranking pages.
@@ -1034,4 +1050,4 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
-6. Pilot art: review and merge `art/lin-test` (it contains `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 11 pilots.
+6. Pilot art: review and merge `art/dax-test` (it contains `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.

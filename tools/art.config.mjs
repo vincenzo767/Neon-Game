@@ -153,4 +153,33 @@ export const PILOT_ART = {
       wingR: [780, 700],
     },
   },
+  dax: {
+    folder: 'Dax Morrow',
+    back: 'top-down-main.jpg',
+    front: 'top-down-front.jpg',
+    portrait: 'pilot-portrait.jpg',
+    portraitCrop: { left: 110, top: 0, width: 520, height: 650 }, // head and shoulders (4:5)
+    bg: 'checker',             // painted checkerboard, not real transparency
+    glowRule: false,           // the red glow is paint
+    // The lower blade wings (and the fins under them) move; nothing held crosses them.
+    wings: {
+      axis: 572,
+      pivotL: [480, 880],
+      wingL: [[-80, 1150], [150, 1000], [300, 900], [440, 820], [490, 860], [490, 930], [440, 1000], [420, 1140], [400, 1420], [-80, 1420]],
+      keep: [],
+    },
+    // No FX picks: Dax's effects are drawn live after the owner's references (tools/art-ref/dax/).
+    anchors: {
+      hitbox: [572, 805],      // red chest core: lands on player.x/y
+      head: [572, 900],
+      core: [572, 805],        // the chest core: every void beam leaves here (owner's choice B)
+      spike: [572, 160],       // forward waist spike (reference)
+      lensL: [175, 515],       // red lenses on the forearm shield pods (reference)
+      lensR: [968, 515],
+      ventL: [430, 1180],      // rear fin roots: wide void plumes
+      ventR: [715, 1180],
+      packL: [530, 1100],      // either side of the rear spine: smaller plumes
+      packR: [615, 1100],
+    },
+  },
 };
