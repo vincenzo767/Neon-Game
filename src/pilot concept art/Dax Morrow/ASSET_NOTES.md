@@ -250,3 +250,14 @@ The owner supplied a new crescent reference: a black cosmic crescent moon with a
 - **The grey and red smoke stays:** drawn smoke boils through the flames and streams behind, and the smoke particles are grey and red only (no black).
 - **Frame rate** (headless, 2 s samples): one crescent 57–60 FPS, three crescents in focus about 52 FPS. With three out, each draws about 70 % of the tongues.
 - **Screenshots:** `screenshots/dax/20_*`.
+
+## Polish round 7: the flame streams back as it launches
+
+- **Each tongue is now a lick with a life.**
+  - It is born at the edge and stretches out.
+  - It then tears off and streams down behind the launch (`ph² × 1.2 × length` back), thinning and fading while the next lick is born.
+- **The tongues lean back.**
+  - The back row leans most (1.2), then the tips (1.3), the front row (0.75) and the inner edge (0.6).
+  - On the sides the fire hangs and trails downward.
+- **Result.** The fire flows backward as the crescent moves forward, instead of standing still.
+- **Frame-sequence screenshots:** `screenshots/dax/21_flame_motion_t26/32/38.png`.

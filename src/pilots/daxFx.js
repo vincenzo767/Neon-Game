@@ -486,16 +486,21 @@ function chaosSmoke(p, b, pts, n, seed, a, size = 1, back = 46, redEvery = 2) {
  * own grow-and-fall cycle with a sway, plus a faint red halo on every other
  * tongue so the black reads on a dark stage.
  */
-function blackFlame(p, b, x, y, dx, dy, L, W, h, a) {
+function blackFlame(p, b, x, y, dx, dy, L, W, h, a, back = 0.9) {
   const F = p.F, t = p.t, fl = p.ps.fFlame;
-  const ph = (t * (0.045 + 0.035 * hash(h)) + hash(h + 0.3)) % 1;
-  const len = L * (0.55 + 0.6 * Math.sin(Math.PI * ph)), wd = W * (0.85 + 0.2 * Math.sin(t * 0.3 + h * 7));
-  let vx = dx, vy = dy + 0.35; // curl back behind the launch
+  // Each lick is born at the edge, stretches out, then tears off and streams
+  // down behind the launch, thinning and fading, while the next one is born.
+  const ph = (t * (0.035 + 0.03 * hash(h)) + hash(h + 0.3)) % 1;
+  const len = L * (0.6 + 0.7 * Math.sin(Math.PI * Math.min(1, ph * 1.3)));
+  const wd = W * (1 - 0.45 * ph) * (0.9 + 0.15 * Math.sin(t * 0.3 + h * 7));
+  const fade = (ph < 0.12 ? ph / 0.12 : 1 - Math.max(0, (ph - 0.6) / 0.4)) * a;
+  let vx = dx, vy = dy + back; // lean back behind the launch
   const m = Math.hypot(vx, vy) || 1; vx /= m; vy /= m;
-  const ang = Math.atan2(vy, vx) + (hash(h + 6) - 0.5) * 0.9 + Math.sin(t * 0.17 + h * 3) * 0.3;
-  const cx = x + Math.cos(ang) * len * 0.38, cy = y + Math.sin(ang) * len * 0.38;
-  if (hash(h + 9) < 0.5) b.draw(F.glow, cx, cy, wd * 2, len * 1.3, ang + Math.PI / 2, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.1 * a, 1);
-  b.draw(fl, cx, cy, hash(h + 8) < 0.5 ? -wd : wd, len, ang + Math.PI / 2, 1, 1, 1, 0.95 * a, 0);
+  const ang = Math.atan2(vy, vx) + (hash(h + 6) - 0.5) * 0.6 + Math.sin(t * 0.17 + h * 3) * 0.25;
+  const sx = x + vx * ph * L * 0.3, sy = y + ph * ph * L * 1.2; // streaming down
+  const cx = sx + Math.cos(ang) * len * 0.38, cy = sy + Math.sin(ang) * len * 0.38;
+  if (hash(h + 9) < 0.5) b.draw(F.glow, cx, cy, wd * 2, len * 1.3, ang + Math.PI / 2, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.1 * fade, 1);
+  b.draw(fl, cx, cy, hash(h + 8) < 0.5 ? -wd : wd, len, ang + Math.PI / 2, 1, 1, 1, 0.95 * fade, 0);
 }
 
 /**
@@ -527,7 +532,7 @@ function renderOneCrescent(p, b, c, lod = 1) {
   chaosSmoke(p, b, (u) => { const [x, y, nx, ny] = onRim(u); return [x - nx * 20, y - ny * 20, nx, ny]; }, 10, seed + 1, a, 1.6, 70);
   for (let j = 0, n = N(34); j < n; j++) { // back row of black flame: long tongues behind the moon
     const h = seed + 200 + j * 2.71, q = at((j + hash(h)) / n);
-    blackFlame(p, b, q.ox - q.nx * 12, q.oy - q.ny * 12, q.nx, q.ny, (62 + 36 * hash(h + 1)) * k, (44 + 14 * hash(h + 2)) * k, h, a);
+    blackFlame(p, b, q.ox - q.nx * 12, q.oy - q.ny * 12, q.nx, q.ny, (62 + 36 * hash(h + 1)) * k, (44 + 14 * hash(h + 2)) * k, h, a, 1.2);
   }
   for (let j = 0; j < P.length; j++) { // the flame's continuous black root along the edge
     const q = P[j], s2 = (34 + 10 * Math.sin(t * 0.13 + j * 1.7)) * k;
@@ -555,19 +560,19 @@ function renderOneCrescent(p, b, c, lod = 1) {
   // Thick black chaos flame wrapped around the whole crescent.
   for (let j = 0, n = N(34); j < n; j++) { // front row on the outer edge: licking outwards and curling back
     const h = seed + j * 1.91, q = at((j + hash(h) * 0.8) / n);
-    blackFlame(p, b, q.ox - q.nx * 2, q.oy - q.ny * 2, q.nx, q.ny, (34 + 26 * hash(h + 1)) * k, (32 + 10 * hash(h + 2)) * k, h, a);
+    blackFlame(p, b, q.ox - q.nx * 2, q.oy - q.ny * 2, q.nx, q.ny, (34 + 26 * hash(h + 1)) * k, (32 + 10 * hash(h + 2)) * k, h, a, 0.75);
   }
   for (let j = 0, n = N(14); j < n; j++) { // inner edge: licking into the hollow
     const h = seed + 50 + j * 2.37, q = at(0.08 + 0.84 * (j + hash(h) * 0.8) / n);
     const ix = q.ox - q.nx * q.th, iy = q.oy - q.ny * q.th;
-    blackFlame(p, b, ix + q.nx * 4, iy + q.ny * 4, -q.nx, -q.ny, (28 + 18 * hash(h + 1)) * k, (20 + 8 * hash(h + 2)) * k, h, 0.95 * a);
+    blackFlame(p, b, ix + q.nx * 4, iy + q.ny * 4, -q.nx, -q.ny, (28 + 18 * hash(h + 1)) * k, (20 + 8 * hash(h + 2)) * k, h, 0.95 * a, 0.6);
   }
   for (const side of [0, 1]) { // the tips: a dense, roaring bundle so the points never show
     const tip = side ? P[P.length - 1] : P[0], q = side ? P[P.length - 3] : P[2];
     for (let j = 0, n = N(10); j < n; j++) {
       const h = seed + 90 + side * 40 + j * 3.13, f = hash(h + 4), ang = Math.atan2(tip.ny, tip.nx) + (hash(h + 5) - 0.5) * 2.6;
       const x = tip.ox + (q.ox - tip.ox) * f, y = tip.oy + (q.oy - tip.oy) * f;
-      blackFlame(p, b, x, y, Math.cos(ang), Math.sin(ang), (50 + 34 * hash(h + 1)) * k, (34 + 12 * hash(h + 2)) * k, h, a);
+      blackFlame(p, b, x, y, Math.cos(ang), Math.sin(ang), (50 + 34 * hash(h + 1)) * k, (34 + 12 * hash(h + 2)) * k, h, a, 1.3);
     }
     chaosSmoke(p, b, (u) => {
       const x = tip.ox + (q.ox - tip.ox) * u, y = tip.oy + (q.oy - tip.oy) * u;
