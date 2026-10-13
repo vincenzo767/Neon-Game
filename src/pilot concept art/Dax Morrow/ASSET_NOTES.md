@@ -225,3 +225,11 @@ The owner supplied a new crescent reference: a black cosmic crescent moon with a
   - the red haze breathes.
 - **Smoke.** Black, smoky-grey and blood-red ink smoke boils off the rim, the tips and the hollow, swirling as it drifts with the moon. Red wisps, black ink shards and embers come off it too.
 - It now spawns 110 units ahead of him (was 70).
+
+## Polish round 4: a darker crescent with a smoke edge
+
+- **The red edge glow is minimized.** The texture rim is now a thin dark-red line, the additive rim pass is down to about 12 %, the red haze is down to about 8 %, and the bright glints are gone. The red inside, the seals and the crown star are dimmed too.
+- **The edge is glowing black chaos smoke.** It is drawn every frame and rides with the crescent: 42 black puffs, each with a dim red under-glow, boil out along the whole edge. As it launches forward they stream back behind it, and more black smoke streams from behind the moon.
+- **The two tips are buried in black chaos smoke and black-and-red chaos flame:** tongues that lick outwards and back, flickering.
+- **The particle smoke is now mostly black and grey,** with red only rarely.
+- **Screenshots:** `screenshots/dax/18_*`.
