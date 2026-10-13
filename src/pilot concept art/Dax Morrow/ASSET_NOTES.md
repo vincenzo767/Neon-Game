@@ -266,3 +266,20 @@ The owner supplied an in-game mock-up of the ultimate and a written brief. The c
 - **Focus.** The two side cannons from the clones use lighter detail at 60 % brightness, so three cannons don't wash out the screen.
 - **Frame rate (headless).** 60 idle, 53 during the ultimate, 49 with three cannons.
 - **Screenshots:** `screenshots/dax/24_*`.
+
+## Polish round 6: solid crimson-and-black cannon (owner's `enhance-ultimate.png`)
+
+The owner asked for no transparency and full light, following `enhance-ultimate.png` (added to this folder).
+
+- **New atlas textures.**
+  - `dx_column`: an opaque crimson body with blazing red edges, black void bands down its length, red and pink-white streaks and a white-hot centre line. It tiles vertically and scrolls up the column.
+  - `dx_bar`: a solid bar used for opaque strokes.
+- **The column is drawn opaque** (alpha-blended at full alpha): the grid no longer shows through. Additive layers on top: black void currents, energy streaks, a thin white core line, jagged lightning edges and red chaos.
+- **Dense energy burst around it.** Solid crimson, pink-white and black puffs boil outward along both sides.
+- **Rings.** Thick solid black bands with a crimson rim and a red edge line, rotating and rising; they pass behind and in front of the beam.
+- **Getsuga blades.** Solid black brush strokes with black ribbons and a crimson-white leading edge.
+- **Spheres.** Black compression spheres on the axis (big one in the middle) and black orbs at the sides, each with a crimson rim and crawling red cracks. The rim is drawn under the sphere so the sphere stays black.
+- **Rocks.** Black rocks with a crimson edge stream up.
+- **Unchanged:** damage, width and duration.
+- **Frame rate (headless).** 60 idle, 51 during the ultimate, 44 with three cannons in focus.
+- **Screenshots:** `screenshots/dax/25_*`.

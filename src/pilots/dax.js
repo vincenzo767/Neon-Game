@@ -307,6 +307,8 @@ export default {
     ps.fCresBody = w.r.frame('dx_cres_body');
     ps.fCresRim = w.r.frame('dx_cres_rim');
     ps.fOrb = w.r.frame('dx_orb');
+    ps.fColumn = w.r.frame('dx_column');
+    ps.fBar = w.r.frame('dx_bar');
     ps.chains = [];
     ps.bolts = [];
     ps.arcs = [];
