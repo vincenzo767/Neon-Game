@@ -283,3 +283,12 @@ The owner asked for no transparency and full light, following `enhance-ultimate.
 - **Unchanged:** damage, width and duration.
 - **Frame rate (headless).** 60 idle, 51 during the ultimate, 44 with three cannons in focus.
 - **Screenshots:** `screenshots/dax/25_*`.
+
+## Polish round 7: darker cannon (owner: "more darker")
+
+- **Column texture.** Deep crimson body (#3c0006 to #6a000e) with dark-red edges and heavier black bands. Fewer and darker streaks; the centre line is red-pink instead of white.
+- **Energy burst.** Mostly black and dark-red puffs, with only a few pinks.
+- **Glow layers dimmed.** The aura, the light rays (now red), the streaks, the core line, the edge lightning and the ring glow are all dimmer.
+- **Rims.** Ring rims are a deeper crimson. Sphere and orb rims, compression rings and cross spikes are deep red instead of pink-white. Rocks have a dark-red edge.
+- **Still opaque.** Nothing became see-through.
+- **Screenshots:** `screenshots/dax/26_*`.

@@ -581,26 +581,26 @@ export function renderRods(p, b) {
  */
 function columnTex(ctx, w, h) {
   const g = ctx.createLinearGradient(0, 0, w, 0);
-  g.addColorStop(0, 'rgba(255,60,70,0)'); g.addColorStop(0.03, '#ff4a58'); g.addColorStop(0.09, '#d0001c');
-  g.addColorStop(0.3, '#9a0014'); g.addColorStop(0.5, '#c4001a'); g.addColorStop(0.7, '#9a0014');
-  g.addColorStop(0.91, '#d0001c'); g.addColorStop(0.97, '#ff4a58'); g.addColorStop(1, 'rgba(255,60,70,0)');
+  g.addColorStop(0, 'rgba(200,20,35,0)'); g.addColorStop(0.03, '#d01428'); g.addColorStop(0.09, '#7a0010');
+  g.addColorStop(0.3, '#3c0006'); g.addColorStop(0.5, '#6a000e'); g.addColorStop(0.7, '#3c0006');
+  g.addColorStop(0.91, '#7a0010'); g.addColorStop(0.97, '#d01428'); g.addColorStop(1, 'rgba(200,20,35,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
   // Black void bands down the length.
-  for (const [cx, bw, al] of [[0.2, 0.09, 0.85], [0.33, 0.06, 0.95], [0.42, 0.04, 0.7], [0.6, 0.05, 0.8], [0.69, 0.08, 0.95], [0.82, 0.07, 0.8]]) {
+  for (const [cx, bw, al] of [[0.16, 0.08, 0.95], [0.27, 0.07, 1], [0.37, 0.05, 0.9], [0.62, 0.06, 0.95], [0.72, 0.08, 1], [0.84, 0.07, 0.95]]) {
     const b = ctx.createLinearGradient((cx - bw) * w, 0, (cx + bw) * w, 0);
     b.addColorStop(0, 'rgba(6,0,2,0)'); b.addColorStop(0.5, `rgba(6,0,2,${al})`); b.addColorStop(1, 'rgba(6,0,2,0)');
     ctx.fillStyle = b; ctx.fillRect((cx - bw) * w, 0, bw * 2 * w, h);
   }
   // Energy streaks (wrapped so the texture tiles).
-  for (let k = 0; k < 60; k++) {
+  for (let k = 0; k < 34; k++) {
     const x = (0.08 + 0.84 * hash(k * 1.3)) * w, y = hash(k * 2.9) * h, L = (0.08 + 0.4 * hash(k * 3.7)) * h, lw = 0.4 + 1.6 * hash(k * 5.1);
-    ctx.fillStyle = k % 4 ? `rgba(255,${40 + 60 * hash(k)},${55 + 50 * hash(k)},0.9)` : 'rgba(255,215,222,0.9)';
+    ctx.fillStyle = k % 6 ? `rgba(${170 + 60 * hash(k)},${10 + 25 * hash(k)},${25 + 20 * hash(k)},0.85)` : 'rgba(255,120,135,0.8)';
     for (const yy of [y, y - h]) ctx.fillRect(x - lw / 2, yy, lw, L);
   }
   // White-hot centre line with a red glow.
   const c = ctx.createLinearGradient(w * 0.42, 0, w * 0.58, 0);
-  c.addColorStop(0, 'rgba(255,40,60,0)'); c.addColorStop(0.35, 'rgba(255,70,90,0.8)'); c.addColorStop(0.5, '#fff0f2');
-  c.addColorStop(0.65, 'rgba(255,70,90,0.8)'); c.addColorStop(1, 'rgba(255,40,60,0)');
+  c.addColorStop(0, 'rgba(255,40,60,0)'); c.addColorStop(0.35, 'rgba(200,20,40,0.7)'); c.addColorStop(0.5, '#ff8a98');
+  c.addColorStop(0.65, 'rgba(200,20,40,0.7)'); c.addColorStop(1, 'rgba(255,40,60,0)');
   ctx.fillStyle = c; ctx.fillRect(w * 0.42, 0, w * 0.16, h);
 }
 
@@ -668,13 +668,13 @@ function cannonRing(p, b, x, y, rx, ry, tilt, spin, a, front, thick = 1) {
     // Thick sections rotate around the ring; it never thins below a solid band.
     const w = (4 + Math.max(0, Math.sin(mid * 2 + spin)) ** 1.5 * 10) * thick;
     const [x0, y0] = pt(t0), [x1, y1] = pt(t1), ang = Math.atan2(y1 - y0, x1 - x0), L = Math.hypot(x1 - x0, y1 - y0) + 2;
-    b.draw(F.laser, (x0 + x1) / 2, (y0 + y1) / 2, L, w * 2.6, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.4 * a, 1);
+    b.draw(F.laser, (x0 + x1) / 2, (y0 + y1) / 2, L, w * 2.4, ang, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.35 * a, 1);
     if (fr) {
-      bar(b, fr, x0, y0, x1, y1, w + 5, [0.95, 0.06, 0.14], a);
+      bar(b, fr, x0, y0, x1, y1, w + 4, [0.7, 0.03, 0.09], a);
       bar(b, fr, x0, y0, x1, y1, w, [0.04, 0, 0.01], a);
     }
     const [ox0, oy0] = pt(t0, 1 + w / (2 * rx)), [ox1, oy1] = pt(t1, 1 + w / (2 * rx));
-    b.draw(F.laser, (ox0 + ox1) / 2, (oy0 + oy1) / 2, L, 2, ang, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.9 * a, 1);
+    b.draw(F.laser, (ox0 + ox1) / 2, (oy0 + oy1) / 2, L, 1.6, ang, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.6 * a, 1);
   }
 }
 
@@ -710,12 +710,12 @@ function cannonNode(p, b, x, y, s, a, seed) {
   const F = p.F, t = p.t, orb = p.ps.fOrb, per = 48, ph = ((t + seed * 17) % per) / per;
   const squeeze = ph < 0.75 ? 1 - 0.18 * (ph / 0.75) : 0.82 + 0.4 * ((ph - 0.75) / 0.25);
   const erupt = ph < 0.75 ? 0 : Math.sin(Math.PI * (ph - 0.75) / 0.25), sz = s * squeeze;
-  b.draw(F.glow, x, y, sz * 2, sz * 2, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], (0.3 + 0.5 * erupt) * a, 1);
+  b.draw(F.glow, x, y, sz * 2, sz * 2, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], (0.2 + 0.4 * erupt) * a, 1);
   for (let r = 0; r < 2; r++) {
     const q = ph < 0.75 ? 1 - ((ph / 0.75 + r * 0.5) % 1) : (ph - 0.75) / 0.25, rs = sz * (1.2 + 1.8 * q);
-    b.draw(F.ring, x, y, rs, rs * 0.85, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.55 * a * (ph < 0.75 ? q : 1 - q), 1);
+    b.draw(F.ring, x, y, rs, rs * 0.85, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.6 * a * (ph < 0.75 ? q : 1 - q), 1);
   }
-  b.draw(F.ring, x, y, sz * 1.18, sz * 1.18, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], a, 1);
+  b.draw(F.ring, x, y, sz * 1.14, sz * 1.14, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], a, 1);
   if (orb) { b.draw(orb, x, y, sz * 1.08, sz * 1.08, 0, 1, 1, 1, a, 0); b.draw(orb, x, y, sz, sz, t * 0.01, 1, 1, 1, a, 0); }
   // Crimson cracks crawling over the sphere.
   chaosCracks(p, b, (u, v) => {
@@ -724,8 +724,8 @@ function cannonNode(p, b, x, y, s, a, seed) {
   }, (t >> 1) + seed * 7, 3, a, 0.6);
   // Cross spikes and a white-red heart.
   const sp = sz * (2.2 + 2.2 * erupt);
-  b.draw(F.laser, x, y, sp, 3, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], a, 1);
-  b.draw(F.laser, x, y, sp * 1.4, 3, Math.PI / 2, PAL.hot[0], PAL.hot[1], PAL.hot[2], a, 1);
+  b.draw(F.laser, x, y, sp, 3, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], a, 1);
+  b.draw(F.laser, x, y, sp * 1.4, 3, Math.PI / 2, PAL.mid[0], PAL.mid[1], PAL.mid[2], a, 1);
   b.draw(F.laser, x, y, sp * 0.8, 1, 0, PAL.core[0], PAL.core[1], PAL.core[2], a, 1);
   b.draw(F.laser, x, y, sp * 1.1, 1, Math.PI / 2, PAL.core[0], PAL.core[1], PAL.core[2], a, 1);
   star(b, x, y, sz * (0.18 + 0.9 * erupt), a, 0);
@@ -748,7 +748,7 @@ export function renderCannon(p, b, x, y, wd, a, seed = 0) {
   for (let k = 0; k < (lite ? 5 : 12); k++) {
     const h = rd * 3.7 + k * 5.1, ry = y - len * (0.05 + 0.9 * hash(h)), s = hash(h + 1) < 0.5 ? -1 : 1;
     const ang = (s > 0 ? 0 : Math.PI) + s * (-0.6 + 0.9 * hash(h + 2)), L = 220 + 220 * hash(h + 3);
-    b.draw(F.laser, x + Math.cos(ang) * L / 2, ry + Math.sin(ang) * L / 2, L, 4, ang, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.8 * a * (0.4 + 0.6 * hash(h + 4)), 1);
+    b.draw(F.laser, x + Math.cos(ang) * L / 2, ry + Math.sin(ang) * L / 2, L, 3, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.6 * a * (0.4 + 0.6 * hash(h + 4)), 1);
   }
   // A dense energy burst around the column: crimson, pink-white and black puffs boiling outward (solid, not glow).
   const nb = lite ? 18 : 40;
@@ -756,10 +756,10 @@ export function renderCannon(p, b, x, y, wd, a, seed = 0) {
     const per = 34 + 20 * hash(k * 1.3), cyc = (t + hash(k * 2.1) * per) / per, ph = cyc % 1, n0 = cyc | 0, s = k % 2 ? 1 : -1;
     const by = y - len * hash(k * 3.3 + n0 * 1.7), bx = x + s * wd * (0.35 + (0.4 + 0.6 * hash(k * 5.9 + n0)) * ph);
     const sz = wd * (0.35 + 0.5 * ph) * (0.6 + 0.6 * hash(k * 7.1)), kind = k % 5;
-    const c = kind === 0 ? [0.05, 0, 0.01] : kind === 1 ? [1, 0.72, 0.76] : [0.85, 0.06, 0.12];
-    b.draw(F.glow, bx, by - ph * 30, sz, sz * 1.2, 0, c[0], c[1], c[2], (kind === 1 ? 0.6 : 0.9) * (1 - ph * ph) * a, 0);
+    const c = kind < 2 ? [0.04, 0, 0.01] : kind === 2 && k % 3 === 0 ? [0.8, 0.35, 0.4] : [0.45, 0.02, 0.06];
+    b.draw(F.glow, bx, by - ph * 30, sz, sz * 1.2, 0, c[0], c[1], c[2], 0.9 * (1 - ph * ph) * a, 0);
   }
-  b.draw(F.laser, x, (y + top) / 2, len, wd * 2.4, up, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.5 * a, 1);
+  b.draw(F.laser, x, (y + top) / 2, len, wd * 2.2, up, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.25 * a, 1);
   // Back halves of the rings.
   const nr = lite ? 3 : 5, rings = [];
   for (let r = 0; r < nr; r++) {
@@ -781,22 +781,22 @@ export function renderCannon(p, b, x, y, wd, a, seed = 0) {
     const off = (hash(s * 2.7 + seed) - 0.5) * cw * 0.75, wv = 6 + 8 * hash(s * 4.1);
     for (let yy = y; yy > top; yy -= 30) {
       const y1 = yy - 30, xo = off + Math.sin(yy * 0.02 + t * 0.15 + s) * 7, xo1 = off + Math.sin(y1 * 0.02 + t * 0.15 + s) * 7;
-      b.draw(F.laser, x + (xo + xo1) / 2, (yy + y1) / 2, 32, wv, Math.atan2(-30, xo1 - xo), DARK[0], DARK[1], DARK[2], 0.75 * a, 0);
+      b.draw(F.laser, x + (xo + xo1) / 2, (yy + y1) / 2, 32, wv, Math.atan2(-30, xo1 - xo), DARK[0], DARK[1], DARK[2], 0.95 * a, 0);
     }
   }
   for (let k = 0; k < (lite ? 8 : 18); k++) {
     const sy = y - ((hash(k * 3.1 + seed) * len + t * (20 + 14 * hash(k))) % len), sx = x + (hash(k * 1.7 + seed) - 0.5) * cw * 0.85;
-    b.draw(F.laser, sx, sy, 50 + 70 * hash(k * 2.3), 2.5, up, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.8 * a, 1);
+    b.draw(F.laser, sx, sy, 50 + 70 * hash(k * 2.3), 2, up, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.55 * a, 1);
   }
-  b.draw(F.laser, x, (y + top) / 2, len, cw * 0.1 * flick, up, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.6 * a, 1);
-  b.draw(F.laser, x, (y + top) / 2, len, cw * 0.04, up, PAL.core[0], PAL.core[1], PAL.core[2], a, 1);
+  b.draw(F.laser, x, (y + top) / 2, len, cw * 0.08 * flick, up, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.6 * a, 1);
+  b.draw(F.laser, x, (y + top) / 2, len, cw * 0.025, up, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.8 * a, 1);
   // Blazing, jagged edges with lightning.
   for (const s of [-1, 1]) {
     for (let yy = y; yy > top; yy -= 36) {
       const y1 = Math.max(top, yy - 36), j0 = (hash(yy * 0.1 + (t >> 1) + s) - 0.5) * 12, j1 = (hash(y1 * 0.1 + (t >> 1) + s) - 0.5) * 12;
       const x0 = x + s * cw * 0.5 + j0, x1 = x + s * cw * 0.5 + j1, L = Math.hypot(x1 - x0, y1 - yy) + 2, ang = Math.atan2(y1 - yy, x1 - x0);
-      b.draw(F.laser, (x0 + x1) / 2, (yy + y1) / 2, L, 6 * flick, ang, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.8 * a, 1);
-      b.draw(F.laser, (x0 + x1) / 2, (yy + y1) / 2, L, 2, ang, PAL.core[0], PAL.core[1], PAL.core[2], 0.8 * a, 1);
+      b.draw(F.laser, (x0 + x1) / 2, (yy + y1) / 2, L, 5 * flick, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.8 * a, 1);
+      b.draw(F.laser, (x0 + x1) / 2, (yy + y1) / 2, L, 1.5, ang, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.7 * a, 1);
     }
   }
   chaosCracks(p, b, (u, v) => [x + (u - 0.5) * cw * 1.6, top + v * len], (t / 3 | 0) + seed * 31, lite ? 4 : 9, a, 1.3);
@@ -817,8 +817,8 @@ export function renderCannon(p, b, x, y, wd, a, seed = 0) {
     const per = 120, ph = ((t + k * 40) % per) / per, s = k % 2 ? 1 : -1;
     const ox = x + s * wd * (0.8 + 0.5 * ph), oy = y - len * (0.15 + 0.7 * hash(k * 2.1 + Math.floor((t + k * 40) / per))) - ph * 40;
     const sz = wd * (0.2 + 0.25 * hash(k * 3.9)), fa = Math.min(1, Math.sin(Math.PI * ph) * 2) * a;
-    b.draw(F.glow, ox, oy, sz * 2, sz * 2, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.5 * fa, 1);
-    b.draw(F.ring, ox, oy, sz * 1.18, sz * 1.18, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], fa, 1);
+    b.draw(F.glow, ox, oy, sz * 1.8, sz * 1.8, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.5 * fa, 1);
+    b.draw(F.ring, ox, oy, sz * 1.14, sz * 1.14, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], fa, 1);
     b.draw(orb, ox, oy, sz * 1.05, sz * 1.05, 0, 1, 1, 1, fa, 0);
     b.draw(orb, ox, oy, sz, sz, 0, 1, 1, 1, fa, 0);
   }
@@ -826,12 +826,12 @@ export function renderCannon(p, b, x, y, wd, a, seed = 0) {
   if (sh) for (let k = 0; k < (lite ? 8 : 20); k++) {
     const sy = y - ((hash(k * 3.1 + seed) * len + t * (6 + 6 * hash(k * 0.7))) % len), side = hash(k * 4.1 + seed) < 0.5 ? -1 : 1;
     const sx = x + side * wd * (0.55 + 0.5 * hash(k * 6.3)), s = 10 + 14 * hash(k * 2.2);
-    b.draw(sh, sx, sy, s * 1.15, s * 0.95, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.8 * a, 0);
+    b.draw(sh, sx, sy, s * 1.12, s * 0.92, 0, 0.6, 0.02, 0.06, 0.8 * a, 0);
     b.draw(sh, sx, sy, s, s * 0.8, t * 0.04 * (hash(k) - 0.5) + k, DARK[0], DARK[1], DARK[2], a, 0);
   }
   // The muzzle: a big thick ring around the ship and a blazing flare.
   cannonRing(p, b, x, y + 4, wd * 1.15, wd * 0.28, 0, t * 0.15, a, false, 1.3);
-  b.draw(F.glow, x, y, wd * 1.2, wd * 0.8, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.6 * a, 1);
-  star(b, x, y, wd * 0.8, a, 0);
+  b.draw(F.glow, x, y, wd * 1.1, wd * 0.7, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.5 * a, 1);
+  star(b, x, y, wd * 0.55, 0.8 * a, 0, PAL.hot);
   cannonRing(p, b, x, y + 4, wd * 1.15, wd * 0.28, 0, t * 0.15, a, true, 1.3);
 }
