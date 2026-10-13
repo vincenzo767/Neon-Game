@@ -245,3 +245,24 @@ The black-flame rounds (commits `3c859ce` to `53a757f`) were rolled back to the 
 - **Smoke.** Ink-black, charcoal and some crimson smoke tears off the edge, peels off the tips and boils in the hollow. It lags behind as the slash moves. White-hot vapour and black ink shards come off it too.
 - **Frame rate.** Headless test: 59 FPS idle, 53 with the crescent, 57 with three in focus.
 - **Screenshot:** `screenshots/dax/23_crescent_getsuga.png`.
+
+## Polish round 5: Void Cannon, Gran Rey Cero × Getsuga Tenshō (owner's reference)
+
+The owner supplied an in-game mock-up of the ultimate and a written brief. The cannon was rebuilt live, with no images. Damage, width (150) and duration are unchanged.
+
+- **Column.**
+  - A crimson aura with an overexposed white-hot core and black void currents wavering up inside it.
+  - Light streaks race up the column, and its edges are jagged and flicker with lightning.
+  - The core breaks where the compression nodes sit, so the dark spheres show through.
+- **Rotating rings.** Five tilted ellipses rise up the column. Each has its back half behind the beam and its front half in front. Thick black-red plasma sections rotate around each ring, with thin threads between them.
+- **Getsuga blades.** Crescent blades sweep outward and upward from the column, alternating sides: a solid black-red body, a razor crimson-white leading edge and a trailing plasma ribbon. A new one launches every 16 steps.
+- **Compression nodes (Gran Rey Cero).** Four dark spheres sit on the axis, the middle one big. Each squeezes in with its rings pulled inward, then erupts: rings blast out and the cross spikes and star flare. Lightning crawls over them.
+- **Around it:**
+  - dark void orbs drift off both sides;
+  - red light rays radiate out;
+  - black rock debris streams up;
+  - a big tilted ring and flare surround the muzzle.
+- **Particles** (`cannonSpray`): black plumes hug the column, crimson vapour and grey-white wisps billow outward, and black rocks and sparks are flung away.
+- **Focus.** The two side cannons from the clones use lighter detail at 60 % brightness, so three cannons don't wash out the screen.
+- **Frame rate (headless).** 60 idle, 53 during the ultimate, 49 with three cannons.
+- **Screenshots:** `screenshots/dax/24_*`.

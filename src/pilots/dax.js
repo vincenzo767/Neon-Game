@@ -267,7 +267,7 @@ export default {
         const bm = w.beam(gx, gy - 20, gx, -30, u.w, 2.6, RED, 1, DMG_IGNORES_SHIELDS);
         bm.skin = true;
         w.cancelLine(gx, gy - 20, gx, -30, u.w * 1.1);
-        cannonSpray(w, gx, gy - 24, u.w);
+        cannonSpray(w, gx, gy - 24, u.w, gx !== p.x || gy !== p.y);
       }
       if (t % 30 === 0) { w.g.camera.addTrauma(0.2); w.r.post.shockwave(p.x, p.y - 60, 0.02, 0.02, 0.4); }
     },
