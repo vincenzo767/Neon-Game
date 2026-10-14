@@ -78,22 +78,65 @@ export const PILOT_ART = {
   },
   mira: {
     folder: 'Mira Solenne',
-    back: 'top_down_main.jpg',
+    // v2 (owner's brief, ASSET_NOTES.md "Rebuild v2"): the component mecha. Flies
+    // feet-first (the twin legs at the top never fire); the hand cannons point up.
+    back: 'top-down-enhance.png', // flat white background: the edge flood fill stops at the black outline
     front: 'top-down_front.png',
     portrait: 'pilot_portrait.jpg',
     glowRule: false,
+    // Rigged components (left side, source px; mirrored at `axis`). Draw order and
+    // motion live in src/pilots/miraRig.js (shared rig: src/pilots/art/mechaRig.js).
+    parts: {
+      axis: 681,
+      hole: 3,                 // @2x px: the body hole grows past each outline (no slivers)
+      list: [
+        { // hand cannon: dark barrel, gold housing, side tube and fist (under the shoulder armour)
+          name: 'gun', pivot: [415, 625],
+          poly: [[355, 322], [368, 312], [396, 313], [413, 328], [416, 352], [426, 440], [446, 446], [450, 520], [470, 560], [482, 600], [470, 630], [420, 640], [372, 636], [348, 616], [336, 592], [332, 560], [334, 470], [346, 452], [348, 340]],
+        },
+        { // inner array: the long and short gold blades and the pale blade between them (behind the cannon);
+          // 2 sections: the long blade's upper half telescopes into the root
+          name: 'inner', pivot: [330, 625], exclude: ['gun'],
+          split: [[334, 300], [190, 370]],
+          poly: [[216, 136], [232, 146], [264, 205], [296, 262], [318, 318], [342, 328], [356, 350], [352, 450], [338, 470], [334, 560], [338, 600], [342, 626], [318, 630], [292, 618], [262, 555], [232, 488], [204, 432], [186, 394], [188, 380], [200, 382], [210, 330], [206, 160]],
+        },
+        { // outer array: the white side blade with its gold edges and lavender underside
+          name: 'outer', pivot: [300, 640], exclude: ['inner', 'gun'],
+          split: [[190, 480], [120, 610]],
+          poly: [[16, 462], [30, 457], [150, 518], [240, 560], [300, 598], [318, 628], [298, 668], [284, 700], [278, 732], [250, 728], [205, 672], [170, 635], [100, 566], [40, 500]],
+        },
+      ],
+    },
     anchors: {
-      hitbox: [507, 760],      // chest centre: lands on player.x/y
-      head: [507, 1120],
-      gun: [507, 480],         // chest gun (central spike tip): needle-fan origin
-      armL: [215, 625],        // arm-gun barrel tips: outermost needles at tier 3+
-      armR: [800, 625],
-      ventL: [180, 1495],      // ladder-vent fins: wide back plumes
-      ventR: [840, 1495],
-      packL: [480, 1315],      // centre exhaust under the head
-      packR: [535, 1315],
-      footL: [400, 1255],      // gold skirt plates: foot flames
-      footR: [615, 1255],
+      hitbox: [681, 600],      // chest centre: lands on player.x/y
+      chest: [681, 565],       // chest emitter: tier-1 needle fan + focus needle stream; never the feet
+      head: [681, 730],
+      muzzleL: [378, 318],     // hand-cannon bores: the needle fan from tier 2
+      muzzleR: [984, 318],
+      chanL: [380, 410],       // dark barrel: energy channel
+      chanR: [982, 410],
+      gripL: [420, 520],       // fists on the cannons
+      gripR: [942, 520],
+      elbowL: [415, 625],
+      elbowR: [947, 625],
+      innerPivotL: [330, 625], // inner array root / joint / tip
+      innerPivotR: [1032, 625],
+      innerJointL: [265, 330],
+      innerJointR: [1097, 330],
+      innerTipL: [217, 140],
+      innerTipR: [1145, 140],
+      outerPivotL: [300, 640], // outer blade root / joint / tip
+      outerPivotR: [1062, 640],
+      outerJointL: [155, 545],
+      outerJointR: [1207, 545],
+      outerTipL: [20, 462],
+      outerTipR: [1342, 462],
+      ventL: [432, 1138],      // ladder-vent fins: wide back plumes
+      ventR: [930, 1138],
+      packL: [668, 1040],      // backpack spike: centre exhaust
+      packR: [694, 1040],
+      footL: [580, 870],       // gold skirt plates: foot flames
+      footR: [782, 870],
     },
   },
   bruno: {
