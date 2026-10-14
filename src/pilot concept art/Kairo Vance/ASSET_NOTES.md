@@ -141,3 +141,93 @@ matches the brief's "wing-binder with rifle".
 - Normal lances now leave from the **chest gun**: `gunL/R` ≈ (445, 540) / (577, 540), either side of the central spike. That is 8 units apart at size 90, the same spacing as the old twin lances, so wave-clear coverage is unchanged.
 - The focus beam starts at its tip, `beam` ≈ (511, 518).
 - The rifles still fire the tier-4 extras.
+
+---
+
+# Rebuild v2 (owner's brief, 2026-10-14): component mecha, tier wings, cannon and chest-beam VFX
+
+Branch `art/kairo-v2`, made from `art/dax-test`, which holds every earlier art branch and the shared art code.
+
+## Step 1: what the code does today and why it looks inconsistent
+
+- **Sprite.** `top_down_main.png` (older art) is one image. `mechaArt.js` cuts it into a body plus one wing layer per side (rifle + arm + binder, pivot at the shoulder). The wing layers only flare or bank, and **every tier looks the same**: tiers only change the shots. The procedural `drawShip()` tiers are the only "tier art", and they're the fallback.
+- **Weapons.**
+  - Normal lances leave from a **chest gun** (`gunL/R`, 8 units apart). That anchor exists because the earlier art had no hand guns.
+  - Tier-4 extras leave from the **rifle tips** (`rifleL/R`).
+  - Tiers 3–4 add floating **option pods** (`k_pod`) that fire shard shots.
+- **Focus.** `fire()` declares a continuous beam every step from the `beam` anchor (the chest gun tip). There's no charge or recovery: it simply appears and vanishes.
+- **FX.** These come from the shared `mechaFx.js`: lance sprites, a muzzle flare, a beam and a charge orb, and hit sparks. There's no recoil, no barrel energy, no tier transition and no armour lighting.
+- **Tier state** is `p.tier` (1–4, from the power value). It can go **down** as well as up: half a tier is lost on death, and the ultimate costs power. Transformations must therefore also run in reverse.
+- **Renderer.** WebGL `SpriteBatch` (premultiplied; per-sprite alpha or additive), particle pools (`fxHigh`), a fixed-step update (60 Hz), post-processing bloom and shockwaves. Pilot art lives in its own texture (`mechaArt` layers and extras). Everything below uses this; no new renderer is involved.
+
+## Step 1: the new art
+
+| File | Size | Transparency | Use |
+|---|---|---|---|
+| `top-down-enhance.png` | 1362×1155 | **none**: painted checkerboard (RGB) → `bg: 'checker'` (as for Lin and Dax) | new in-game sprite |
+| `Top-Down-front-new.png` | 1312×1199 | real alpha | new select-card front view and cut-in |
+
+- **Facing (checked).** The top of the image is the front. The mecha flies **feet-first**, as with the old art: the twin red-tipped **feet** are at the top centre and must never fire. Both **hand cannons** point up, with their bores at the top. The **blue chest plate** sits mid-body, with the **head** below it (red V-fin, cyan eye at about (655, 720)). The backpack spikes trail at the bottom.
+- **Symmetry.** The axis is x ≈ 655 (left bore 400, right bore 910). The feet are slightly offset (the left foot is longer); everything else mirrors.
+- **Scale.** The art spans y 55–1135 (≈1080 px). At the standard 90 units tall that is **0.083 units/px**. With both wing arrays deployed, the full silhouette is ≈112 units wide; with the wings retracted it is ≈60. The **hitbox stays 2.4 at the chest**, independent of the wings.
+- **Plan overlay:** `screenshots/kairo/v2/step1_plan_overlay.png`.
+
+### Proposed component split (source px; the right side mirrors at x = 655)
+
+| Component | Covers | Pivot / attachment | Motion |
+|---|---|---|---|
+| **body** | legs and feet, torso, chest plate, head, shoulder armour, gold/navy binder panels, lower fins, backpack spikes | — | hover bob, pitch, bank, stabilisation |
+| **gunL/R** | cannon + fist + forearm (blue energy channel on the gun) | elbow ≈ (420, 615); grip ≈ (462, 410) | recoil along the barrel, recovery, sway; the channel and muzzle glow are live |
+| **innerL/R** | the blade behind each cannon (tip ≈ (190, 168)) | root ≈ (370, 600) | **T3**: unfolds from behind the shoulder in 2 sections (root swings out, tip slides out), locks, flashes |
+| **outerL/R** | the long outermost blade (tip ≈ (8, 300)) | root ≈ (300, 860) | **T4**: unfolds in 2 sections (rotate out, extend, lock) |
+
+**Retracted** blades (tiers 1–2, and the outer blades at tier 3) fold down and back under the shoulder armour. They're telescoped short, so only their ends show behind the body: a compact, physical "base wing" look, not hidden pieces.
+
+### Attachment points (all local to the sprite and moving with their component)
+
+| Point | Where (source px) | Used for |
+|---|---|---|
+| `muzzleL/R` | (400, 338) / (910, 338) | cannon shots, muzzle flash, charge pulses (they follow recoil) |
+| `gripL/R`, `elbowL/R` | (462, 410), (420, 615) / mirrored | hand grip and forearm pivot |
+| `innerPivotL/R`, `outerPivotL/R` | (370, 600), (300, 860) / mirrored | wing pivots |
+| `innerTipL/R`, `outerTipL/R` | (190, 168), (8, 300) / mirrored | wing-edge energy, locking flashes (and option shots: question 3) |
+| `chest` | (655, 600), the blue chest core | **focus beam origin** and charge effects; also the hitbox |
+| `thrL/R` | ≈ (612, 1000) / (698, 1000), at the backpack's base | thruster plumes and exhaust (refined with F9 in Step 3) |
+| `footL/R` | (632, 64) / (687, 106) | reference only: **never fire** |
+
+### State machine (centralised in `kairoRig.js`, all time-based at 60 Hz steps)
+
+- **Tier configuration:** `T1 base` → `T2 enhanced` → `T3 inner deploying → inner locked` → `T4 outer deploying → full power`. The same steps run in reverse on a tier loss.
+- **Cannons:** idle → charge pulse → fire (flash + recoil) → recovery. The left and right cannons are staggered.
+- **Focus:** charging → beam active → recovery (collapse to the chest).
+- **Data:** attachment coordinates, per-tier visibility and wing angles, timings and VFX intensity all go in one config table.
+
+### Pipeline work this needs
+
+- `process-art.mjs`: generalise the `wings` option to named, mirrored **parts** (gun, innerWing, outerWing, each with an optional 2-section split) so one config yields every layer mask.
+- `mechaArt.js`: draw an ordered **component list** with per-component transforms supplied by the pilot's rig.
+  - The other pilots keep using today's body + wing path, unchanged.
+  - **Draw order:** outer wings → inner wings → body → cannons (hands over the guns, as painted).
+
+## Step 1: questions for the owner (gameplay effects)
+
+1. **Where normal shots come from.** The brief puts them on the hand cannons, which are **42 units apart**. Today's lances leave the chest gun 8 units apart.
+   - **A (recommended).** Each cannon's shot angles slightly inward so it crosses its old lane about 170 units ahead (as Bruno's arm guns do). Coverage and DPS stay the same.
+   - **B.** Straight parallel shots from each muzzle. That leaves a gap in the middle: point-blank enemies dead ahead can be missed.
+   - **C.** Straight shots, plus wider lances to cover the gap (a DPS change).
+2. **The focus beam's charge.** The brief asks for charge → beam → recovery.
+   - **A (recommended).** A short 0.2 s charge from the chest before the beam deals damage, then a 0.15 s collapse on release (visual only). Tapping focus loses a sliver of DPS.
+   - **B.** The beam deals damage immediately; the charge effect plays over its first 0.2 s. No gameplay change, but the beam shows during the charge.
+   - **C.** Holding longer charges a stronger beam (a new mechanic).
+3. **Tier 3–4 option pods** (the floating `k_pod`s that fire shard shots).
+   - **A (recommended).** Replace them with emitters at the **inner wing tips (T3)** and **outer wing tips (T4)**: same shot count and damage, now attached to the wings. The lanes are wider than the pods' were.
+   - **B.** Keep the floating pods as they are, alongside the new wings.
+4. **Tier-4 extra lances** (from the rifles, which the new art doesn't have).
+   - **A (recommended).** They fire from the two cannons, angled outward as before.
+   - **B.** They fire from the outer wing tips.
+
+Also planned:
+- `Top-Down-front-new.png` replaces the select-card front view and cut-in. The portrait stays.
+- The default size stays **90 units**.
+- The special, bomb and ultimate are unchanged.
+- Transformation sequences are visual only: about 0.6 s at tier 3 and 0.9 s at tier 4, with no invulnerability and no input lock.
