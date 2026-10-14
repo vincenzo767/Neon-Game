@@ -233,11 +233,11 @@ It also writes `<id>_wings@2x.png` and `<id>_wings_outline@2x.png`: the sprite w
 - On the 4096 atlas, Kairo takes about 7 % of the space.
 - `main` already falls back to 0.85 texel scale on the 2048 atlas.
 
-**Component mecha (`parts` in `art.config.mjs` → `rig: true`; Kairo v2).** For art whose parts move far: wings that fold away, cannons that recoil, articulated sections.
+**Component mecha (`parts` in `art.config.mjs` → `rig: true`; Kairo v2, Mira v2).** For art whose parts move far: wings that fold away, cannons that recoil, articulated sections.
 - **Config.** In source pixels, a mirror `axis` and a `list` of parts `{ name, poly, pivot, split?, exclude?, overlap? }` (left side). Optional `hole` and `grow` (@2x px).
   - `split: [a, b]` cuts a part in two along a line: `<name>Root<L|R>` holds the pivot; `<name>Tip<L|R>` gets an `overlap` tab (8 px) under the root.
   - `exclude` names parts drawn over this one; their pixels never go into it.
-- **Split.** Each layer is its polygon grown by `hole + grow` px, soft-edged, minus `exclude`. The body loses each polygon grown by `hole` (+ the outline width in the outline variant). At rest the layers cover their holes exactly; moved anywhere, they leave no slivers. Draw polygons on the part's own outline; `hole` (3 for Kairo) absorbs small misses.
+- **Split.** Each layer is its polygon grown by `hole + grow` px, soft-edged, minus `exclude`. The body loses each polygon grown by `hole` (+ the outline width in the outline variant). At rest the layers cover their holes exactly; moved anywhere, they leave no slivers. Draw polygons on the part's own outline; `hole` (3 for Kairo and Mira) absorbs small misses. A flat white background needs no `bg` setting: the default edge flood fill stops at the art's black outline (Mira).
 - **Runtime.** `createMechaArt({ ..., rig })` with:
   - `order`: layer names back to front, including `'body'`;
   - `pose(p, name)` → `{ rot, tx, ty, s, ox, oy, alpha, hide }` (slide in the layer's frame, then rotate/scale about its pivot, then offset; @2x px);
@@ -245,7 +245,15 @@ It also writes `<id>_wings@2x.png` and `<id>_wings_outline@2x.png`: the sprite w
   - `before(p, b, api, name)`: drawn just under a layer, using that layer's texture only (e.g. `api.drawLayer` halos);
   - `overlay(p, b, api)`: one pass of atlas FX over the finished mecha.
   - Keep atlas FX out of the per-layer hooks: every texture switch flushes the sprite batch. Interleaving dropped Kairo's tier-4 storm from 60 to about 22 FPS.
-- The wing animation (`wingPose`, `flap`) doesn't apply to rigged pilots; the pilot's rig drives every pose (Kairo: `src/pilots/kairoRig.js`).
+- The wing animation (`wingPose`, `flap`) doesn't apply to rigged pilots; the pilot's rig drives every pose.
+- **Shared rig (`src/pilots/art/mechaRig.js`).** `createRig({ inner, outer, recoil, recover, breathe?, gunLift? })` gives:
+  - the tier wing state machines (inner deploys at tier 3, outer at tier 4; deploy inner then outer, retract outer then inner; lock flashes and transition-wave timers);
+  - cannon recoil and armour-flash timers;
+  - the layer poses: blades swing about their pivot with an overshoot lock, and the tip telescopes; cannons recoil, sway and lag when banking.
+- **Pilot-specific logic stays in the pilot's own `<pilot>Rig.js`** around `rig.step()`:
+  - Kairo (`kairoRig.js`): the chest beam's charge, active and recovery states, which gate its damage.
+  - Mira (`miraRig.js`): a visual focus cycle around her unchanged needle stream.
+  - Each pilot keeps its rig state in its own `p.ps` key (`kr`, `mr`).
 
 ---
 

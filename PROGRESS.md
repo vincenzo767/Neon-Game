@@ -23,7 +23,7 @@
 | **Art: Lin** | Hand-made art and a redesigned kit for Lin Hayase (Petal Engine), an emerald crystal knight on butterfly wings (branch `art/lin-test`, on top of `art/oduya-test`, not merged) | 🔍 In review |
 | **Art: Dax** | Hand-made art and a Legendary void kit for Dax Morrow (Overclock), a black-and-red void knight (branch `art/dax-test`, on top of `art/lin-test`, not merged) | 🔍 In review |
 | **Art: Kairo v2** | Component mecha rebuild for Kairo Vance: new top-down art, tier-deployed inner and outer wings, hand cannons, chest focus beam (branch `art/kairo-v2`, on top of `art/dax-test`, not merged) | 🔍 In review |
-| **Art: Mira v2** | Component mecha rebuild for Mira Solenne: new gold-and-white top-down art, chest fire at T1, hand cannons from T2, tier-deployed inner and outer blades, chest focus attack (branch `art/mira-v2`, on top of `art/kairo-v2`, not merged) | ⏸ Step 1 checkpoint |
+| **Art: Mira v2** | Component mecha rebuild for Mira Solenne: new gold-and-white top-down art, chest fire at T1, hand cannons from T2, tier-deployed inner and outer blades, chest focus attack (branch `art/mira-v2`, on top of `art/kairo-v2`, not merged) | 🔍 In review |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -878,6 +878,24 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Dax%20Morrow/ASS
 - **FX.** Drawn live after the owner's references, with no cut-out images (polish round): straight eye-beam style void beams, real-smoke ghosts and clones spread wide, a starry black crescent at medium speed, and a cosmic void column for the cannon.
 - **Frame rate.** Storm: about 57 FPS with art versus 53 procedural.
 
+## Art: Mira v2 (branch `art/mira-v2`)
+
+Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Mira%20Solenne/ASSET_NOTES.md), "Rebuild v2".
+
+- **Art.** `top-down-enhance.png` (white background removed) as a **component mecha**: hand cannons, the gold inner blade pair and the white outer blades (two sections each), and the body. Feet-first; the feet never fire.
+- **Tiers.**
+  - T1 chest fire, with both arrays folded down beside the ladder fins.
+  - T2 both hand cannons.
+  - T3 the inner blades deploy.
+  - T4 the outer blades deploy, with the full-power halo.
+  - On a tier loss the blades retract outer first, then inner.
+- **Weapons (approved 1 A, 2 B, 3 A, 4 A).**
+  - The needle fan leaves the chest at T1 and the two cannon muzzles from T2; the T3 centre needle alternates cannons.
+  - Focus is still the homing needle stream, now from the chest, with a visual charge and recovery. There is no beam.
+  - The drones are unchanged.
+- **Balance.** Shot DPS is unchanged (28 / 41 / 55 / 68). Focus is 39 / 56 / 74 / 91 versus 39 / 57 / 75 / 92; the only cost is the 10-step charge on focus engage.
+- **Shared rig.** `art/mechaRig.js` is the shared part; Kairo's beam logic stays in `kairoRig.js`. Kairo's rig output is byte-identical after the refactor.
+
 ## Art: Kairo v2 (branch `art/kairo-v2`)
 
 Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Kairo%20Vance/ASSET_NOTES.md), "Rebuild v2".
@@ -1073,4 +1091,4 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
-6. Pilot art: review and merge `art/kairo-v2` (it contains `art/dax-test`, `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.
+6. Pilot art: review and merge `art/mira-v2` (it contains `art/kairo-v2`, `art/dax-test`, `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.
