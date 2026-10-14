@@ -105,3 +105,115 @@ Same method as Kairo: feathered polygons plus the exact alpha complement for the
 ## Wrap-up
 
 Approved by the owner after the Step 6 checkpoint. The branch `art/mira-test` stays unmerged until the owner says so.
+
+---
+
+# Rebuild v2: component mecha (branch `art/mira-v2`)
+
+Owner's brief (2026-10-15): rebuild the Halo Sprite from the new
+`top-down-enhance.png` as a component mecha with tier-deployed wings, the
+chest firing at tier 1, both hand cannons from tier 2, and a chest focus
+attack. Keep the gold needle glow and the gold thrusters. Built on the
+component-mecha path from Kairo v2 (`ART_PIPELINE.md`, "Component mecha").
+Branch `art/mira-v2` sits on top of `art/kairo-v2`.
+
+## Step 1: inspection
+
+### New image
+
+| File | Size | Real transparency? | What it shows | Problems |
+|------|------|--------------------|---------------|----------|
+| `top-down-enhance.png` | 1362×1155 PNG RGB | **No**: flat white background (254) | The Halo Sprite redrawn: white/silver armour, gold plating, navy joints, a heavy black outline. Mirror-symmetric about **x ≈ 681**. Wider and more detailed than `top_down_main.jpg`. | The background is white and so is the armour. A new `bg: 'white'` mode floods from the edges and stops at the black outline; enclosed white pockets get `holes` seeds. |
+
+`top-down_front.png` (select card, cut-in) and the portrait stay as they are.
+No new front view was supplied.
+
+### Facing (checked on the art)
+
+Forward is **up**, as before. The two dark cannon barrels have their bore caps
+at the top (y ≈ 318). The ladder-vent exhaust fins and the dark backpack spike
+are at the bottom. The twin segmented legs are at the top: she flies
+feet-first, as in the old sprite. **The feet never fire.**
+
+### Components (left side, source px; the right side mirrors at x 681)
+
+| Part | Where | Role |
+|------|-------|------|
+| **Hand cannon** | Dark segmented barrel in a gold housing, bore (378, 318) down to the forearm and fist at about (400, 600) | Tier 2–4 normal fire. Pivot at the elbow, about (400, 610). |
+| **Inner blade array** | The two gold blades beside the cannon: the long one (tip 215, 140) and the short one (tip 190, 285), roots at about (340, 600) | Folded at T1–T2, deployed at T3–T4. |
+| **Outer blade array** | The white blade with its gold edge (tip 22, 467) and its lavender underside, root at about (300, 630) | Folded at T1–T3, deployed at T4. |
+| **Body** | Legs (top), hips with the gold V, the chest, the gold head crest, shoulder armour, skirt plates, ladder fins and backpack spike | Hover, bank and breathing. |
+| **Chest emitter** | Small gold spike and dark slot at the centre of the chest plate, about (681, 565) | Tier 1 fire and the focus attack. |
+
+### Anchor estimates (source px)
+
+| Anchor | Left | Right | Notes |
+|--------|------|-------|-------|
+| `hitbox` | (681, 600) | — | Chest centre: lands on `player.x/y`. |
+| `chest` | (681, 565) | — | Tier 1 needle origin and focus origin. Never the feet. |
+| `muzzleL/R` | (378, 318) | (984, 318) | Cannon bores, about 20 units ahead of the hitbox and 25 units out. |
+| `gripL/R` | (420, 520) | (942, 520) | Fist on the cannon. |
+| `innerPivot/Tip` | (340, 600) / (215, 140) | mirrored | |
+| `outerPivot/Tip` | (300, 630) / (22, 467) | mirrored | |
+| `ventL/R` | (432, 1138) | (930, 1138) | Ladder-fin ends: the existing wide gold plumes. |
+| `packL/R` | (668, 1040) | (694, 1040) | Backpack spike tip: the existing centre plume. |
+| `footL/R` | (580, 870) | (782, 870) | Gold skirt plates: the existing small flames. |
+| feet | (650, 40) | (712, 40) | **Never fire.** |
+
+### What Mira has today (baseline, `tools/dps.mjs mira`, boss DPS)
+
+| Mode | T1 | T2 | T3 | T4 |
+|------|----|----|----|----|
+| Shot (needle fan, 2 + tier needles, homing) | 28 | 41 | 55 | 68 |
+| Focus (tight hard-homing needle fan) | 39 | 57 | 75 | 92 |
+
+- **Options:** 1–4 gold drones that fire homing needles.
+- **Special:** Shield Orbs. **Bomb:** Halo Bloom. **Ultimate:** Prism Lattice.
+- **Effects kept:** the gold diamond needles with their trail, the muzzle flares, the hit sparks, and the gold plumes (vents, centre exhaust, skirt).
+- **Mira has no focus beam today.** Her focus is a needle stream, so a chest
+  beam is a gameplay change and needs your call (decision 2).
+
+## Proposed decisions (Step 1 checkpoint)
+
+1. **Normal-fire origins.**
+   - **T1:** the whole fan from the chest emitter. This is what she does today.
+   - **T2–T4:** the fan splits across the two cannon muzzles, half from each. At T3 (5 needles) the centre needle alternates cannons per volley.
+   - Needle look, count, speed, homing, cadence and damage are all unchanged. Lanes are re-aimed so that coverage stays the same.
+2. **Focus attack from the chest.**
+   - **A (recommended):** a chest beam with a 0.2 s charge, a live beam, and a collapse back into the chest. Its boss DPS is tuned to today's focus (39 / 57 / 75 / 92, minus the charge). The drones keep firing homing needles, so focus still covers moving targets.
+   - **B:** keep the homing needle stream, now from the chest. Add the charge, active and recovery VFX around it, with no beam.
+3. **Drones (options).**
+   - **A (recommended):** keep them. She is a drone mecha, and the brief doesn't mention them.
+   - **B:** replace them with wing-tip emitters, as Kairo's were.
+4. **Size and hitbox.** 90 units tall, the same as Kairo v2. The hitbox stays 2.6.
+   - Folded (T1–T2), she is about 56 units wide. Fully deployed (T4), about 106.
+   - The wings are visual only and never touch collision.
+
+## Implementation plan (Steps 2–6)
+
+- **Step 2. Process the art.** `bg: 'white'` removal, then `parts`:
+  - the cannon;
+  - the inner array, split into root and tip;
+  - the outer array, split into root and tip;
+  - the body.
+  New anchors. The front view and portrait are unchanged.
+- **Step 3. Rig.** Kairo's state machine (fold/deploy, recoil, focus states) moves to a shared `art/mechaRig.js` that both pilots configure. Kairo's behaviour must stay identical.
+  - Folded: both blade arrays swing down behind the shoulders.
+  - T3: the inner blades rotate, extend and lock.
+  - T4: the outer blades do the same.
+  - On a tier loss, they retract outer first, then inner.
+- **Step 4. Weapons.**
+  - Chest and cannon origins wired through rig-attached anchors.
+  - Recoil, barrel channel pulses and muzzle flashes, all in the existing gold needle style.
+  - A chest pulse at T1.
+- **Step 5. FX.**
+  - The focus cycle.
+  - Wing conduits, lock flashes and the T4 transformation.
+  - The gold plumes, kept at their propulsion points.
+  - Armour-edge light.
+- **Step 6. Test in the running game.**
+  - All four tiers and their deployment and retraction.
+  - Firing origins and the focus cycle.
+  - Special, bomb and ultimate.
+  - DPS against the baseline and the 1,500-bullet storm FPS.
+  - The other pilots and Kairo, checked for regressions.

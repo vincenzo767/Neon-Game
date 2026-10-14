@@ -23,6 +23,7 @@
 | **Art: Lin** | Hand-made art and a redesigned kit for Lin Hayase (Petal Engine), an emerald crystal knight on butterfly wings (branch `art/lin-test`, on top of `art/oduya-test`, not merged) | 🔍 In review |
 | **Art: Dax** | Hand-made art and a Legendary void kit for Dax Morrow (Overclock), a black-and-red void knight (branch `art/dax-test`, on top of `art/lin-test`, not merged) | 🔍 In review |
 | **Art: Kairo v2** | Component mecha rebuild for Kairo Vance: new top-down art, tier-deployed inner and outer wings, hand cannons, chest focus beam (branch `art/kairo-v2`, on top of `art/dax-test`, not merged) | 🔍 In review |
+| **Art: Mira v2** | Component mecha rebuild for Mira Solenne: new gold-and-white top-down art, chest fire at T1, hand cannons from T2, tier-deployed inner and outer blades, chest focus attack (branch `art/mira-v2`, on top of `art/kairo-v2`, not merged) | ⏸ Step 1 checkpoint |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
