@@ -2,14 +2,21 @@ import { WORLD_W, WORLD_H } from '../core/constants.js';
 import { mirrorPath, chrome, neonLines, outline, canopy, glowDot, drawBolt } from '../fx/art.js';
 import { FADE_OUT } from '../fx/Particles.js';
 import { kairoArt, LOOK, PAL, anchor, anchorData, unitsPerPx, kairoFrames, animatedAnchor, buildKairoSprites, renderMecha, animate, exhaust } from './kairoArt.js';
-import { LANCE_R, SHARD_TAG, renderShots, renderBeam, renderChargeOrb, muzzleFlash, hitSpark } from './kairoFx.js';
+import { LANCE_R, SHARD_TAG, renderShots, renderBeam, muzzleFx, hitSpark, rigEvents, beamParticles } from './kairoFx.js';
+import { rigState, step as rigStep, fired } from './kairoRig.js';
 
 // KAIRO VANCE — STORMLANCE (interceptor mecha)
 // Piercing rail lasers · Focus: continuous rail beam · Special: phase-dash
 // Bomb: Arc Cascade · Ultimate: Orbital Rail Strike Grid
 //
-// KAIRO ART TEST: the hand-made mecha art (kairoArt.js) replaces drawShip()
-// when it loads; drawShip() stays as the automatic fallback.
+// KAIRO ART (v2, ASSET_NOTES.md "Rebuild v2"): a component mecha (kairoArt.js
+// + kairoRig.js + kairoFx.js) replaces drawShip() when the art loads;
+// drawShip() stays as the automatic fallback. Approved gameplay changes:
+// lances leave the two hand-cannon muzzles, each aimed to cross its old lane
+// REF units ahead (coverage and damage kept); the tier-3/4 option pods became
+// emitters on the inner / outer wing tips (same shots and damage, aimed at the
+// old pod lanes); the focus beam leaves the blue chest plate after a 0.2 s
+// charge. The feet never fire.
 
 const CYAN = [0.3, 0.95, 1.0];
 const UP = -Math.PI / 2;
@@ -63,25 +70,27 @@ function drawShip(ctx, w, h, tier) {
   ctx.fillStyle = '#33ff99'; ctx.fillRect(cx + 19.4, 36, 1.6, 3);
 }
 
-function drawPod(ctx, w, h) {
-  const cx = w / 2;
-  mirrorPath(ctx, cx, [0, 1, 3, 5, 4, 13, 2, 15, 0, 15]);
-  ctx.fillStyle = chrome(ctx, cx - 4, cx + 4); ctx.fill(); outline(ctx, 0.6);
-  glowDot(ctx, cx, 3, 2.4, 'rgba(90,240,255,1)');
-}
-
 function railSprite(ctx, w, h) { drawBolt(ctx, w, h, 'rgba(90,240,255,0.9)'); }
 
-// Art test (approved gameplay change): lances leave from the chest gun (and
-// the rifle tips at tier 4) instead of the nose. The feet never fire. Each lance is aimed at the point
-// its old counterpart reached REF units ahead, so the covered area matches.
+// Lances leave the hand-cannon muzzles. Each is aimed at the point its old
+// counterpart reached REF units ahead, so the covered area matches.
 // Old pattern per side s = ±1: [x, y, outward angle, damage, from tier].
 const LANCES = [
-  { from: 'gun', ox: 4, oy: -20, d: 0, dmg: 1.2, tier: 1 },
-  { from: 'gun', ox: 10, oy: -10, d: 0.07, dmg: 0.9, tier: 2 },
-  { from: 'rifle', ox: 16, oy: -4, d: 0.16, dmg: 0.8, tier: 4 },
+  { ox: 4, oy: -20, d: 0, dmg: 1.2, tier: 1 },
+  { ox: 10, oy: -10, d: 0.07, dmg: 0.9, tier: 2 },
+  { ox: 16, oy: -4, d: 0.16, dmg: 0.8, tier: 4 },  // tier-4 extras: angled outward, as before
 ];
-const REF = 240;
+const REF = 340;     // lances: the twin streams stay near their old lanes from 120 to 360 ahead
+
+// The old option pods (tiers 3-4): offsets from the ship [unfocused, focused].
+// The wing-tip emitters aim each shot at its pod's old lane POD_REF units ahead
+// (closer than REF: the tips sit wide, and the pods' close-range coverage is kept).
+const POD_REF = 170;
+const POD_LANES = {
+  3: [[[-22, 6], [22, 6]], [[-11, -4], [11, -4]]],
+  4: [[[-20, 6], [20, 6], [-34, 16], [34, 16]], [[-11, -4], [11, -4], [-20, 6], [20, 6]]],
+};
+const TIPS = { 3: ['innerTipL', 'innerTipR'], 4: ['innerTipL', 'innerTipR', 'outerTipL', 'outerTipR'] };
 
 // Rail line positions for the ultimate's strike grid.
 const GRID_COLS = [60, 132, 204, 276, 348, 420];
@@ -92,7 +101,7 @@ export default {
   name: 'KAIRO VANCE',
   vehicle: 'STORMLANCE',
   role: 'Interceptor Mecha',
-  bio: 'Precinct 9\'s fastest pursuit pilot, flying the Stormlance: a white and gunmetal interceptor mecha with red armour and twin rail rifles. Kairo flew syndicate courier runs before he flipped, and he still treats every red light as a suggestion.',
+  bio: 'Precinct 9\'s fastest pursuit pilot, flying the Stormlance: a white, navy and gold interceptor mecha with twin hand cannons and wing arrays that unfold as it powers up. Kairo flew syndicate courier runs before he flipped, and he still treats every red light as a suggestion.',
   color: CYAN,           // blue rail energy (shots, UI accent)
   css: '#4ff0ff',
   // Art test: the Stormlance's paint (white armour, gunmetal frame, red plating) + blue energy.
@@ -103,13 +112,12 @@ export default {
   bombStock: 2,
   engines: [[-3, 24], [3, 24]],
   engineColor: [0.4, 0.8, 1.0],
-  optionSprite: 'k_pod',
   art: kairoArt,           // hand-made art instance (test range, ?test=kairo)
   // Procedural fallback, matched to pilot_portrait.jpg (dark navy hair, brown eyes, blue jacket).
   portrait: { skin: '#e0ae86', hair: '#14202e', iris: '#6a4424', style: 'spiky', eyes: 'eyes', suit: '#24407a' },
   weapons: {
-    main: 'Rail Lances — twin rail rifles fire piercing lances that punch through every target in line',
-    focus: 'Rail Beam — continuous piercing laser from the backpack emitters',
+    main: 'Rail Lances — the twin hand cannons fire piercing lances that punch through every target in line; the unfolded wings add tip emitters',
+    focus: 'Rail Beam — after a brief charge, a continuous piercing beam from the chest emitter',
   },
   special: {
     name: 'PHASE DASH',
@@ -200,7 +208,6 @@ export default {
 
   sprites(atlas) {
     for (let t = 1; t <= 4; t++) atlas.add(`ship_kairo_${t}`, 44, 52, (c, w, h) => drawShip(c, w, h, t), { scale: 3 });
-    atlas.add('k_pod', 10, 16, drawPod, { scale: 3 });
     atlas.add('k_rail', 30, 5, railSprite, { scale: 3 });
     buildKairoSprites(atlas);
   },
@@ -210,7 +217,6 @@ export default {
   exhaust,
 
   renderBelow(p, b) {
-    if (p.ps.beam) renderBeam(p, b, p.ps.beam);
     // Phase-dash: curved ribbon trail through the recent dash path.
     const tr = p.ps.trail;
     if (!tr || tr.length < 2 || !kairoFrames().art) return;
@@ -229,30 +235,35 @@ export default {
   init(p, w) {
     p.ps.fRail = w.r.frame('k_rail');
     p.ps.phase = 0;
+    p.ps.kr = rigState();
   },
 
-  update(p) {
+  reset(p) { p.ps.kr.fs = 'off'; p.ps.kr.want = false; },
+
+  update(p, w) {
     if (p.ps.phase > 0) p.ps.phase--;
-    p.ps.beam = null; // re-set by fire() while the focus beam is on
+    p.ps.beam = null; // re-set by fire() while the focus beam is live
     animate(p);
+    const ev = rigStep(p); // tier wings, cannon recoil, focus-beam state
+    rigEvents(p, w, ev);
+    beamParticles(p, w, ev);
   },
 
-  optionLayout(p) {
-    const t = p.tier;
-    if (t < 3) return [];
-    if (p.focus) return t >= 4 ? [[-11, -4], [11, -4], [-20, 6], [20, 6]] : [[-11, -4], [11, -4]];
-    return t >= 4 ? [[-20, 6], [20, 6], [-34, 16], [34, 16]] : [[-22, 6], [22, 6]];
-  },
+  // No floating pods: the wing tips carry the tier-3/4 emitters (fire()).
+  optionLayout: () => [],
 
   fire(p, w) {
-    const t = p.tier, S = w.shots, rail = p.ps.fRail;
+    const t = p.tier, S = w.shots, rail = p.ps.fRail, kr = p.ps.kr;
     if (p.focus) {
-      // Continuous piercing beam from the chest gun, re-declared every step.
-      const width = 5 + t * 2;
-      const [bx, by] = anchor('beam');
-      const bm = w.beam(p.x + bx, p.y + by, p.x + bx, -20, width, 0.2 + 0.06 * t, CYAN);
-      bm.skin = 'kairo';
-      p.ps.beam = bm;
+      // Focus beam from the blue chest plate: the rig charges it for 0.2 s, then it is
+      // re-declared every step while held (damage only while active).
+      kr.want = true;
+      if (kr.fs === 'active') {
+        const width = 5 + t * 2, [bx, by] = anchor('chest');
+        const bm = w.beam(p.x + bx, p.y + by, p.x + bx, -20, width, 0.2 + 0.06 * t, CYAN);
+        bm.skin = 'kairo';
+        p.ps.beam = bm;
+      }
     }
     if (p.fireCd > 0) return;
     p.fireCd = 5;
@@ -260,26 +271,35 @@ export default {
       const i = w.shot(x, y, a, 22, rail, dmg, r);
       if (i >= 0) { S.behave(i, dmg, 0, 1); S.aux[i] = tag; } // aux: visual tag (tier / shard)
     };
-    for (const o of p.options) shoot(o.x, o.y - 8, UP, 0.7, 5, SHARD_TAG);
+    // Wing-tip emitters (tiers 3-4, in and out of focus): the old pods' shots, aimed at their lanes.
+    if (t >= 3) {
+      const lanes = POD_LANES[t][p.focus ? 1 : 0];
+      TIPS[t].forEach((name, k) => {
+        const [tx, ty] = animatedAnchor(p, name), [ox, oy] = lanes[k];
+        shoot(tx, ty, Math.atan2(p.y + oy - 8 - POD_REF - ty, p.x + ox - tx), 0.7, 5, SHARD_TAG);
+      });
+    }
     if (p.focus) return;
     for (const L of LANCES) {
       if (t < L.tier) continue;
       for (const s of [-1, 1]) {
-        const name = L.from + (s < 0 ? 'L' : 'R');
+        const name = s < 0 ? 'muzzleL' : 'muzzleR';
         const [mx, my] = anchor(name);
         const tx = s * L.ox + Math.tan(s * L.d) * (L.oy + REF); // where the old lance was REF ahead
-        shoot(p.x + mx, p.y + my, UP + Math.atan2(tx - mx, my + REF), L.dmg, LANCE_R[t - 1], t);
-        const [fx, fy] = animatedAnchor(p, name);
-        muzzleFlash(p, w, fx, fy, L.from === 'rifle' ? 20 : 26);
+        const ang = UP + Math.atan2(tx - mx, my + REF);
+        shoot(p.x + mx, p.y + my, ang, L.dmg, LANCE_R[t - 1], t);
+        if (L.tier === 1) { const [fx, fy] = animatedAnchor(p, name); muzzleFx(p, w, fx, fy, ang); }
       }
     }
+    fired(p); // recoil, armour flash, charge pulses
   },
 
   renderShots,
   hitSpark,
 
-  renderAbove(p, b) {
-    if (p.ps.beam && kairoFrames().fx) renderChargeOrb(p, b, p.ps.beam);
+  // The chest beam (charge, live beam, collapse) is drawn over the mecha: it leaves the chest plate.
+  renderAbove(p, b, x, y) {
+    renderBeam(p, b, x, y);
   },
 
   renderFx(p, b) {
