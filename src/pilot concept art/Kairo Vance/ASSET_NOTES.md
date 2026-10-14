@@ -141,3 +141,199 @@ matches the brief's "wing-binder with rifle".
 - Normal lances now leave from the **chest gun**: `gunL/R` ≈ (445, 540) / (577, 540), either side of the central spike. That is 8 units apart at size 90, the same spacing as the old twin lances, so wave-clear coverage is unchanged.
 - The focus beam starts at its tip, `beam` ≈ (511, 518).
 - The rifles still fire the tier-4 extras.
+
+---
+
+# Rebuild v2 (owner's brief, 2026-10-14): component mecha, tier wings, cannon and chest-beam VFX
+
+Branch `art/kairo-v2`, made from `art/dax-test`, which holds every earlier art branch and the shared art code.
+
+## Step 1: what the code does today and why it looks inconsistent
+
+- **Sprite.** `top_down_main.png` (older art) is one image. `mechaArt.js` cuts it into a body plus one wing layer per side (rifle + arm + binder, pivot at the shoulder). The wing layers only flare or bank, and **every tier looks the same**: tiers only change the shots. The procedural `drawShip()` tiers are the only "tier art", and they're the fallback.
+- **Weapons.**
+  - Normal lances leave from a **chest gun** (`gunL/R`, 8 units apart). That anchor exists because the earlier art had no hand guns.
+  - Tier-4 extras leave from the **rifle tips** (`rifleL/R`).
+  - Tiers 3–4 add floating **option pods** (`k_pod`) that fire shard shots.
+- **Focus.** `fire()` declares a continuous beam every step from the `beam` anchor (the chest gun tip). There's no charge or recovery: it simply appears and vanishes.
+- **FX.** These come from the shared `mechaFx.js`: lance sprites, a muzzle flare, a beam and a charge orb, and hit sparks. There's no recoil, no barrel energy, no tier transition and no armour lighting.
+- **Tier state** is `p.tier` (1–4, from the power value). It can go **down** as well as up: half a tier is lost on death, and the ultimate costs power. Transformations must therefore also run in reverse.
+- **Renderer.** WebGL `SpriteBatch` (premultiplied; per-sprite alpha or additive), particle pools (`fxHigh`), a fixed-step update (60 Hz), post-processing bloom and shockwaves. Pilot art lives in its own texture (`mechaArt` layers and extras). Everything below uses this; no new renderer is involved.
+
+## Step 1: the new art
+
+| File | Size | Transparency | Use |
+|---|---|---|---|
+| `top-down-enhance.png` | 1362×1155 | **none**: painted checkerboard (RGB) → `bg: 'checker'` (as for Lin and Dax) | new in-game sprite |
+| `Top-Down-front-new.png` | 1312×1199 | real alpha | new select-card front view and cut-in |
+
+- **Facing (checked).** The top of the image is the front. The mecha flies **feet-first**, as with the old art: the twin red-tipped **feet** are at the top centre and must never fire. Both **hand cannons** point up, with their bores at the top. The **blue chest plate** sits mid-body, with the **head** below it (red V-fin, cyan eye at about (655, 720)). The backpack spikes trail at the bottom.
+- **Symmetry.** The axis is x ≈ 655 (left bore 400, right bore 910). The feet are slightly offset (the left foot is longer); everything else mirrors.
+- **Scale.** The art spans y 55–1135 (≈1080 px). At the standard 90 units tall that is **0.083 units/px**. With both wing arrays deployed, the full silhouette is ≈112 units wide; with the wings retracted it is ≈60. The **hitbox stays 2.4 at the chest**, independent of the wings.
+- **Plan overlay:** `screenshots/kairo/v2/step1_plan_overlay.png`.
+
+### Proposed component split (source px; the right side mirrors at x = 655)
+
+| Component | Covers | Pivot / attachment | Motion |
+|---|---|---|---|
+| **body** | legs and feet, torso, chest plate, head, shoulder armour, gold/navy binder panels, lower fins, backpack spikes | — | hover bob, pitch, bank, stabilisation |
+| **gunL/R** | cannon + fist + forearm (blue energy channel on the gun) | elbow ≈ (420, 615); grip ≈ (462, 410) | recoil along the barrel, recovery, sway; the channel and muzzle glow are live |
+| **innerL/R** | the blade behind each cannon (tip ≈ (190, 168)) | root ≈ (370, 600) | **T3**: unfolds from behind the shoulder in 2 sections (root swings out, tip slides out), locks, flashes |
+| **outerL/R** | the long outermost blade (tip ≈ (8, 300)) | root ≈ (300, 860) | **T4**: unfolds in 2 sections (rotate out, extend, lock) |
+
+**Retracted** blades (tiers 1–2, and the outer blades at tier 3) fold down and back under the shoulder armour. They're telescoped short, so only their ends show behind the body: a compact, physical "base wing" look, not hidden pieces.
+
+### Attachment points (all local to the sprite and moving with their component)
+
+| Point | Where (source px) | Used for |
+|---|---|---|
+| `muzzleL/R` | (400, 338) / (910, 338) | cannon shots, muzzle flash, charge pulses (they follow recoil) |
+| `gripL/R`, `elbowL/R` | (462, 410), (420, 615) / mirrored | hand grip and forearm pivot |
+| `innerPivotL/R`, `outerPivotL/R` | (370, 600), (300, 860) / mirrored | wing pivots |
+| `innerTipL/R`, `outerTipL/R` | (190, 168), (8, 300) / mirrored | wing-edge energy, locking flashes (and option shots: question 3) |
+| `chest` | (655, 600), the blue chest core | **focus beam origin** and charge effects; also the hitbox |
+| `thrL/R` | ≈ (612, 1000) / (698, 1000), at the backpack's base | thruster plumes and exhaust (refined with F9 in Step 3) |
+| `footL/R` | (632, 64) / (687, 106) | reference only: **never fire** |
+
+### State machine (centralised in `kairoRig.js`, all time-based at 60 Hz steps)
+
+- **Tier configuration:** `T1 base` → `T2 enhanced` → `T3 inner deploying → inner locked` → `T4 outer deploying → full power`. The same steps run in reverse on a tier loss.
+- **Cannons:** idle → charge pulse → fire (flash + recoil) → recovery. The left and right cannons are staggered.
+- **Focus:** charging → beam active → recovery (collapse to the chest).
+- **Data:** attachment coordinates, per-tier visibility and wing angles, timings and VFX intensity all go in one config table.
+
+### Pipeline work this needs
+
+- `process-art.mjs`: generalise the `wings` option to named, mirrored **parts** (gun, innerWing, outerWing, each with an optional 2-section split) so one config yields every layer mask.
+- `mechaArt.js`: draw an ordered **component list** with per-component transforms supplied by the pilot's rig.
+  - The other pilots keep using today's body + wing path, unchanged.
+  - **Draw order:** outer wings → inner wings → body → cannons (hands over the guns, as painted).
+
+## Step 1: questions for the owner (gameplay effects)
+
+1. **Where normal shots come from.** The brief puts them on the hand cannons, which are **42 units apart**. Today's lances leave the chest gun 8 units apart.
+   - **A (recommended).** Each cannon's shot angles slightly inward so it crosses its old lane about 170 units ahead (as Bruno's arm guns do). Coverage and DPS stay the same.
+   - **B.** Straight parallel shots from each muzzle. That leaves a gap in the middle: point-blank enemies dead ahead can be missed.
+   - **C.** Straight shots, plus wider lances to cover the gap (a DPS change).
+2. **The focus beam's charge.** The brief asks for charge → beam → recovery.
+   - **A (recommended).** A short 0.2 s charge from the chest before the beam deals damage, then a 0.15 s collapse on release (visual only). Tapping focus loses a sliver of DPS.
+   - **B.** The beam deals damage immediately; the charge effect plays over its first 0.2 s. No gameplay change, but the beam shows during the charge.
+   - **C.** Holding longer charges a stronger beam (a new mechanic).
+3. **Tier 3–4 option pods** (the floating `k_pod`s that fire shard shots).
+   - **A (recommended).** Replace them with emitters at the **inner wing tips (T3)** and **outer wing tips (T4)**: same shot count and damage, now attached to the wings. The lanes are wider than the pods' were.
+   - **B.** Keep the floating pods as they are, alongside the new wings.
+4. **Tier-4 extra lances** (from the rifles, which the new art doesn't have).
+   - **A (recommended).** They fire from the two cannons, angled outward as before.
+   - **B.** They fire from the outer wing tips.
+
+Also planned:
+- `Top-Down-front-new.png` replaces the select-card front view and cut-in. The portrait stays.
+- The default size stays **90 units**.
+- The special, bomb and ultimate are unchanged.
+- Transformation sequences are visual only: about 0.6 s at tier 3 and 0.9 s at tier 4, with no invulnerability and no input lock.
+
+## Decisions at the Step 1 checkpoint (approved by the owner): 1 A, 2 A, 3 A, 4 A
+
+1. **Normal shots** leave the two hand-cannon muzzles, each aimed to cross its old lane, so coverage and damage are kept.
+2. **Focus beam:** a 0.2 s chest charge before it deals damage, a sustained beam while held, and a collapse back into the chest on release.
+3. **Option pods** are replaced by wing-tip emitters (inner tips at tier 3, inner and outer at tier 4), with the same shot count and damage.
+4. **Tier-4 extras** fire from the cannons at their old outward angles.
+
+## Steps 2–6: results
+
+### Step 2: processing (`npm run art:kairo`)
+
+- `top-down-enhance.png` is processed with `bg: 'checker'`: 19 enclosed checker pockets were removed. Trim box x 5, y 50, 1314×1093.
+  - Exports: `kairo_back@2x.png` 445×372 (and @1x 222×186), with outline variants.
+- `Top-Down-front-new.png` (real alpha) → `kairo_front@2x.png` 667×600: the new select card and cut-in. The portrait is unchanged.
+- **New pipeline option `parts`** (`tools/process-art.mjs`): named, mirrored components with a pivot, an optional `split` line (two sections, the tip with an 8 px overlap tab under the root) and `exclude` (parts drawn over this one). It writes `kairo.layers.json` with `rig: true`.
+  - The 10 layers: `gunL/R`, `innerRootL/R`, `innerTipL/R`, `outerRootL/R`, `outerTipL/R`.
+- **Anchors** (`kairo.anchors.json`, regenerated with `--reset-anchors`):
+  - `chest` = `hitbox` (the blue chest plate);
+  - `muzzle`, `chan`, `grip` and `elbow` on each side;
+  - `innerPivot`, `innerJoint` and `innerTip`; `outerPivot`, `outerJoint` and `outerTip`;
+  - `thr`, `fin` and `foot` (reference only; the feet never fire).
+  - The old `gun`, `rifle`, `beam`, `pack` and `calf` anchors are gone.
+
+### Steps 3–5: the component mecha
+
+- **Shared, opt-in (`art/mechaArt.js`).** A `rig` config switches a pilot to the component path; other pilots keep the old body + wing path.
+  - **Split.** Each layer is its polygon grown by `hole` + `grow` px, soft-edged, minus `exclude`. The body loses each polygon grown by `hole` (+ the outline width in the outline variant). At rest the parts cover their holes exactly; moved or folded away, they leave no slivers behind.
+  - **Render.** Layers draw in `rig.order`, each with a pose from `rig.pose(p, name)`: slide, rotation and scale about the pivot, plus an offset.
+  - **Attachments.** `rig.attach` makes anchors ride a layer, so muzzles recoil and wing tips fold. `animatedAnchor` and `api.at()` return the posed world point.
+  - **FX hooks.** `rig.before` (same texture as the layer: edge halos) and one `rig.overlay` pass (atlas FX). The overlay is one pass so the sprite batch isn't flushed between layers: this took the tier-4 storm from about 22 to 60 FPS headless.
+- **`src/pilots/kairoRig.js`**: one config table (`RIG`) and the state machines, advanced once per 60 Hz step.
+  - **Tier configuration.** Inner blades deploy at tier 3, outer blades at tier 4. They deploy inner then outer and retract outer then inner (tier loss).
+    - Deploy takes 36 / 54 steps; retract takes 22 / 26.
+    - Each blade's **root** swings about its pivot from the folded pose: −2.27 rad inner, −2.39 rad outer, out past the side and down, under the body. It eases out with a small overshoot that reads as the lock.
+    - The **tip** section telescopes out of the root along the blade's axis (90 % of its length).
+    - Deployed blades breathe slowly, flare outward in focus and lean when banking.
+  - **Cannons.** Recoil of 6 / 7.5 / 8.5 / 10 @2x px back along the barrel (by tier), a small outward kick, smooth recovery, a slow stabilising sway, a lag when banking, and they part slightly while the chest fires.
+  - **Focus beam:** off → **charge** (12 steps, no damage) → **active** (the World beam is re-declared each step: same width 5 + 2 × tier and damage 0.2 + 0.06 × tier as before) → **recover** (9 steps, collapse) → off.
+  - **Hierarchy:** T1 base (both arrays folded), T2 enhanced cannons (folded), T3 inner deployed, T4 inner + outer deployed. The VFX intensity table scales the muzzle flash, channel glow, trails and aura per tier.
+- **`src/pilots/kairoFx.js`**: every effect is attached to its component through the rig's posed anchors.
+  - **Cannons.** The blue energy channel pulses (brighter per tier). A charge pulse climbs from the channel to the muzzle between shots and the muzzle core brightens. The discharge has a core flash, a flare, a ring and 2–3 angular energy blades fanning forward from each bore, and the hand, forearm and cannon flash cyan with the recoil.
+  - **Projectiles.** The shared lances plus an animated tapered wake: blue → cyan, with flickering white sparkles. Impacts are the shared burst plus an angular flare.
+  - **Wings.**
+    - Energy conduits pulse from the root through the joint to the tip, with a flare at the tip.
+    - A lock flash and ring at the pivot and joint mark each lock.
+    - The edges glow while a blade is moving or locking.
+    - **Deploying** brings sparks, motes along the blade and a shockwave.
+    - **Tier 4** adds a screen flash, shake and expanding waves from the chest.
+    - **At full power,** controlled arcs crawl between the wing joints.
+  - **Chest beam** (drawn over the mecha so it visibly leaves the chest plate; the legs and feet sit above the chest in this flying pose):
+    - **Charge:** the core brightens, two counter-rotating rings close in, four energy streams converge, arcs crackle, particles stream inward, and the torso lights up.
+    - **Active:** an outer blue envelope, a violet band, a solid core exactly the hit width, a white-hot centre, two twisting filaments, distortion rings running up, and a flare and ring at the emitter. Sparks fly from the emitter.
+    - **Recovery:** the beam's far end comes down into the chest as it thins, with a residual particle burst.
+  - **Thrusters.** Blue plumes at `thrL/R` (capped), small fin-vent flames, and nozzle glow and exhaust.
+- **Kit (`src/pilots/kairo.js`).**
+  - **Lances** from `muzzleL/R`, aimed at their old lanes `REF` = 340 units ahead. At 170 the twin streams crossed and diverged, and dead-centre targets far ahead were missed.
+  - **Wing-tip emitters** aimed at the old pods' lanes `POD_REF` = 170 ahead (the pods' close-range coverage is kept). `optionLayout` returns none and the `k_pod` sprite is gone.
+  - **Focus beam** from `chest`. One muzzle discharge per cannon per volley.
+  - Bio and weapon text updated. The special, bomb, ultimate, speed, hitbox (2.4) and size (90) are unchanged.
+
+### Step 6: verified in the running game (test range, headless Chromium)
+
+- **All four tiers at rest** (`t1_rest` … `t4_rest`, `sheet_tiers`). T1 and T2 have both arrays folded; T2 brighter cannons; T3 inner blades out; T4 the full silhouette.
+- **Deployment frames.**
+  - `deploy3_15`/`35`/`55`/`75`: the inner blade swings out sideways, rises, the tip extends, it locks.
+  - `deploy4_20`/`45`/`70` and `lock4`: the same for the outer blades.
+- **Live transitions.** T2 → T4 runs inner (36 steps) then outer (54 steps). T4 → T1 retracts outer then inner. Checked step by step.
+- **Firing** (`fire_t2`, `fire_t4_0`): lances leave both cannon muzzles, and at tier 4 the wing tips fire too. Recoil: `rec0` versus `rec1`.
+- **Focus cycle:** `charge3`, `charge9`, `active`, `recover3`, `recover7` (`sheet_focus`). The beam stays on the chest while moving.
+- **DPS** (`tools/dps.mjs kairo`, before → after):
+
+  | Mode | T1 | T2 | T3 | T4 |
+  |---|---|---|---|---|
+  | Shot (boss) | 29 → 29 | 50 → 50 | 67 → 67 | 103 → 103 |
+  | Focus (boss) | 16 → 15 | 19 → 19 | 39 → 39 | 60 → 59 |
+
+  Focus loses up to 1 DPS to the 0.2 s charge. The single-target sweep differs in places: the cannons sit 42 units apart instead of 8, so lanes widen slightly at close range.
+- **Frame rate** (1,500-bullet storm, T4 firing): **59.5 FPS** with the art versus 60 procedural; 52 versus 52 with the focus beam; `&atlas=2048` 58.5.
+- **Regressions.** Mira, Bruno, Tess, Oduya, Lin and Dax load their art with no console errors. `&noart` plays with the procedural Stormlance.
+
+### Known limitations
+
+- The head and shoulder armour are part of the body layer: they move with the torso (bob, bank), not independently.
+- Folded blades sit under the body. Where the body doesn't cover them, their ends show at the lower sides (the intended "base wing" look).
+- Recoil moves the cannons up to 2.5 units back along the barrel. The art under the barrel tops is background, so nothing is uncovered.
+- The sounds are unchanged.
+
+## Owner change after the Step 6 review: original shot pattern
+
+- **Lances.** Back to the original pattern: straight shots at the original spacing (±4, ±10, ±16) and outward angles (0, 0.07, 0.16 rad), with no inward aim. They leave from chest level, never the feet. The discharge flash plays at each lance's origin; the cannons still recoil and glow.
+- **Look.** The original glowing lance look (shared `mechaFx`); the extra trail layer is gone.
+- **Wing tips (tiers 3–4).** They now fire glowing lances angled outward: inner tips 0.10 rad (0.04 in focus), outer tips 0.22 rad (0.10 in focus). Same shot count and damage as the old pods.
+- **DPS, boss.**
+  - Shot: T1 28, T2 50, T3 66, T4 85 (was 103: the outer-tip shots now spread outward instead of converging on the target).
+  - Focus: T3 39, T4 42 (was 59).
+  - Line DPS is unchanged.
+- **Screenshot:** `screenshots/kairo/v2/fire_original_pattern.png`.
+
+## Owner change: tier 1 from the chest, tier 2 from the held cannons
+
+- **Tier 1.** The front lance pair (±4, straight) leaves the **chest emitter**, where the focus beam starts. A chest flash plays and the core pulses on each volley. The cannons stay still: no recoil, and their channel glow is low.
+- **Tier 2.** The added pair (0.07 rad outward, straight) fires **from each hand cannon's bore**. The muzzle rides the recoiling cannon. Each shot brings recoil, a stronger discharge (flash ×1.5 at T2), the barrel lit along its length, a muzzle glow and the forearm flash.
+- **Unchanged.** The chest pair continues at tier 2+. The tier-4 extras and the wing-tip shots are as before.
+- **DPS, boss.** Unchanged: shot 28 / 50 / 66 / 85; focus 15 / 19 / 39 / 42.
+- **Screenshots:** `screenshots/kairo/v2/fire_t1_t2_t4.png` and `fire_t1_chest_vs_t2_cannons.png`.

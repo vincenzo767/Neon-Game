@@ -274,6 +274,57 @@ function inPoly(x, y, poly) {
 const mirrorPoly = (poly, axis) => poly.map(([x, y]) => [2 * axis - x, y]).reverse();
 
 /**
+ * Clip a polygon to one side of the line a→b, shifted `off` px toward the kept
+ * side's opposite (off > 0 keeps a strip past the line: an overlap tab).
+ * keep = +1: the side left of a→b (cross > 0), -1: the other side.
+ */
+function clipPoly(poly, a, b, keep, off = 0) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
+  const side = ([x, y]) => keep * ((dx * (y - a[1]) - dy * (x - a[0])) / L) + off;
+  const out = [];
+  for (let i = 0; i < poly.length; i++) {
+    const P = poly[i], Q = poly[(i + 1) % poly.length], sp = side(P), sq = side(Q);
+    if (sp >= 0) out.push(P);
+    if ((sp >= 0) !== (sq >= 0)) {
+      const t = sp / (sp - sq);
+      out.push([+(P[0] + (Q[0] - P[0]) * t).toFixed(1), +(P[1] + (Q[1] - P[1]) * t).toFixed(1)]);
+    }
+  }
+  return out;
+}
+
+/**
+ * Component layers (config `parts`, source pixels) for a rigged pilot: named,
+ * mirrored parts (e.g. a hand cannon, an inner and an outer wing blade). A part
+ * with `split: [a, b]` becomes two sections across that line: `<name>Root`
+ * (the side holding the pivot) and `<name>Tip` (with an `overlap` px tab under
+ * the root, so the joint is seamless at rest). `exclude` names parts drawn
+ * over this one: their pixels never go into it.
+ */
+function partLayers(Pc, P) {
+  const layers = {}, polys = {};
+  for (const part of Pc.list) {
+    polys[part.name] = { L: part.poly, R: mirrorPoly(part.poly, Pc.axis) };
+  }
+  for (const part of Pc.list) {
+    for (const s of ['L', 'R']) {
+      const mir = s === 'R';
+      const m = ([x, y]) => (mir ? [2 * Pc.axis - x, y] : [x, y]);
+      const poly = polys[part.name][s], pivot = m(part.pivot);
+      const exclude = (part.exclude || []).map((n) => polys[n][s].map(P));
+      const base = { pivot: P(pivot), exclude, part: part.name, side: s };
+      if (!part.split) { layers[part.name + s] = { ...base, poly: poly.map(P) }; continue; }
+      const a = m(part.split[0]), b = m(part.split[1]);
+      // Which side of a→b holds the pivot (the root)?
+      const cr = Math.sign((b[0] - a[0]) * (pivot[1] - a[1]) - (b[1] - a[1]) * (pivot[0] - a[0]));
+      layers[`${part.name}Tip${s}`] = { ...base, poly: clipPoly(poly, a, b, -cr, part.overlap ?? 8).map(P), section: 'tip' };
+      layers[`${part.name}Root${s}`] = { ...base, poly: clipPoly(poly, a, b, cr).map(P), section: 'root' };
+    }
+  }
+  return layers;
+}
+
+/**
  * Wing source for the layer split (config `wings`, source pixels): inside a
  * wing polygon, pixels covered by a held weapon (`keep` polygons) take the
  * mirrored wing's pixel; where the mirror is covered too, they are filled
@@ -482,6 +533,23 @@ async function main() {
     };
     fs.writeFileSync(path.join(OUT, `${ID}.layers.json`), anchorsJson(layers));
     log(`${ID}.layers.json written (wings under the body, ${Wc.keep.length} keep polygons)`);
+  }
+
+  // Component parts (config `parts`): rigged layers (hard holes in the body, see mechaArt splitLayers).
+  if (CFG.parts) {
+    const Pc = CFG.parts, P = to2x(back);
+    const layers = {
+      version: 1,
+      pilot: ID,
+      space: `${ID}_back@2x.png pixels, origin top-left (same as ${ID}.anchors.json); generated from tools/art.config.mjs`,
+      rig: true,
+      feather: Pc.feather ?? 0.8,
+      grow: Pc.grow ?? 1.5,
+      hole: Pc.hole ?? 0,
+      layers: partLayers(Pc, P),
+    };
+    fs.writeFileSync(path.join(OUT, `${ID}.layers.json`), anchorsJson(layers));
+    log(`${ID}.layers.json written (rig: ${Object.keys(layers.layers).join(', ')})`);
   }
 
   // Turret (config `turret`): one cut-out from a concept sheet.

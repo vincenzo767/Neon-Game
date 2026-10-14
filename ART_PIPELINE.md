@@ -191,7 +191,7 @@ The `anchors` block above is cut down; Kairo's real file has more entries (see t
 }
 ```
 
-The `poly` arrays above are cut down; real polygons have many more points.
+The `poly` arrays above are cut down; real polygons have many more points. (Kairo now uses the rigged format below; the example shows the plain wing format the other pilots use.)
 
 **Fields**
 - `poly` is the outline of a moving layer, in @2x pixels. Draw it generously on the open side (transparent area costs nothing), and accurately where it meets the body.
@@ -232,6 +232,20 @@ It also writes `<id>_wings@2x.png` and `<id>_wings_outline@2x.png`: the sprite w
 - With Kairo and Mira, the shared 4096 atlas stays at 81 %, the same as before any pilot art.
 - On the 4096 atlas, Kairo takes about 7 % of the space.
 - `main` already falls back to 0.85 texel scale on the 2048 atlas.
+
+**Component mecha (`parts` in `art.config.mjs` → `rig: true`; Kairo v2).** For art whose parts move far: wings that fold away, cannons that recoil, articulated sections.
+- **Config.** In source pixels, a mirror `axis` and a `list` of parts `{ name, poly, pivot, split?, exclude?, overlap? }` (left side). Optional `hole` and `grow` (@2x px).
+  - `split: [a, b]` cuts a part in two along a line: `<name>Root<L|R>` holds the pivot; `<name>Tip<L|R>` gets an `overlap` tab (8 px) under the root.
+  - `exclude` names parts drawn over this one; their pixels never go into it.
+- **Split.** Each layer is its polygon grown by `hole + grow` px, soft-edged, minus `exclude`. The body loses each polygon grown by `hole` (+ the outline width in the outline variant). At rest the layers cover their holes exactly; moved anywhere, they leave no slivers. Draw polygons on the part's own outline; `hole` (3 for Kairo) absorbs small misses.
+- **Runtime.** `createMechaArt({ ..., rig })` with:
+  - `order`: layer names back to front, including `'body'`;
+  - `pose(p, name)` → `{ rot, tx, ty, s, ox, oy, alpha, hide }` (slide in the layer's frame, then rotate/scale about its pivot, then offset; @2x px);
+  - `attach`: `{ anchor: layer }`. Attached anchors ride their layer: `animatedAnchor` and the hooks' `api.at()` give the posed world point.
+  - `before(p, b, api, name)`: drawn just under a layer, using that layer's texture only (e.g. `api.drawLayer` halos);
+  - `overlay(p, b, api)`: one pass of atlas FX over the finished mecha.
+  - Keep atlas FX out of the per-layer hooks: every texture switch flushes the sprite batch. Interleaving dropped Kairo's tier-4 storm from 60 to about 22 FPS.
+- The wing animation (`wingPose`, `flap`) doesn't apply to rigged pilots; the pilot's rig drives every pose (Kairo: `src/pilots/kairoRig.js`).
 
 ---
 

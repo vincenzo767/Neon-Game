@@ -22,6 +22,7 @@
 | **Art: Oduya** | Hand-made art and a redesigned kit for Oduya Rex (Thunderjaw), the god of thunder (branch `art/oduya-test`, on top of `art/tess-test`, not merged) | 🔍 In review |
 | **Art: Lin** | Hand-made art and a redesigned kit for Lin Hayase (Petal Engine), an emerald crystal knight on butterfly wings (branch `art/lin-test`, on top of `art/oduya-test`, not merged) | 🔍 In review |
 | **Art: Dax** | Hand-made art and a Legendary void kit for Dax Morrow (Overclock), a black-and-red void knight (branch `art/dax-test`, on top of `art/lin-test`, not merged) | 🔍 In review |
+| **Art: Kairo v2** | Component mecha rebuild for Kairo Vance: new top-down art, tier-deployed inner and outer wings, hand cannons, chest focus beam (branch `art/kairo-v2`, on top of `art/dax-test`, not merged) | 🔍 In review |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -876,6 +877,27 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Dax%20Morrow/ASS
 - **FX.** Drawn live after the owner's references, with no cut-out images (polish round): straight eye-beam style void beams, real-smoke ghosts and clones spread wide, a starry black crescent at medium speed, and a cosmic void column for the cannon.
 - **Frame rate.** Storm: about 57 FPS with art versus 53 procedural.
 
+## Art: Kairo v2 (branch `art/kairo-v2`)
+
+Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Kairo%20Vance/ASSET_NOTES.md), "Rebuild v2".
+
+- **Art.** `top-down-enhance.png` (checkerboard removed) as a **component mecha**: hand cannons (cannon + fist + forearm), inner and outer wing blades in two articulated sections each, and the body. Feet-first; the feet never fire. New front view `Top-Down-front-new.png`.
+- **Tiers.**
+  - T1 base, with both wing arrays folded under the body.
+  - T2 enhanced cannons.
+  - T3 inner blades deploy: swing out, extend and lock.
+  - T4 outer blades deploy too: full silhouette, transformation waves and arcs.
+  - On a tier loss the blades retract outer first, then inner.
+- **Weapons (approved 1 A, 2 A, 3 A, 4 A).**
+  - Lances leave the cannon muzzles, aimed at their old lanes 340 ahead.
+  - The option pods became wing-tip emitters.
+  - The tier-4 extras fire from the cannons.
+  - The focus beam leaves the blue chest plate: 0.2 s charge, live beam, collapse.
+- **FX.** Recoil, armour flash, channel and charge pulses, muzzle discharge, animated trails, wing conduits and lock flashes, a layered chest beam.
+- **Balance.** Boss DPS unchanged (shot 29 / 50 / 67 / 103); focus within 1 (the charge).
+- **Frame rate.** Storm T4: 59.5 FPS with the art versus 60 procedural.
+- **Shared.** `process-art` `parts` and the `mechaArt` `rig` path are opt-in; the other pilots are unchanged and were checked.
+
 ## Run
 
 ```
@@ -1050,4 +1072,4 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
-6. Pilot art: review and merge `art/dax-test` (it contains `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.
+6. Pilot art: review and merge `art/kairo-v2` (it contains `art/dax-test`, `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.
