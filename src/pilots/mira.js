@@ -1,22 +1,26 @@
 import { WORLD_W, WORLD_H } from '../core/constants.js';
 import { mirrorPath, outline, canopy, glowDot, drawBolt, neonStroke } from '../fx/art.js';
-import { miraArt, miraFx } from './miraArt.js';
+import { miraArt } from './miraArt.js';
+import { renderShots, hitSpark, muzzleFx, chestShotFx, rigEvents, focusParticles, renderFocus, SHARD_TAG } from './miraFx.js';
+import { rigState, step as rigStep, fired, chestFired } from './miraRig.js';
 
 // MIRA SOLENNE — HALO SPRITE (drone mecha)
 // Homing light-needles · Focus: tight hard-homing needles · Special: shield orbs
 // Bomb: Halo Bloom · Ultimate: Prism Lattice (reflects every enemy bullet)
 //
-// MIRA ART TEST: the hand-made mecha art (miraArt.js) replaces drawShip()
-// when it loads; drawShip() stays as the automatic fallback. Needles leave
-// from the chest gun (the arm guns add the outermost pair from tier 3);
-// the feet never fire.
+// MIRA v2 (ASSET_NOTES.md "Rebuild v2"): the component mecha (miraArt.js +
+// miraRig.js + miraFx.js) replaces drawShip() when the art loads; drawShip()
+// stays as the automatic fallback. Tier 1 fires the needle fan from the chest
+// emitter; from tier 2 the same fan leaves the two hand cannons. Focus keeps
+// the homing needle stream, from the chest. The feet never fire.
 
 const GOLD = [1.0, 0.82, 0.4];
 const PINK = [1.0, 0.5, 0.8];
 const UP = -Math.PI / 2;
 const TAU = Math.PI * 2;
-const REF = 240; // arm-gun needles aim where the old outer needles were this far ahead
-const { SHARD_TAG } = miraFx;
+// Cannon needles aim where the same needle of the old chest fan was REF ahead
+// (the fan used to leave 16 units ahead of the centre): same lanes, same coverage.
+const REF = 240, FAN_Y = -16;
 
 function drawShip(ctx, w, h, tier) {
   const cx = w / 2, cy = 22;
@@ -94,7 +98,7 @@ export default {
   name: 'MIRA SOLENNE',
   vehicle: 'HALO SPRITE',
   role: 'Drone Mecha',
-  bio: 'A former orbital-relay engineer who now flies her own swarm in the Halo Sprite, a white and gold mecha with twin arm guns. Mira\'s needles find any target she sees, and she sees almost everything.',
+  bio: 'A former orbital-relay engineer who now flies her own swarm in the Halo Sprite, a white and gold mecha with a chest emitter, twin hand cannons and folding blade wings. Mira\'s needles find any target she sees, and she sees almost everything.',
   color: GOLD,
   css: '#ffd27a',
   // Art test: the Halo Sprite's paint (white/grey armour, gold trim) + gold energy.
@@ -109,8 +113,8 @@ export default {
   // Procedural fallback, matched to pilot_portrait.jpg (ash-blonde hair, red eyes, violet outfit).
   portrait: { skin: '#f6dccb', hair: '#cfc6ae', style: 'long', eyes: 'eyes', iris: '#d8202c', suit: '#8a5cc8' },
   weapons: {
-    main: 'Light Needles — a wide homing spread from the chest gun; the arm guns join from tier 3',
-    focus: 'Seeker Lance — tight hard-homing needles',
+    main: 'Light Needles — a wide homing spread from the chest emitter; from tier 2 both hand cannons fire it',
+    focus: 'Seeker Lance — tight hard-homing needles from the chest',
   },
   art: miraArt,
   special: {
@@ -188,17 +192,26 @@ export default {
   // Hand-made art hooks (each returns false without the art → procedural look).
   renderShip: (p, b, x, y, a) => miraArt.renderMecha(p, b, x, y, a),
   exhaust: miraArt.exhaust,
-  renderShots: miraFx.renderShots,
-  hitSpark: miraFx.hitSpark,
+  renderShots,
+  hitSpark,
 
-  update(p) { miraArt.animate(p); },
+  update(p, w) {
+    miraArt.animate(p);
+    const ev = rigStep(p); // tier wings, cannon recoil, focus cycle
+    rigEvents(p, w, ev);
+    focusParticles(p, w, ev);
+    // Propulsion surges while the blades unfold.
+    const mr = p.ps.mr;
+    if (mr.innerDir > 0 || mr.outerDir > 0) p.ps.thr = Math.max(p.ps.thr, 1.7);
+  },
 
   init(p, w) {
     p.ps.fNeedle = w.r.frame('m_needle');
     p.ps.orbs = false;
+    p.ps.mr = rigState();
   },
 
-  reset(p) { p.ps.orbs = false; },
+  reset(p) { p.ps.orbs = false; p.ps.mr.fs = 'off'; p.ps.mr.want = false; },
 
   optionLayout(p) {
     const n = p.tier, out = [];
@@ -215,33 +228,46 @@ export default {
   },
 
   fire(p, w) {
+    const mr = p.ps.mr;
+    // Focus: the chest charges briefly first (miraRig); the normal fan keeps firing until
+    // the stream starts, so no shot is lost. (Asked every step, before the cooldown.)
+    if (p.focus) mr.want = true;
     if (p.fireCd > 0) return;
     const t = p.tier, S = w.shots, f = p.ps.fNeedle;
-    p.fireCd = p.focus ? 5 : 6;
+    const focus = p.focus && mr.fs === 'active';
+    p.fireCd = focus ? 5 : 6;
     const n = 2 + t;
-    const spread = p.focus ? 0.12 : 0.55;
-    const homing = p.focus ? 0.14 : 0.06;
-    const speed = p.focus ? 13 : 11;
-    // Art test (approved): the fan leaves from the chest gun; from tier 3 the
-    // outermost pair leaves from the arm guns, aimed where the old outer
-    // needles were REF ahead. The feet never fire.
-    const [gx, gy] = miraArt.anchor('gun');
-    const armsFrom = t >= 3;
+    const spread = focus ? 0.12 : 0.55;
+    const homing = focus ? 0.14 : 0.06;
+    const speed = focus ? 13 : 11;
+    // Needle count, angles, speed, homing, damage and cadence are the original fan's.
+    // Tier 1 and the focus stream: all from the chest emitter. Tiers 2-4: the left
+    // half from the left cannon, the right half from the right one; the tier-3
+    // centre needle alternates cannons per volley.
+    const cannons = !focus && t >= 2;
+    const [cx, cy] = miraArt.anchor('chest');
+    if (cannons) mr.alt ^= 1;
     for (let k = 0; k < n; k++) {
       const d = (k / (n - 1) - 0.5) * spread;
       const ox = (k - (n - 1) / 2) * 4;
-      let x = p.x + gx + ox, y = p.y + gy, a = UP + d;
-      if (armsFrom && (k === 0 || k === n - 1)) {
-        const [mx, my] = miraArt.anchor(k === 0 ? 'armL' : 'armR');
-        const tx = ox + Math.tan(d) * (-16 + REF);
-        x = p.x + mx; y = p.y + my; a = UP + Math.atan2(tx - mx, my + REF);
+      let x = p.x + cx + ox, y = p.y + cy, a = UP + d;
+      if (cannons) {
+        const left = 2 * k < n - 1 || (2 * k === n - 1 && mr.alt === 0);
+        const [mx, my] = miraArt.animatedAnchor(p, left ? 'muzzleL' : 'muzzleR');
+        const tx = ox + Math.tan(d) * REF, ty = FAN_Y - REF;
+        x = mx; y = my; a = UP + Math.atan2(p.x + tx - mx, my - (p.y + ty));
       }
       const i = w.shot(x, y, a, speed, f, 0.8, 5);
-      if (i >= 0) { S.behave(i, p.focus ? 0.9 : 0.75, 140, 0, homing); S.aux[i] = t; } // aux: visual tag
+      if (i >= 0) { S.behave(i, focus ? 0.9 : 0.75, 140, 0, homing); S.aux[i] = t; } // aux: visual tag
     }
-    const flash = (name, size) => { const [fx, fy] = miraArt.animatedAnchor(p, name); miraFx.muzzleFlash(p, w, fx, fy, size); };
-    flash('gun', 22);
-    if (armsFrom) { flash('armL', 18); flash('armR', 18); }
+    if (cannons) {
+      for (const s of ['L', 'R']) { const [mx, my] = miraArt.animatedAnchor(p, 'muzzle' + s); muzzleFx(p, w, mx, my, UP); }
+      fired(p); // recoil, armour flash, barrel pulses
+    } else {
+      const [ex, ey] = miraArt.animatedAnchor(p, 'chest');
+      chestShotFx(p, w, ex, ey, focus ? 12 : 20);
+      chestFired(p, focus);
+    }
     for (const o of p.options) {
       const i = w.shot(o.x, o.y - 6, UP, 12, f, 0.6, 5);
       if (i >= 0) { S.behave(i, 0.6, 140, 0, 0.1); S.aux[i] = SHARD_TAG; }
@@ -249,6 +275,7 @@ export default {
   },
 
   renderAbove(p, b, x, y) {
+    renderFocus(p, b, x, y); // focus cycle at the chest emitter
     if (!p.ps.orbs) return;
     const F = p.F, t = p.specialT, d = p.def.special.duration - t;
     const fade = t < 60 && (t >> 2) & 1 ? 0.4 : 1;
