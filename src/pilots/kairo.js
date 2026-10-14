@@ -90,6 +90,10 @@ const LANCES = [
 const TIPS = { 3: ['innerTipL', 'innerTipR'], 4: ['innerTipL', 'innerTipR', 'outerTipL', 'outerTipR'] };
 const TIP_ANG = { inner: [0.1, 0.04], outer: [0.22, 0.1] };
 
+// Rail line positions for the ultimate's strike grid.
+const GRID_COLS = [60, 132, 204, 276, 348, 420];
+const GRID_ROWS = [90, 190, 290, 390, 490];
+
 export default {
   id: 'kairo',
   name: 'KAIRO VANCE',
