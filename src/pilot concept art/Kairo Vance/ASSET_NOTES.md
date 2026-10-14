@@ -329,3 +329,11 @@ Also planned:
   - Focus: T3 39, T4 42 (was 59).
   - Line DPS is unchanged.
 - **Screenshot:** `screenshots/kairo/v2/fire_original_pattern.png`.
+
+## Owner change: tier 1 from the chest, tier 2 from the held cannons
+
+- **Tier 1.** The front lance pair (±4, straight) leaves the **chest emitter**, where the focus beam starts. A chest flash plays and the core pulses on each volley. The cannons stay still: no recoil, and their channel glow is low.
+- **Tier 2.** The added pair (0.07 rad outward, straight) fires **from each hand cannon's bore**. The muzzle rides the recoiling cannon. Each shot brings recoil, a stronger discharge (flash ×1.5 at T2), the barrel lit along its length, a muzzle glow and the forearm flash.
+- **Unchanged.** The chest pair continues at tier 2+. The tier-4 extras and the wing-tip shots are as before.
+- **DPS, boss.** Unchanged: shot 28 / 50 / 66 / 85; focus 15 / 19 / 39 / 42.
+- **Screenshots:** `screenshots/kairo/v2/fire_t1_t2_t4.png` and `fire_t1_chest_vs_t2_cannons.png`.

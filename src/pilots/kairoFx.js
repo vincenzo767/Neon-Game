@@ -113,6 +113,11 @@ function layerFx(p, b, api, name) {
     const lv = ch * (firing ? 1 : idle);
     b.draw(F.glow, cx, cy, 9 * ch, 20 * ch, 0, B[0], B[1], B[2], 0.55 * lv, 1);
     b.draw(F.glow, cx, cy, 4, 12, 0, C[0], C[1], C[2], 0.8 * lv, 1);
+    if (firing && p.tier >= 2 && kr.fireT < 4) {
+      const g = 1 - kr.fireT / 4; // barrel lit along its length right after the shot
+      line(b, F, cx, cy, mx, my, 1.6, 0.9 * g * ch, W);
+      b.draw(F.glow, mx, my, 26 * g, 26 * g, 0, C[0], C[1], C[2], 0.8 * g, 1);
+    }
     if (firing) {
       const f = Math.min(1, kr.fireT / 5); // 0 just fired → 1 ready again
       const y = cy + (my - cy) * f, x = cx + (mx - cx) * f;
@@ -123,7 +128,7 @@ function layerFx(p, b, api, name) {
   }
   if (name === 'body') {
     // Chest core: idle pulse (focus charging is drawn by renderBeam, above everything).
-    const [x, y] = api.at('chest'), pu = 0.8 + 0.2 * Math.sin(t * 0.09);
+    const [x, y] = api.at('chest'), pu = 0.8 + 0.2 * Math.sin(t * 0.09) + (kr.chestT / 6) * 0.9;
     b.draw(F.glow, x, y, 18 * pu, 14 * pu, 0, B[0], B[1], B[2], 0.5, 1);
     b.draw(F.glow, x, y, 7, 6, 0, C[0], C[1], C[2], 0.7 * pu, 1);
     // Full power: controlled arcs crawling between the wing joints and the shoulders.
@@ -171,6 +176,17 @@ export function muzzleFx(p, w, x, y, ang) {
     H.size(i, 10 * k, 4); H.spin(i, a, 0); H.phys(i, 0.8);
     H.color(i, W[0], W[1], W[2], C[0], C[1], C[2]); H.look(i, 0.9, 1, FADE_OUT);
   }
+}
+
+/** Tier-1 discharge at the chest emitter: a compact core flash and flare. */
+export function chestFx(p, w, x, y, ang) {
+  const H = w.fxHigh, F = p.F, fx = fxOf();
+  if (!fx) return;
+  let i = H.spawn(F.glow, x, y, 0, -0.5, 4);
+  if (i >= 0) { H.size(i, 16, 7); H.color(i, W[0], W[1], W[2], C[0], C[1], C[2]); H.look(i, 0.8, 1, FADE_OUT); }
+  i = H.spawn(fx.flare, x, y - 1, 0, -0.5, 4);
+  if (i >= 0) { H.size(i, 20, 12); H.color(i, C[0], C[1], C[2], B[0], B[1], B[2]); H.look(i, 0.7, 1, FADE_OUT); }
+  void ang;
 }
 
 /** Impact: hot flash, cyan ring, sparks, and at tier 3+ an angular flare. */

@@ -2,8 +2,8 @@ import { WORLD_W, WORLD_H } from '../core/constants.js';
 import { mirrorPath, chrome, neonLines, outline, canopy, glowDot, drawBolt } from '../fx/art.js';
 import { FADE_OUT } from '../fx/Particles.js';
 import { kairoArt, LOOK, PAL, anchor, anchorData, unitsPerPx, kairoFrames, animatedAnchor, buildKairoSprites, renderMecha, animate, exhaust } from './kairoArt.js';
-import { LANCE_R, SHARD_TAG, renderShots, renderBeam, muzzleFx, hitSpark, rigEvents, beamParticles } from './kairoFx.js';
-import { rigState, step as rigStep, fired } from './kairoRig.js';
+import { LANCE_R, renderShots, renderBeam, muzzleFx, chestFx, hitSpark, rigEvents, beamParticles } from './kairoFx.js';
+import { rigState, step as rigStep, fired, chestFired } from './kairoRig.js';
 
 // KAIRO VANCE — STORMLANCE (interceptor mecha)
 // Piercing rail lasers · Focus: continuous rail beam · Special: phase-dash
@@ -12,7 +12,8 @@ import { rigState, step as rigStep, fired } from './kairoRig.js';
 // KAIRO ART (v2, ASSET_NOTES.md "Rebuild v2"): a component mecha (kairoArt.js
 // + kairoRig.js + kairoFx.js) replaces drawShip() when the art loads;
 // drawShip() stays as the automatic fallback. Approved gameplay changes:
-// lances keep the original pattern (spacing and angles, from chest level);
+// tier-1 lances leave the chest emitter, the tier-2 pair the two hand-cannon
+// muzzles (straight, original angles);
 // the tier-3/4 option pods became glowing lance emitters on the inner / outer
 // wing tips, angled outward (same shot count and damage); the focus beam leaves the blue chest plate after a 0.2 s
 // charge. The feet never fire.
@@ -75,10 +76,12 @@ function railSprite(ctx, w, h) { drawBolt(ctx, w, h, 'rgba(90,240,255,0.9)'); }
 // original spacing and outward angles, no inward aim. They leave the chest
 // level (oy is the old stagger behind the front pair); the feet never fire.
 // Per side s = ±1: x = s·ox, angle = UP + s·d.
+// from: 'chest' = the chest emitter (where the focus beam leaves); 'cannon' = the
+// hand-cannon muzzles (they fire, recoil and light up from tier 2).
 const LANCES = [
-  { ox: 4, oy: 0, d: 0, dmg: 1.2, tier: 1 },
-  { ox: 10, oy: 10, d: 0.07, dmg: 0.9, tier: 2 },
-  { ox: 16, oy: 16, d: 0.16, dmg: 0.8, tier: 4 },  // tier-4 extras: angled outward
+  { from: 'chest', ox: 4, oy: 0, d: 0, dmg: 1.2, tier: 1 },
+  { from: 'cannon', d: 0.07, dmg: 0.9, tier: 2 },
+  { from: 'chest', ox: 16, oy: 16, d: 0.16, dmg: 0.8, tier: 4 },  // tier-4 extras: angled outward
 ];
 
 // Wing-tip emitters (tiers 3-4, replacing the pods): glowing lances angled
@@ -275,12 +278,21 @@ export default {
     for (const L of LANCES) {
       if (t < L.tier) continue;
       for (const s of [-1, 1]) {
-        const x = p.x + s * L.ox, y = p.y + cy + L.oy, ang = UP + s * L.d;
+        const ang = UP + s * L.d;
+        if (L.from === 'cannon') {
+          // Straight out of each held cannon's bore (the muzzle rides the recoiling cannon).
+          const name = s < 0 ? 'muzzleL' : 'muzzleR', [mx, my] = anchor(name), [fx, fy] = animatedAnchor(p, name);
+          shoot(p.x + mx, p.y + my, ang, L.dmg, LANCE_R[t - 1], t);
+          muzzleFx(p, w, fx, fy, ang);
+          continue;
+        }
+        const x = p.x + s * L.ox, y = p.y + cy + L.oy;
         shoot(x, y, ang, L.dmg, LANCE_R[t - 1], t);
-        if (L.tier === 1) muzzleFx(p, w, x, y - 4, ang);
+        if (L.tier === 1) chestFx(p, w, x, y - 4, ang);
       }
     }
-    fired(p); // recoil, armour flash, charge pulses
+    if (t >= 2) fired(p); // the cannons fired: recoil, armour flash, charge pulses
+    else chestFired(p);
   },
 
   renderShots,

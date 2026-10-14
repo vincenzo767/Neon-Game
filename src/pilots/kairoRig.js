@@ -29,8 +29,8 @@ export const RIG = {
   beam: { charge: 12, recover: 9 },
   // VFX intensity per tier (index 0 = T1): muzzle flash, channel glow, trail, aura.
   fx: {
-    flash: [1, 1.25, 1.45, 1.75],
-    channel: [0.5, 0.85, 1, 1.25],
+    flash: [1, 1.5, 1.65, 1.85],
+    channel: [0.35, 1, 1.1, 1.3],   // T1: the cannons idle (they fire from T2)
     trail: [0.6, 0.85, 1, 1.25],
     aura: [0, 0, 0.35, 1],
   },
@@ -62,6 +62,7 @@ export function rigState() {
     recL: 0, recR: 0,              // cannon recoil 0..1
     fireT: 99,                     // steps since the cannons last fired
     flashL: 0, flashR: 0,          // armour illumination after a shot
+    chestT: 0,                     // chest-emitter flash after a tier-1 volley
     fs: 'off', ft: 0,              // focus beam state + steps in it
     want: false,                   // fire() asked for the beam this step
     beamTop: 0,                    // beam reach while collapsing (world y)
@@ -94,7 +95,7 @@ export function step(p) {
   move('outer', wantOuter, RIG.outer, wantOuter === 0 || kr.inner === 1, 'lockOuter', 'deploy4', 'retract4', 'lock4');
   if (ev.deploy3) kr.wave3 = 40;
   if (ev.deploy4) kr.wave4 = 60;
-  for (const k of ['lockInner', 'lockOuter', 'wave3', 'wave4', 'flashL', 'flashR']) if (kr[k] > 0) kr[k]--;
+  for (const k of ['lockInner', 'lockOuter', 'wave3', 'wave4', 'flashL', 'flashR', 'chestT']) if (kr[k] > 0) kr[k]--;
   // Cannon recovery.
   kr.recL *= 1 - RIG.recover; kr.recR *= 1 - RIG.recover;
   kr.fireT++;
@@ -117,6 +118,11 @@ export function fired(p) {
   kr.recL = kr.recR = 1;
   kr.flashL = kr.flashR = 6;
   kr.fireT = 0;
+}
+
+/** Tier 1 fired from the chest emitter: a chest flash, the cannons stay still. */
+export function chestFired(p) {
+  p.ps.kr.chestT = 6;
 }
 
 /** Charge of the focus beam 0..1 (charging), 1 while active, falling while recovering. */
