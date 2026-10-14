@@ -15,24 +15,65 @@
 export const PILOT_ART = {
   kairo: {
     folder: 'Kairo Vance',
-    back: 'top_down_main.png',
-    front: 'Top-Down_Front.png',
+    // v2 (owner's brief, ASSET_NOTES.md "Rebuild v2"): the component mecha. Flies
+    // feet-first (the red-tipped feet at the top never fire); hand cannons point up.
+    back: 'top-down-enhance.png',
+    bg: 'checker',             // painted checkerboard, no alpha
+    front: 'Top-Down-front-new.png',
     portrait: 'pilot_portrait.jpg',
     glowRule: true,
+    // Rigged components (left side, source px; mirrored at `axis`). Draw order and
+    // motion live in src/pilots/kairoRig.js.
+    parts: {
+      axis: 655,
+      hole: 3,                 // @2x px: the body hole grows past each outline (no slivers)
+      list: [
+        { // hand cannon + fist + forearm (drawn over the inner blade, under the shoulder armour)
+          name: 'gun', pivot: [425, 615],
+          poly: [[382, 333], [414, 331], [420, 372], [440, 365], [463, 370], [496, 393], [510, 430], [510, 470], [500, 520], [482, 546], [465, 560], [463, 600], [447, 630], [400, 632], [388, 602], [384, 540], [379, 470], [377, 400], [379, 368]],
+        },
+        { // inner wing blade (behind the cannon); 2 sections: the tip telescopes into the root
+          name: 'inner', pivot: [362, 605], exclude: ['gun'],
+          split: [[369, 349], [185, 425]],
+          poly: [[178, 158], [198, 163], [250, 248], [300, 330], [347, 395], [360, 430], [370, 480], [380, 540], [388, 600], [382, 628], [356, 628], [338, 596], [316, 546], [290, 482], [248, 372], [213, 270]],
+        },
+        { // outer wing blade (outermost, under the binder panel)
+          name: 'outer', pivot: [285, 830], exclude: ['inner', 'gun'],
+          split: [[250, 508], [38, 620]],
+          poly: [[-2, 294], [14, 298], [62, 343], [112, 398], [186, 508], [222, 558], [242, 590], [262, 640], [278, 700], [286, 760], [294, 820], [302, 860], [300, 892], [268, 897], [243, 860], [208, 790], [168, 700], [118, 590], [68, 470], [28, 380]],
+        },
+      ],
+    },
     anchors: {
-      hitbox: [511, 800],      // chest centre: lands on player.x/y
-      head: [511, 1090],
-      gunL: [445, 540],        // chest gun: muzzles either side of the central spike,
-      gunR: [577, 540],        // 8 units apart like the old twin lances
-      rifleL: [92, 200],       // tips of the long black rifles (tier-4 extra lances)
-      rifleR: [932, 200],
-      beam: [511, 518],        // chest gun tip (focus rail beam origin)
-      packL: [452, 1300],      // wide back thrusters under the skirt
-      packR: [570, 1300],
-      footL: [390, 1290],      // red-tipped foot thrusters
-      footR: [632, 1290],
-      calfL: [258, 1272],      // red binder vents (small flames)
-      calfR: [764, 1272],
+      hitbox: [655, 590],      // blue chest plate: lands on player.x/y
+      chest: [655, 590],       // focus beam emitter (blue chest core); never the feet
+      head: [655, 720],
+      muzzleL: [397, 340],     // hand-cannon bores: normal lances + tier-4 extras
+      muzzleR: [913, 340],
+      chanL: [415, 500],       // blue energy channel on each cannon
+      chanR: [895, 500],
+      gripL: [470, 450],       // fists
+      gripR: [840, 450],
+      elbowL: [425, 615],
+      elbowR: [885, 615],
+      innerPivotL: [362, 605], // inner blade root / joint / tip (tip = tier-3 emitter)
+      innerPivotR: [948, 605],
+      innerJointL: [277, 387],
+      innerJointR: [1033, 387],
+      innerTipL: [183, 166],
+      innerTipR: [1127, 166],
+      outerPivotL: [285, 830], // outer blade root / joint / tip (tip = tier-4 emitter)
+      outerPivotR: [1025, 830],
+      outerJointL: [144, 564],
+      outerJointR: [1166, 564],
+      outerTipL: [4, 299],
+      outerTipR: [1306, 299],
+      thrL: [612, 1000],       // thrusters at the backpack's base
+      thrR: [698, 1000],
+      finL: [330, 985],        // small vents on the lower fins
+      finR: [980, 985],
+      footL: [632, 64],        // feet (reference only: never fire)
+      footR: [687, 106],
     },
   },
   mira: {
