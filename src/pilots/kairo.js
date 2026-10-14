@@ -12,10 +12,9 @@ import { rigState, step as rigStep, fired } from './kairoRig.js';
 // KAIRO ART (v2, ASSET_NOTES.md "Rebuild v2"): a component mecha (kairoArt.js
 // + kairoRig.js + kairoFx.js) replaces drawShip() when the art loads;
 // drawShip() stays as the automatic fallback. Approved gameplay changes:
-// lances leave the two hand-cannon muzzles, each aimed to cross its old lane
-// REF units ahead (coverage and damage kept); the tier-3/4 option pods became
-// emitters on the inner / outer wing tips (same shots and damage, aimed at the
-// old pod lanes); the focus beam leaves the blue chest plate after a 0.2 s
+// lances keep the original pattern (spacing and angles, from chest level);
+// the tier-3/4 option pods became glowing lance emitters on the inner / outer
+// wing tips, angled outward (same shot count and damage); the focus beam leaves the blue chest plate after a 0.2 s
 // charge. The feet never fire.
 
 const CYAN = [0.3, 0.95, 1.0];
@@ -72,29 +71,21 @@ function drawShip(ctx, w, h, tier) {
 
 function railSprite(ctx, w, h) { drawBolt(ctx, w, h, 'rgba(90,240,255,0.9)'); }
 
-// Lances leave the hand-cannon muzzles. Each is aimed at the point its old
-// counterpart reached REF units ahead, so the covered area matches.
-// Old pattern per side s = ±1: [x, y, outward angle, damage, from tier].
+// Lances (owner: "like before"): the original pattern, straight at the
+// original spacing and outward angles, no inward aim. They leave the chest
+// level (oy is the old stagger behind the front pair); the feet never fire.
+// Per side s = ±1: x = s·ox, angle = UP + s·d.
 const LANCES = [
-  { ox: 4, oy: -20, d: 0, dmg: 1.2, tier: 1 },
-  { ox: 10, oy: -10, d: 0.07, dmg: 0.9, tier: 2 },
-  { ox: 16, oy: -4, d: 0.16, dmg: 0.8, tier: 4 },  // tier-4 extras: angled outward, as before
+  { ox: 4, oy: 0, d: 0, dmg: 1.2, tier: 1 },
+  { ox: 10, oy: 10, d: 0.07, dmg: 0.9, tier: 2 },
+  { ox: 16, oy: 16, d: 0.16, dmg: 0.8, tier: 4 },  // tier-4 extras: angled outward
 ];
-const REF = 340;     // lances: the twin streams stay near their old lanes from 120 to 360 ahead
 
-// The old option pods (tiers 3-4): offsets from the ship [unfocused, focused].
-// The wing-tip emitters aim each shot at its pod's old lane POD_REF units ahead
-// (closer than REF: the tips sit wide, and the pods' close-range coverage is kept).
-const POD_REF = 170;
-const POD_LANES = {
-  3: [[[-22, 6], [22, 6]], [[-11, -4], [11, -4]]],
-  4: [[[-20, 6], [20, 6], [-34, 16], [34, 16]], [[-11, -4], [11, -4], [-20, 6], [20, 6]]],
-};
+// Wing-tip emitters (tiers 3-4, replacing the pods): glowing lances angled
+// outward from each tip [outward angle unfocused, focused]; same shot count
+// and damage as the pods.
 const TIPS = { 3: ['innerTipL', 'innerTipR'], 4: ['innerTipL', 'innerTipR', 'outerTipL', 'outerTipR'] };
-
-// Rail line positions for the ultimate's strike grid.
-const GRID_COLS = [60, 132, 204, 276, 348, 420];
-const GRID_ROWS = [90, 190, 290, 390, 490];
+const TIP_ANG = { inner: [0.1, 0.04], outer: [0.22, 0.1] };
 
 export default {
   id: 'kairo',
@@ -271,24 +262,22 @@ export default {
       const i = w.shot(x, y, a, 22, rail, dmg, r);
       if (i >= 0) { S.behave(i, dmg, 0, 1); S.aux[i] = tag; } // aux: visual tag (tier / shard)
     };
-    // Wing-tip emitters (tiers 3-4, in and out of focus): the old pods' shots, aimed at their lanes.
+    // Wing-tip emitters (tiers 3-4, in and out of focus): glowing lances angled outward.
     if (t >= 3) {
-      const lanes = POD_LANES[t][p.focus ? 1 : 0];
-      TIPS[t].forEach((name, k) => {
-        const [tx, ty] = animatedAnchor(p, name), [ox, oy] = lanes[k];
-        shoot(tx, ty, Math.atan2(p.y + oy - 8 - POD_REF - ty, p.x + ox - tx), 0.7, 5, SHARD_TAG);
+      TIPS[t].forEach((name) => {
+        const [tx, ty] = animatedAnchor(p, name), side = name.endsWith('L') ? -1 : 1;
+        const d = TIP_ANG[name.startsWith('inner') ? 'inner' : 'outer'][p.focus ? 1 : 0];
+        shoot(tx, ty, UP + side * d, 0.7, 5, t);
       });
     }
     if (p.focus) return;
+    const [, cy] = anchor('chest');
     for (const L of LANCES) {
       if (t < L.tier) continue;
       for (const s of [-1, 1]) {
-        const name = s < 0 ? 'muzzleL' : 'muzzleR';
-        const [mx, my] = anchor(name);
-        const tx = s * L.ox + Math.tan(s * L.d) * (L.oy + REF); // where the old lance was REF ahead
-        const ang = UP + Math.atan2(tx - mx, my + REF);
-        shoot(p.x + mx, p.y + my, ang, L.dmg, LANCE_R[t - 1], t);
-        if (L.tier === 1) { const [fx, fy] = animatedAnchor(p, name); muzzleFx(p, w, fx, fy, ang); }
+        const x = p.x + s * L.ox, y = p.y + cy + L.oy, ang = UP + s * L.d;
+        shoot(x, y, ang, L.dmg, LANCE_R[t - 1], t);
+        if (L.tier === 1) muzzleFx(p, w, x, y - 4, ang);
       }
     }
     fired(p); // recoil, armour flash, charge pulses

@@ -150,29 +150,8 @@ function layerFx(p, b, api, name) {
 
 // ------------------------------------------------------------ shots
 
-/** Every player shot: the shared lances / shards plus Kairo's animated energy trails. */
-export function renderShots(p, b, alpha, S) {
-  const F = p.F, fx = fxOf(), w = p.w, t = p.t;
-  if (fx) {
-    const tr = tierFx('trail', p), ga = crowdFactor(w);
-    for (let i = 0; i < S.count; i++) {
-      const tag = S.aux[i];
-      if (tag < 1 || tag > 4) continue;
-      const x = S.px[i] + (S.x[i] - S.px[i]) * alpha, y = S.py[i] + (S.y[i] - S.py[i]) * alpha;
-      const ang = S.ang[i], dx = Math.cos(ang), dy = Math.sin(ang), age = S.age[i] + alpha;
-      // Tapered wake: grows over the first frames, layered blue → cyan, flickering sparkles.
-      const L = Math.min(age * 16, 46 + 10 * tag) * tr, r = S.radius[i];
-      if (L < 4) continue;
-      b.draw(fx.glow, x - dx * L * 0.62, y - dy * L * 0.62, L * 1.3, r * 3.2, ang, B[0], B[1], B[2], 0.3 * ga, 1);
-      b.draw(F.laser, x - dx * L * 0.5, y - dy * L * 0.5, L, r * 0.9, ang, C[0], C[1], C[2], 0.45 * ga, 1);
-      for (let k = 0; k < 3; k++) {
-        const o = L * (0.3 + 0.25 * k) + Math.sin(age * 0.9 + k * 2 + i) * 3, f = 0.5 + 0.5 * Math.sin(t * 0.7 + i * 1.7 + k * 2.1);
-        b.draw(F.core, x - dx * o + dy * Math.sin(i + k + age) * r * 0.6, y - dy * o - dx * Math.sin(i + k + age) * r * 0.6, 2.4, 2.4, 0, W[0], W[1], W[2], 0.7 * f * ga, 1);
-      }
-    }
-  }
-  base.renderShots(p, b, alpha, S);
-}
+/** Every player shot: the original glowing lances (shared mechaFx look). */
+export const renderShots = base.renderShots;
 
 /** Cannon discharge at a muzzle: core flash, angular energy shapes, a ring, forward sparks. */
 export function muzzleFx(p, w, x, y, ang) {

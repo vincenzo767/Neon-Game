@@ -318,3 +318,14 @@ Also planned:
 - Folded blades sit under the body. Where the body doesn't cover them, their ends show at the lower sides (the intended "base wing" look).
 - Recoil moves the cannons up to 2.5 units back along the barrel. The art under the barrel tops is background, so nothing is uncovered.
 - The sounds are unchanged.
+
+## Owner change after the Step 6 review: original shot pattern
+
+- **Lances.** Back to the original pattern: straight shots at the original spacing (±4, ±10, ±16) and outward angles (0, 0.07, 0.16 rad), with no inward aim. They leave from chest level, never the feet. The discharge flash plays at each lance's origin; the cannons still recoil and glow.
+- **Look.** The original glowing lance look (shared `mechaFx`); the extra trail layer is gone.
+- **Wing tips (tiers 3–4).** They now fire glowing lances angled outward: inner tips 0.10 rad (0.04 in focus), outer tips 0.22 rad (0.10 in focus). Same shot count and damage as the old pods.
+- **DPS, boss.**
+  - Shot: T1 28, T2 50, T3 66, T4 85 (was 103: the outer-tip shots now spread outward instead of converging on the target).
+  - Focus: T3 39, T4 42 (was 59).
+  - Line DPS is unchanged.
+- **Screenshot:** `screenshots/kairo/v2/fire_original_pattern.png`.
