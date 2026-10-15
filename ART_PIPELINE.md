@@ -233,7 +233,7 @@ It also writes `<id>_wings@2x.png` and `<id>_wings_outline@2x.png`: the sprite w
 - On the 4096 atlas, Kairo takes about 7 % of the space.
 - `main` already falls back to 0.85 texel scale on the 2048 atlas.
 
-**Component mecha (`parts` in `art.config.mjs` → `rig: true`; Kairo v2, Mira v2).** For art whose parts move far: wings that fold away, cannons that recoil, articulated sections.
+**Component mecha (`parts` in `art.config.mjs` → `rig: true`; Kairo v2, Mira v2, Bruno v2).** For art whose parts move far: wings that fold away, cannons that recoil, articulated sections.
 - **Config.** In source pixels, a mirror `axis` and a `list` of parts `{ name, poly, pivot, split?, exclude?, overlap? }` (left side). Optional `hole` and `grow` (@2x px).
   - `split: [a, b]` cuts a part in two along a line: `<name>Root<L|R>` holds the pivot; `<name>Tip<L|R>` gets an `overlap` tab (8 px) under the root.
   - `exclude` names parts drawn over this one; their pixels never go into it.
@@ -253,7 +253,16 @@ It also writes `<id>_wings@2x.png` and `<id>_wings_outline@2x.png`: the sprite w
 - **Pilot-specific logic stays in the pilot's own `<pilot>Rig.js`** around `rig.step()`:
   - Kairo (`kairoRig.js`): the chest beam's charge, active and recovery states, which gate its damage.
   - Mira (`miraRig.js`): a visual focus cycle around her unchanged needle stream.
-  - Each pilot keeps its rig state in its own `p.ps` key (`kr`, `mr`).
+  - Bruno (`brunoRig.js`): the shoulder-cannon focus cycle and the shoulder recoil.
+  - Each pilot keeps its rig state in its own `p.ps` key (`kr`, `mr`, `br`).
+- **Opt-in rig options** (Bruno's artillery; Kairo and Mira use none, and their rig output is byte-identical):
+  - `names`: the two arrays' layer and anchor prefixes (`shoulder` / `side`);
+  - `levels`: the deployment target per tier, so an array can stop part-way;
+  - `<array>.shift`: an offset while folded, easing to 0 as it deploys;
+  - unsplit array parts (posed like a root).
+  - Each array moves only once the other has reached its target for the tier.
+- `api.drawLayer(name, { rest: true })` draws a layer unposed, e.g. a dark bay where a retracted part normally sits.
+- `frontBg` in `art.config.mjs` overrides `bg` for the front view (Bruno: a checkerboard back, a black front).
 
 ---
 

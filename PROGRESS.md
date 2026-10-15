@@ -24,7 +24,7 @@
 | **Art: Dax** | Hand-made art and a Legendary void kit for Dax Morrow (Overclock), a black-and-red void knight (branch `art/dax-test`, on top of `art/lin-test`, not merged) | 🔍 In review |
 | **Art: Kairo v2** | Component mecha rebuild for Kairo Vance: new top-down art, tier-deployed inner and outer wings, hand cannons, chest focus beam (branch `art/kairo-v2`, on top of `art/dax-test`, not merged) | 🔍 In review |
 | **Art: Mira v2** | Component mecha rebuild for Mira Solenne: new gold-and-white top-down art, chest fire at T1, hand cannons from T2, tier-deployed inner and outer blades, chest focus attack (branch `art/mira-v2`, on top of `art/kairo-v2`, not merged) | 🔍 In review |
-| **Art: Bruno v2** | Heavy-artillery component mecha for Bruno Hagen: new purple-and-red top-down art, tier-expanding shoulder cannons and side cannons, unlimited-range explosive shells, shoulder-cannon focus barrage, reactive shield, wide bomb, carpet-bomb ultimate with a final nuke (branch `art/bruno-v2`, on top of `art/mira-v2`, not merged) | ⏸ Step 1 checkpoint |
+| **Art: Bruno v2** | Heavy-artillery component mecha for Bruno Hagen: new purple-and-red top-down art, tier-expanding shoulder cannons and side cannons, unlimited-range explosive shells, shoulder-cannon focus barrage, reactive shield, wide bomb, carpet-bomb ultimate with a final nuke (branch `art/bruno-v2`, on top of `art/mira-v2`, not merged) | 🔍 In review |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -879,6 +879,30 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Dax%20Morrow/ASS
 - **FX.** Drawn live after the owner's references, with no cut-out images (polish round): straight eye-beam style void beams, real-smoke ghosts and clones spread wide, a starry black crescent at medium speed, and a cosmic void column for the cannon.
 - **Frame rate.** Storm: about 57 FPS with art versus 53 procedural.
 
+## Art: Bruno v2 (branch `art/bruno-v2`)
+
+Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Bruno%20Hagen/ASSET_NOTES.md), "Rebuild v2".
+
+- **Art.** `top-down-enhance.png` (checkerboard removed) as a **heavy-artillery component mecha**: hand guns, shoulder cannons (housing + telescoping long barrel), side cannons (base + sliding barrel), body. Feet-first; the feet never fire.
+- **Tiers.**
+  - T1–T2: compact shoulder cannons and retracted side cannons.
+  - T3: shoulders raised and locked, long barrels 60 % out, side cannons half out.
+  - T4: full arsenal.
+  - A tier loss reverses it.
+- **Kit (approved 1 A, 2 yes, 3 A, 4 yes, 5 yes, 6 A, 7 yes, 8 yes).** All numbers are in `src/pilots/brunoTuning.js`.
+  - **Normal fire:** explosive flak with no fuse, from the hand guns. Tier multipliers 1.0 / 1.2 / 1.45 / 1.75. The side cannons add two shells at T3–T4.
+  - **Focus:** a 0.25 s charge, then the shoulder barrage at 1.4× normal fire.
+  - **Reactive Shield:** 6 s of real immunity; each absorbed attack adds +2 % up to ×2, kept 5 s after.
+  - **Bomb:** an opening 200-unit blast (25 damage, once per enemy) before the Flak Barrage.
+  - **Ultimate:** a 6 s carpet-bomb run, then one screen-wide nuke (60 damage, once per enemy, bosses included).
+  - The option pods are removed.
+- **Checks.**
+  - Shield: 0 hits in a 1,500-bullet storm versus 45 without it.
+  - Bomb and nuke: one hit per enemy, checked on dummies, including corners and a boss.
+  - Damage rises at every tier.
+  - Storm: 55.5 FPS with art versus 57 procedural.
+  - Kairo and Mira are unchanged (rig fingerprints identical, DPS identical).
+
 ## Art: Mira v2 (branch `art/mira-v2`)
 
 Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Mira%20Solenne/ASSET_NOTES.md), "Rebuild v2".
@@ -1092,4 +1116,4 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
-6. Pilot art: review and merge `art/mira-v2` (it contains `art/kairo-v2`, `art/dax-test`, `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.
+6. Pilot art: review and merge `art/bruno-v2` (it contains `art/mira-v2`, `art/kairo-v2`, `art/dax-test`, `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.
