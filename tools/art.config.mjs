@@ -7,6 +7,8 @@
 // glowRule   background removal also strips dark red baked glow (off when the
 //            art has dark warm shading it would eat, e.g. Mira's gold)
 // portraitCrop optional { left, top, width, height } 4:5 box in portrait pixels (default: full width from the top)
+// bg         'checker' for a painted checkerboard (default: flat colour flood fill);
+//            frontBg overrides it for the front view (e.g. Bruno: checker back, black front)
 // holes      optional [x, y] seeds (back source pixels) for enclosed background
 //            gaps the edge flood fill can't reach (frontHoles: same for `front`)
 // anchors    estimates in `back` source pixels; written to <id>.anchors.json
@@ -141,22 +143,67 @@ export const PILOT_ART = {
   },
   bruno: {
     folder: 'Bruno Hagen',
-    back: 'top_down_main.jpg',
+    // v2 (owner's brief, ASSET_NOTES.md "Rebuild v2"): the heavy-artillery component
+    // mecha. Flies feet-first (the twin legs at the top never fire); every barrel points up.
+    back: 'top-down-enhance.png',
+    bg: 'checker',             // painted checkerboard, no alpha
     front: 'top_down_front.png',
+    frontBg: 'flat',           // the front view keeps its black background (flat flood fill)
     portrait: 'pilot_portrait.jpg',
     glowRule: false,           // dark red armour panels
-    holes: [[511, 1315]],      // enclosed gap inside the backpack's H-frame
+    // Rigged components (left side, source px; mirrored at `axis`). Draw order and
+    // motion live in src/pilots/brunoRig.js (shared rig: src/pilots/art/mechaRig.js).
+    parts: {
+      axis: 681,
+      hole: 3,                 // @2x px: the body hole grows past each outline (no slivers)
+      list: [
+        { // hand gun: inner long barrel + forearm, fist and crystal (pivot at the elbow)
+          name: 'gun', pivot: [320, 690],
+          poly: [[226, 70], [240, 48], [285, 40], [333, 48], [348, 70], [350, 200], [355, 230], [350, 330], [352, 395], [372, 410], [392, 500], [400, 520], [402, 610], [392, 665], [372, 692], [330, 705], [285, 700], [248, 690], [238, 640], [240, 560], [242, 500], [244, 410], [236, 380], [232, 230], [228, 200]],
+        },
+        { // shoulder cannon: black housing + wide-bore cannon (root), outer long barrel (tip: telescopes into the housing)
+          name: 'shoulder', pivot: [180, 780], exclude: ['gun'],
+          split: [[40, 345], [240, 320]],
+          poly: [[66, 62], [90, 46], [140, 42], [165, 55], [178, 120], [200, 190], [205, 320], [218, 385], [232, 420], [246, 470], [248, 560], [246, 700], [238, 770], [205, 798], [150, 800], [118, 790], [106, 720], [96, 690], [62, 640], [58, 520], [66, 480], [88, 465], [88, 410], [80, 330], [75, 190], [70, 120]],
+        },
+        { // side cannon beside the torso: base (root), barrel and magenta mouth (tip: slides back into the base)
+          name: 'side', pivot: [530, 1120],
+          split: [[430, 955], [570, 925]],
+          poly: [[443, 812], [455, 800], [492, 800], [505, 815], [520, 860], [540, 940], [555, 1000], [560, 1060], [556, 1130], [540, 1145], [515, 1135], [495, 1080], [470, 1000], [452, 930], [440, 860]],
+        },
+      ],
+    },
     anchors: {
-      hitbox: [511, 930],      // chest centre: lands on player.x/y
-      head: [511, 1080],
-      cannonL: [80, 757],      // wide-bore cannon muzzles: flak fan
-      cannonR: [942, 757],
-      barrelL: [110, 497],     // long-barrel muzzles: siege shells
-      barrelR: [912, 497],
-      podL: [250, 1478],       // shoulder-pod vents: wide back plumes
-      podR: [772, 1478],
-      packL: [415, 1430],      // backpack struts: smaller flames
-      packR: [607, 1430],
+      hitbox: [681, 720],      // torso centre: lands on player.x/y
+      head: [681, 880],
+      muzzleL: [286, 60],     // hand-gun bores (inner long barrels): the flak fan
+      muzzleR: [1076, 60],
+      chanL: [292, 300],      // violet energy channel along the hand-gun barrel
+      chanR: [1070, 300],
+      gripL: [320, 580],      // fists (purple crystal) on the hand guns
+      gripR: [1042, 580],
+      elbowL: [320, 690],
+      elbowR: [1042, 690],
+      shoulderPivotL: [180, 780], // shoulder cannon: housing pivot / barrel split / long-barrel bore (focus at T3-T4)
+      shoulderPivotR: [1182, 780],
+      shoulderJointL: [150, 335],
+      shoulderJointR: [1212, 335],
+      shoulderTipL: [114, 58],
+      shoulderTipR: [1248, 58],
+      wideL: [150, 410],      // wide-bore magenta cannon mouths: focus barrage
+      wideR: [1212, 410],
+      housingL: [150, 560],   // black housing core (charge glow)
+      housingR: [1212, 560],
+      sidePivotL: [530, 1120], // side cannon: base / barrel split / magenta mouth (shells from T3)
+      sidePivotR: [832, 1120],
+      sideJointL: [500, 940],
+      sideJointR: [862, 940],
+      sideTipL: [472, 820],
+      sideTipR: [890, 820],
+      podL: [318, 1092],      // shoulder-pod ports: wide back plumes
+      podR: [1044, 1092],
+      packL: [602, 1092],     // backpack struts: smaller flames
+      packR: [760, 1092],
     },
   },
   tess: {

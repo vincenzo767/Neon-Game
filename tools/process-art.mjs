@@ -66,8 +66,8 @@ function hasRealAlpha({ data }) {
  * pixels within `tol` of the edge colour (and dark, reddish glow pixels),
  * then feather the cut by `feather` px.
  */
-function removeBackground(img, holes = [], tol = 16, feather = 1.5, maxGrad = 10, glowRule = CFG.glowRule) {
-  if (CFG.bg === 'checker') return removeChecker(img, holes, feather);
+function removeBackground(img, holes = [], tol = 16, feather = 1.5, maxGrad = 10, glowRule = CFG.glowRule, mode = CFG.bg) {
+  if (mode === 'checker') return removeChecker(img, holes, feather);
   const { data, w, h } = img;
   // Local contrast: backgrounds and baked glows are smooth; line art and dark
   // armour panels are not, so the fill stops at the silhouette's outline even
@@ -592,7 +592,7 @@ async function main() {
 
   // 5. Front view (select preview, cut-in) and portrait.
   const frontRaw = await raw(path.join(SRC, CFG.front));
-  if (!hasRealAlpha(frontRaw)) { removeBackground(frontRaw, CFG.frontHoles); log(`${CFG.front}: no transparency → background removed by flood fill`); }
+  if (!hasRealAlpha(frontRaw)) { removeBackground(frontRaw, CFG.frontHoles, undefined, undefined, undefined, undefined, CFG.frontBg ?? CFG.bg); log(`${CFG.front}: no transparency → background removed by flood fill`); }
   const front = cleanAlpha(frontRaw);
   const fbox = alphaBox(front);
   const ftrim = await fromRaw(front).extract(fbox).png().toBuffer();

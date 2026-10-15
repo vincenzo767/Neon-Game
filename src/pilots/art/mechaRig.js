@@ -15,11 +15,20 @@
 // breathe        optional { inner, outer, amp, flare } idle sway rates (rad/step),
 //                amplitude, and outward flare in focus
 // gunLift(p)     optional extra outward cannon rotation (e.g. Kairo's beam)
+// names          optional { inner, outer }: layer / anchor prefixes of the two
+//                arrays (default 'inner' / 'outer'; Bruno: 'shoulder' / 'side')
+// levels         optional { inner: [T1..T4], outer: [T1..T4] }: deployment target
+//                per tier, 0..1 (default inner [0, 0, 1, 1], outer [0, 0, 0, 1];
+//                Bruno deploys part-way at tier 3)
+// <array>.shift  optional [dx, dy] (@2x px, left side; the right mirrors dx): the
+//                array's offset when folded, easing to 0 as it deploys (Bruno's
+//                cannons slide back into their housings)
 //
-// Layer names: gun<L|R>, <inner|outer>Root<L|R>, <inner|outer>Tip<L|R>; the
-// anchors <blade>Pivot<s>, <blade>Joint<s>, <blade>Tip<s> place the tips.
-// Tiers: inner blades deploy at tier 3, outer at tier 4; deploy inner then
-// outer, retract (tier loss) outer then inner.
+// Layer names: gun<L|R>, <array>Root<L|R> + <array>Tip<L|R> (split parts) or
+// <array><L|R> (unsplit: posed like a root); the anchors <array>Pivot<s>,
+// <array>Joint<s>, <array>Tip<s> place the tips. Deploy runs inner then outer,
+// retract (tier loss) outer then inner: each array moves only once the other
+// has reached its own target for the tier.
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 const easeOut = (u) => 1 - (1 - u) ** 3;
@@ -28,6 +37,8 @@ const easeBack = (u) => { const c = 1.6; return 1 + (c + 1) * (u - 1) ** 3 + c *
 
 export function createRig(C) {
   const br = { inner: 0.045, outer: 0.037, amp: 0.012, flare: 0.05, ...(C.breathe || {}) };
+  const N = { inner: 'inner', outer: 'outer', ...(C.names || {}) };
+  const LV = { inner: [0, 0, 1, 1], outer: [0, 0, 0, 1], ...(C.levels || {}) };
 
   /** Fresh rig state (`extra`: the pilot's own fields, e.g. a focus-cycle state). */
   function state(extra = {}) {
@@ -49,25 +60,26 @@ export function createRig(C) {
    * { deploy3, deploy4, lock3, lock4, retract3, retract4 }.
    */
   function step(p, kr) {
-    const ev = {}, tier = p.tier;
+    const ev = {}, T = Math.max(0, Math.min(3, p.tier - 1));
     // Tier configuration: inner first on the way up, outer first on the way down.
-    const wantInner = tier >= 3 ? 1 : 0, wantOuter = tier >= 4 ? 1 : 0;
+    const wantInner = LV.inner[T], wantOuter = LV.outer[T];
     const move = (key, want, B, gate, lockKey, evUp, evDown, evLock) => {
       const v = kr[key];
       if (want > v && gate) {
         if (kr[key + 'Dir'] !== 1) ev[evUp] = true;
         kr[key + 'Dir'] = 1;
-        kr[key] = Math.min(1, v + 1 / B.deploy);
-        if (kr[key] === 1) { kr[key + 'Dir'] = 0; kr[lockKey] = 18; ev[evLock] = true; }
+        kr[key] = Math.min(want, v + 1 / B.deploy);
+        if (kr[key] === want) { kr[key + 'Dir'] = 0; kr[lockKey] = 18; ev[evLock] = true; }
       } else if (want < v && gate) {
         if (kr[key + 'Dir'] !== -1) ev[evDown] = true;
         kr[key + 'Dir'] = -1;
-        kr[key] = Math.max(0, v - 1 / B.retract);
-        if (kr[key] === 0) kr[key + 'Dir'] = 0;
+        kr[key] = Math.max(want, v - 1 / B.retract);
+        if (kr[key] === want) kr[key + 'Dir'] = 0;
       } else kr[key + 'Dir'] = 0;
     };
-    move('inner', wantInner, C.inner, wantInner === 1 || kr.outer === 0, 'lockInner', 'deploy3', 'retract3', 'lock3');
-    move('outer', wantOuter, C.outer, wantOuter === 0 || kr.inner === 1, 'lockOuter', 'deploy4', 'retract4', 'lock4');
+    // The inner array retracts only once the outer one is home; the outer deploys only once the inner is out.
+    move('inner', wantInner, C.inner, wantInner >= kr.inner || kr.outer === wantOuter, 'lockInner', 'deploy3', 'retract3', 'lock3');
+    move('outer', wantOuter, C.outer, wantOuter <= kr.outer || kr.inner === wantInner, 'lockOuter', 'deploy4', 'retract4', 'lock4');
     if (ev.deploy3) kr.wave3 = 40;
     if (ev.deploy4) kr.wave4 = 60;
     for (const k of ['lockInner', 'lockOuter', 'wave3', 'wave4', 'flashL', 'flashR', 'chestT']) if (kr[k] > 0) kr[k]--;
@@ -102,18 +114,21 @@ export function createRig(C) {
         ox: -p.bank * 2.5,
       };
     }
-    const blade = name.startsWith('inner') ? 'inner' : 'outer', B = C[blade], d = kr[blade];
+    const blade = name.startsWith(N.inner) ? 'inner' : 'outer', B = C[blade], d = kr[blade], pre = N[blade];
     const swingU = easeBack(clamp01(d / B.lockAt)), extU = easeOut(clamp01((d - B.lockAt * 0.75) / (1 - B.lockAt * 0.75)));
     const flare = p.ps.flare || 0, s = name.endsWith('L') ? 'L' : 'R';
     // Deployed blades breathe and flare outward in focus; banking pulls the far wing in.
     const live = d * (side * (br.amp * Math.sin(t * br[blade] + (blade === 'inner' ? 0 : 1.7)) + br.flare * flare) - p.bank * 0.04);
     const rot = (side < 0 ? B.swing : -B.swing) * (1 - swingU) + live; // left swings by B.swing; the right mirrors it
-    if (name.includes('Root')) return { rot };
+    const out = { rot };
+    if (B.shift) { out.ox = -side * B.shift[0] * (1 - swingU); out.oy = B.shift[1] * (1 - swingU); }
+    if (!name.includes('Tip')) return out; // root, or an unsplit part
     // Tip: slide back toward the root along pivot → tip, before the swing.
-    const pv = A[`${blade}Pivot${s}`], tp = A[`${blade}Tip${s}`], jn = A[`${blade}Joint${s}`];
+    const pv = A[`${pre}Pivot${s}`], tp = A[`${pre}Tip${s}`], jn = A[`${pre}Joint${s}`];
     const ax = tp[0] - pv[0], ay = tp[1] - pv[1], L = Math.hypot(ax, ay) || 1;
     const slide = Math.hypot(tp[0] - jn[0], tp[1] - jn[1]) * B.slide * (1 - extU);
-    return { rot, tx: -ax / L * slide, ty: -ay / L * slide };
+    out.tx = -ax / L * slide; out.ty = -ay / L * slide;
+    return out;
   }
 
   return { state, step, fired, pose };
