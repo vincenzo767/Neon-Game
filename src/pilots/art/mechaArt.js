@@ -39,7 +39,8 @@ import { FADE_OUT } from '../../fx/Particles.js';
 //                   about its pivot, then ox/oy offset; @2x px),
 //                 attach: { anchorName: layerName } (anchors that ride a layer),
 //                 before(p, b, api, name): drawn just under a layer (keep it to the
-//                   layer's own texture, e.g. api.drawLayer halos: no batch flush),
+//                   layer's own texture, e.g. api.drawLayer halos: no batch flush;
+//                   drawLayer(name, { rest: true }) draws it unposed),
 //                 overlay(p, b, api): FX over the whole mecha, once (atlas textures) }
 //               replaces the wing animation; the pilot drives the poses.
 //
@@ -536,10 +537,11 @@ export function createMechaArt(cfg) {
       const drawLayer = (name, o = {}) => {
         const part = set[name];
         if (!part) return;
-        const ps = name === 'body' ? {} : (R.pose(p, name) || {});
+        // o.rest: the layer at its rest position, unposed (e.g. a dark bay where a retracted part sits).
+        const still = name === 'body' || o.rest, ps = still ? {} : (R.pose(p, name) || {});
         if (ps.hide) return;
         const bx = part.box, g = o.grow ?? 1;
-        const [cx, cy] = name === 'body' ? [bx.x + bx.w / 2 - hb[0], bx.y + bx.h / 2 - hb[1]] : rigPoint(p, set, name, bx.x + bx.w / 2 - hb[0], bx.y + bx.h / 2 - hb[1]);
+        const [cx, cy] = still ? [bx.x + bx.w / 2 - hb[0], bx.y + bx.h / 2 - hb[1]] : rigPoint(p, set, name, bx.x + bx.w / 2 - hb[0], bx.y + bx.h / 2 - hb[1]);
         const [wx, wy] = place(cx + (o.dx || 0), cy + (o.dy || 0));
         const t = o.tint || [1, 1, 1], sc = (ps.s ?? 1) * g;
         b.draw(part.frame, wx, wy, bx.w * k * sq * sc, bx.h * k * sc, rot + (ps.rot || 0), t[0], t[1], t[2], (o.alpha ?? a) * (ps.alpha ?? 1), o.add ?? 0);
