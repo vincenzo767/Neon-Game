@@ -145,3 +145,95 @@ The airbursts looked like flat pink discs. They are rebuilt after the explosion 
   - The textures fit in the shared atlas, which stays at 81 %.
   - Storm frame rate is unchanged (about 49 FPS), and DPS is unchanged because the change is cosmetic.
   - Screenshots: `screenshots/bruno/14_burst_*.png`.
+
+---
+
+# Rebuild v2: heavy-artillery component mecha (branch `art/bruno-v2`)
+
+Owner's brief (2026-10-15): rebuild the Ironhound from the new
+`top-down-enhance.png` as a component mecha whose **artillery** expands with
+the tiers (not wings). Normal shells get unlimited range and explode on
+contact; damage scales by tier. Focus becomes a shoulder-cannon barrage.
+Special becomes a 6 s reactive shield. Bomb becomes a wide-area blast.
+Ultimate becomes a 6 s carpet-bomb run ending in a screen-wide nuke. Keep the
+glowing shells and violet thrusters. Built on the shared component-mecha
+path (`art/mechaRig.js`). Branch `art/bruno-v2` sits on top of `art/mira-v2`.
+
+## Step 1: inspection
+
+### New image
+
+| File | Size | Real transparency? | What it shows | Problems |
+|------|------|--------------------|---------------|----------|
+| `top-down-enhance.png` | 1362×1155 PNG RGB | **No**: painted checkerboard (greys 230–254) | The Ironhound redrawn: silver / blue-grey armour, crimson plates, violet-magenta energy, charcoal joints, heavy black outline. Mirror-symmetric about **x ≈ 681**. | Needs `bg: 'checker'` (as Kairo and Lin). |
+
+`top_down_front.png` (select card, cut-in) and the portrait stay as they are.
+
+### Facing (checked on the art)
+
+Forward is **up**, as before. All six barrels have their bores at the top
+(y ≈ 45–60), and the wide-bore and side-cannon mouths face up. He flies
+feet-first: the twin pointed legs are at the top centre, and the red V waist,
+torso, purple head crest and H-frame backpack are below. **The feet never
+fire.**
+
+### Components (left side, source px; the right side mirrors at x 681)
+
+| Part | Where | Proposed role |
+|------|-------|---------------|
+| **Hand gun** | The inner long barrel (bore 287, 60) on the forearm: violet rings, grey breech, purple crystal and red plate at the fist (≈ 320, 560) | Normal fire at every tier. Recoils with the forearm. Pivot at the elbow (≈ 320, 690). |
+| **Shoulder cannon** | The heavy outer block: black housing (60–240, 470–790) anchored at shoulder level, the **wide-bore magenta cannon** (mouth 148, 410) and the **outer long barrel** (bore 135, 60) | Focus barrage. Compact at T1–T2; expands at T3–T4. |
+| **Side cannon** (integrated artillery) | The short magenta-mouthed cannon beside the torso (mouth ≈ 470, 825), between the shoulder pod and the body | Retracted at T1–T2, partly out at T3, fully out at T4. |
+| **Body** | Legs (top), red-V waist, torso, head crest, the big oval shoulder pods with red plates, backpack H-frame | Hover, bank and breathing. |
+
+The compact pose is built from these parts, not from a scaled image.
+- **Shoulder cannon, compact:** the outer long barrel telescopes down into the housing, and the block sits lower and tucked in.
+- **Shoulder cannon, deploying:** the block slides up, rotates out and locks; then the long barrel extends.
+- **Side cannon:** sinks back into the shoulder until T3.
+
+### What Bruno has today (baseline, `tools/dps.mjs bruno`, boss DPS)
+
+| Mode | T1 | T2 | T3 | T4 |
+|------|----|----|----|----|
+| Shot (flak fan 5 / 7 / 9 / 11 shells, 1.6 area dmg, burst r 20) | 50 | 87 | 88 | 125 |
+| Focus (siege shells 1 / 2 / 2 / 3, 4.5 area dmg, r 34) | 23 | 71 | 71 | 119 |
+
+- **Range.** Flak shells burst on contact **or after a 20–32 step fuse** (about 180–290 units). That fuse is the "short range".
+- **Focus is weaker than normal fire today.** The brief asks for the opposite.
+- **Options:** 2 pods at T2–T3, 4 at T4, firing flak or shells.
+- **Special:** Brace (absorbs one lethal hit; cooldown 900, 5 s).
+- **Bomb:** Flak Barrage (100 steps, a burst every 3 steps at enemies, 7 dmg r 55, clears bullets).
+- **Ultimate:** Carpet-Bomb Run (250 steps, 5 bombers, drops 9 dmg r 60, clears bullets).
+- **Immunity hook.** `Player.invulnerable` already honours a pilot `intangible()` hook, which covers bullets, lasers and contact. A real shield can use it.
+
+## Proposed decisions (Step 1 checkpoint)
+
+1. **Which parts are which.**
+   - **A (recommended):** as in the table. Hand gun = inner long barrel on the forearm. Shoulder cannon = the outer block (wide-bore cannon + outer long barrel). Side cannon = the small torso-side cannon.
+   - **B:** hand gun = the wide-bore magenta cannon; shoulder cannons = both long barrels.
+2. **Normal fire.** The same flak fan from the two hand-gun muzzles (left half / right half; the middle shell alternates).
+   - **Range:** no fuse. Shells fly until they hit something or leave the playfield.
+   - **On contact:** they burst, damaging every enemy in the burst radius once.
+   - **Damage:** a central tier table `TIER_DMG = [1.0, 1.2, 1.45, 1.75]` multiplies shell damage, so damage rises at every tier. Cadence (8 steps) and shell counts are unchanged.
+   - **Side cannons:** from T3 they add a pair of shells, taking over the pods' share (see 3).
+3. **Option pods.**
+   - **A (recommended):** remove them. Their firepower moves into the side cannons, so the arsenal grows on the mecha itself, with nothing like Mira's drones.
+   - **B:** keep them.
+4. **Focus: shoulder-cannon barrage.**
+   - **Cycle:** 0.25 s charge, then barrage, then recoil and recovery. The hand guns keep firing during the charge.
+   - **Shells:** every 10 steps. Wide-bore cannons only at T1–T2 (2 shells); wide-bore + long barrels at T3–T4 (4 shells).
+   - **Tuning:** heavy shells (bigger burst) tuned so focus boss DPS is about **1.4× normal fire** at the same tier.
+5. **Special: Reactive Shield** (replaces Brace).
+   - **Duration and cooldown:** 6 s; cooldown unchanged (900 steps).
+   - **Sphere:** radius 64 units, covering the fully deployed mecha. Total immunity to bullets, lasers and contact through `intangible()`.
+   - **Absorption:** every enemy bullet that enters the sphere is absorbed (destroyed, so it is counted once). Each adds **+0.02** to a damage multiplier, capped at **×2.0** (50 bullets).
+   - **Lasers and contact:** they add +0.02 per 10 steps of contact.
+   - **Bonus window:** the bonus applies to shots and focus. It lasts **5 s** after the shield ends, then fades over 1 s.
+6. **Bomb.**
+   - **A (recommended):** keep the Flak Barrage and its damage. Add an opening **wide detonation** centred on Bruno: radius 200, 25 damage, hitting each enemy once. Its drawn radius equals the damage radius.
+   - **B:** visuals only, no new damage.
+7. **Ultimate.**
+   - **Run:** 6 s of bombers in waves, dropping a bomb every 6 steps at varied points (9 dmg r 60 each, as today). Bullets are cleared during the run.
+   - **Nuke:** a warning, a 0.6 s drop, then a **screen-wide nuke** that deals **60 damage once to every enemy in the playfield**, bosses included.
+   - **Total length:** about 7.5 s. The nuke can only trigger once per ultimate.
+8. **Size and hitbox.** 90 units tall; the hitbox stays 3.0. The expanded artillery is visual only and never changes collision.
