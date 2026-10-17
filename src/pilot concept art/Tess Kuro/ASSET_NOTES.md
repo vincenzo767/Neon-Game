@@ -300,3 +300,148 @@ Branch: `art/tess-v2`, on top of `art/bruno-v2`. It uses the shared component-me
 - **Removed:** Ghost Slash, the Cloak and its decoy, and the old Shadow Clones ultimate.
 - **Kept:** the procedural sprite as the fallback.
 - **Unchanged:** the sounds, apart from reusing the existing ones.
+
+## Decisions at the Step 1 checkpoint (approved by the owner)
+
+1. **A, with a change:** the crescents don't fly straight. Each one launches at a random angle and chases an enemy in sight, at any range.
+2. **A, with a correction:** the arms take turns swinging, and the crescents come out of the blade itself, along its length.
+3. **B:** the clones deal 60% damage.
+4. **A:** Shadow Form has a 30 s cooldown.
+5. **Yes** (bomb).
+6. **Yes** (ultimate).
+7. **Lore:** Dax is a cosmic rogue; Tess travels in search of him and waits for him to come back.
+8. **Yes** (size).
+
+## Steps 2–6: results
+
+### Art and rig
+
+- **Processing.** `npm run art:tess`:
+  - `bg: 'checker'` plus a new opt-in `bgPale`. The blades' pink halo tints the checker squares, which the normal checker rule leaves behind as white specks.
+  - `bgPale` also removes the white core of each blade's glow line, so `tessFx.js` redraws it as an animated energy line.
+  - Outputs: sprite 436×372 @2x; front view 432×600; the portrait is unchanged.
+- **Parts.** One arm on each side, split at the elbow:
+  - `armRoot` is the upper arm and elbow armour, with its pivot at the shoulder;
+  - `armTip` is the forearm, clawed hand and blade.
+  - The shoulder armour, leg blades (feet), torso, head and back spikes stay in the body.
+- **Rig** (`src/pilots/tessRig.js`, her own; the shared `createRig` is for deploying weapon arrays). Every volley is one arm's slash, and the arms take turns:
+  - the next arm winds back and out while the other one throws;
+  - on release it snaps forward and inward across the body, follows through, and settles;
+  - the elbow bends more than the shoulder, so the blade whips;
+  - the blade flares and smears back along its arc while it swings.
+- **Draw order:** upper arms, then the body, then the blades.
+- **Clones:** they share the pose, so their arms swing with hers.
+
+### Kit (all numbers in `src/pilots/tessTuning.js`)
+
+- **Crescent Blades:**
+  - Crescents per volley: 2 / 3 / 4 / 6.
+  - Size: ×1.0 / 1.25 / 1.5 / 1.8.
+  - Speed: 12 / 14 / 16 / 18 units per step.
+  - Damage each: 2.3 / 2.75 / 3.05 / 2.75.
+  - Behaviour:
+    - The crescents leave the swinging blade between its base and its tip.
+    - Each one launches at a random angle (up ± 0.75 rad) and chases a random enemy in sight until it hits it, then flies straight on.
+    - They hit each enemy at most once (the engine's piercing re-hit is turned off for them).
+    - They erase enemy bullets along their path, and fly until they leave the screen.
+- **Glitch Clones (focus):**
+  - Two clones, 70 units out to each side and 90 ahead of her.
+  - They throw her exact volley from their own blades, only when she throws, at 60% damage.
+  - Look: RGB split, scanlines, torn slices, flicker and sideways jumps. They spring out of her and collapse back.
+- **Shadow Form (special):**
+  - 10 s in which every attack phases through her (`intangible`).
+  - 30 s cooldown from activation.
+  - She keeps fighting. She is drawn as a black silhouette with a flickering violet edge, with smoke and embers.
+- **Bomb:**
+  - Lasts 2.5 s.
+  - Her two clones come out for the whole bomb.
+  - She and each clone throw a fan of three wide crescents (110 units across): nine in all. Each wave hits each enemy once for 14 and erases bullets.
+  - Thousand Cuts is unchanged.
+- **Void Cross Annihilation (ultimate):** 9 s.
+  1. **Compression** (0.6 s): the core gathers at Tess, the rings contract and spin faster, light streaks and smoke are drawn in.
+  2. **Launch:** a flash, pressure rings, radial sparks, a distortion wave and a shake.
+  3. **Travel** (4 units per step):
+     - **Shape:** Dax's crescent shape and motion (his shape helpers, now exported from `daxFx.js`), repainted black / violet / lavender / white and squashed flat into the cross's wings. A white crossbar, a void spear ahead with a tail behind, and a ringed white-hot core.
+     - **Effects:**
+       - plasma currents racing toward the spear;
+       - lightning off the edges;
+       - crescent shock fronts sweeping out ahead;
+       - a wake and wing ribbons back to the launch point;
+       - speed streaks, smoke spiralling off, and distortion.
+     - **Hits:**
+       - It erases every bullet it touches.
+       - Regular enemies and mid-bosses die on contact: a white-violet flash, then they break into fragments carried forward. Mid-bosses also implode, then burst.
+       - Main bosses take 10 damage every 5 steps.
+  4. **Critical compression** (0.7 s) at y = 190: the wings curl in, the rings collapse one after another, and the shell cracks. Then the core goes black inside a thin white rim, and finally white.
+  5. **Detonation:**
+     - **Damage:** 80 to every enemy on the field (bosses included), exactly once; every bullet cleared.
+     - **Effects:**
+       - a flash that overpowers the screen;
+       - a spherical shock front and a ground shockwave ring lifting debris;
+       - a plasma sphere with void currents and fractures;
+       - a mushroom cloud: a lit violet stem and a lumpy grey-violet cap lit from inside;
+       - an outer void halo breaking into crescent blades that spiral out;
+       - lightning inside the cloud.
+  6. **Aftermath:** embers fall and everything fades over the last 70 steps.
+  - There is no orange anywhere in the ultimate.
+- **Removed:** Ghost Slash, the Cloak and its decoy, the old Shadow Clones ultimate, and the art-test `kickL` / `kickR` wing kick.
+- **Kept:** the procedural sprite as the fallback (`&noart` works).
+- **Data:**
+  - **Role:** "Blade Mecha".
+  - **Stats:** range 1 → 5, bomb 2 → 3.
+  - **New bio:** Dax Morrow, her love, went rogue among the stars, and she searches sector to sector for the night he comes back.
+  - **New lore file line** (`src/data/lore/pilots.js`).
+
+### Tests
+
+**Headless gameplay checks** (the real World and Player; the script is kept in the session scratchpad). All passed:
+
+| Check | Result |
+|---|---|
+| Any range | Five far targets (both top corners, the left and right edges, top centre) were all hit at T4: 37 / 30 / 21 / 32 / 30 DPS. |
+| Bullet cutting | 1,735 of 1,845 stationary bullets erased in 2 s of T4 fire, with no enemies. |
+| One hit per crescent | 119 hits on an r = 50 boss from 120 crescents. |
+| Volleys | T1–T4: 2 / 3 / 4 / 6 crescents. The arms alternate left → right. Focus throws 3× as many, the clones' share at exactly 60% damage. |
+| Shadow Form | 0 hits in 590 steps of a dense aimed stream; 82 hits in the 1.5 s after. Cooldown confirmed. |
+| Bomb | 9 wide crescents. Each enemy was hit by 3–5 waves, never twice by the same wave. |
+| Ultimate | The regular enemy and the mid-boss died on contact. The main boss survived the sweep and took 130 from it. The nuke hit the boss and three far-corner enemies exactly once each. Phases ran compress → travel → crit → boom → end, leaving 0 bullets. |
+
+**DPS** (`tools/dps.mjs tess`, boss target), before → after:
+
+| Mode | T1 | T2 | T3 | T4 |
+|---|---|---|---|---|
+| Shot | 29 → 45 | 58 → 81 | 87 → 121 | 116 → 164 |
+| Focus | 20 → 85 | 20 → 156 | 20 → 227 | 20 → 306 |
+
+- Shot matches the approved targets (45 / 80 / 120 / 165).
+- Focus is about 1.9× shot. It is below the 2.2× from 1 + 2 × 0.6 because the clones, 70 units out to each side, start further from targets.
+- The old kit dealt 0 damage at 240+ units; now damage is the same at 120, 240 and 360 ahead.
+
+**Frame rate** (1,500-bullet storm, headless Intel HD 5500; this machine's readings vary run to run):
+
+| Situation | With art | Procedural |
+|---|---|---|
+| T4 firing | 57.5 FPS | 49.3 |
+| Focus | 50.3 | 52.5 |
+| Ultimate, first 3 s | 40.7 | 34.9 |
+| Ultimate, next 3 s | 48.6 | 41.4 |
+
+**Regressions:**
+- Dax, Kairo, Mira and Bruno DPS are identical to the baseline. Dax's file only gained `export` keywords.
+- All seven art pilots load, play every tier, focus, special, bomb and ultimate with no errors.
+
+**Screenshots** in `screenshots/tess/v2/`:
+- `sheet_poses` (rest, wound, follow-through, mixed);
+- `sheet_fire`;
+- `sheet_focus`;
+- `sheet_shadow_bomb`;
+- `sheet_ult` (every phase);
+- `sprite_on_dark`.
+
+### Known limitations
+
+- The body is not articulated; only the arms move.
+- The white core of the blades' glow is redrawn in code (`bgPale` removes it from the sprite).
+- With many crescents on screen the field gets busy and pink. The crescents are toned down, but T4 focus (18 per volley) is still dense.
+- When the cross detonates high on the screen, the top of the mushroom cloud can reach the screen edge.
+- The sounds are unchanged (the special still uses the old cloak sound).

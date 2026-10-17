@@ -25,7 +25,7 @@
 | **Art: Kairo v2** | Component mecha rebuild for Kairo Vance: new top-down art, tier-deployed inner and outer wings, hand cannons, chest focus beam (branch `art/kairo-v2`, on top of `art/dax-test`, not merged) | 🔍 In review |
 | **Art: Mira v2** | Component mecha rebuild for Mira Solenne: new gold-and-white top-down art, chest fire at T1, hand cannons from T2, tier-deployed inner and outer blades, chest focus attack (branch `art/mira-v2`, on top of `art/kairo-v2`, not merged) | 🔍 In review |
 | **Art: Bruno v2** | Heavy-artillery component mecha for Bruno Hagen: new purple-and-red top-down art, tier-expanding shoulder cannons and side cannons, unlimited-range explosive shells, shoulder-cannon focus barrage, reactive shield, wide bomb, carpet-bomb ultimate with a final nuke (branch `art/bruno-v2`, on top of `art/mira-v2`, not merged) | 🔍 In review |
-| **Art: Tess v2** | Blade component mecha for Tess Kuro: new violet top-down art with swinging arm blades, unlimited-range crescents that erase bullets, glitch-clone focus, Shadow Form special, triple-crescent bomb with clones, void-cross ultimate with a nuclear-scale detonation; Dax Morrow's love interest (branch `art/tess-v2`, on top of `art/bruno-v2`, not merged) | ⏸ Step 1 checkpoint |
+| **Art: Tess v2** | Blade component mecha for Tess Kuro: new violet top-down art with swinging arm blades, unlimited-range crescents that erase bullets, glitch-clone focus, Shadow Form special, triple-crescent bomb with clones, void-cross ultimate with a nuclear-scale detonation; Dax Morrow's love interest (branch `art/tess-v2`, on top of `art/bruno-v2`, not merged) | 🔍 In review |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -880,6 +880,24 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Dax%20Morrow/ASS
 - **FX.** Drawn live after the owner's references, with no cut-out images (polish round): straight eye-beam style void beams, real-smoke ghosts and clones spread wide, a starry black crescent at medium speed, and a cosmic void column for the cannon.
 - **Frame rate.** Storm: about 57 FPS with art versus 53 procedural.
 
+## Art: Tess v2 (branch `art/tess-v2`)
+
+Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Tess%20Kuro/ASSET_NOTES.md), "Rebuild v2".
+
+- **Art.** `new-top-down-main.png` (checkerboard, with `bgPale` for the blade halo) as a **blade component mecha**: each arm is split at the elbow. Every volley is one arm's slash, the arms taking turns, and the crescents leave the blade along its length. Feet-first; the leg blades (feet) never fire.
+- **Kit (approved 1 A homing, 2 A alternating, 3 B, 4 A, 5 yes, 6 yes, 8 yes).** All numbers are in `src/pilots/tessTuning.js`.
+  - **Crescent Blades:** 2 / 3 / 4 / 6 crescents per volley, growing and faster per tier. They chase random enemies in sight at any range, hit each enemy once, and erase bullets on their path.
+  - **Focus:** two glitch clones throw her exact volley at 60% damage.
+  - **Shadow Form:** 10 s intangible, 30 s cooldown.
+  - **Bomb:** Thousand Cuts, plus nine wide crescents from her and both clones.
+  - **Ultimate:** Void Cross Annihilation. Dax's crescent motion in violet, crossed with a spear. It kills regular enemies and mid-bosses on contact, burns main bosses, then detonates: 80 damage once per enemy, with a mushroom cloud.
+- **Lore.** Dax Morrow's love: he went cosmic rogue, and she searches for him.
+- **Checks.**
+  - All 13 headless gameplay checks pass.
+  - Boss DPS shot 45 / 81 / 121 / 164 (was 29–116 at short range only); focus about 1.9×.
+  - Storm: 57.5 FPS with art versus 49.3 procedural.
+  - Dax, Kairo, Mira and Bruno are unchanged (identical DPS).
+
 ## Art: Bruno v2 (branch `art/bruno-v2`)
 
 Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Bruno%20Hagen/ASSET_NOTES.md), "Rebuild v2".
@@ -1117,4 +1135,4 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
-6. Pilot art: review and merge `art/bruno-v2` (it contains `art/mira-v2`, `art/kairo-v2`, `art/dax-test`, `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.
+6. Pilot art: review and merge `art/tess-v2` (it contains `art/bruno-v2`, `art/mira-v2`, `art/kairo-v2`, `art/dax-test`, `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.
