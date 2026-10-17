@@ -131,3 +131,172 @@ Same method as the others: feathered polygons plus the exact alpha complement fo
   - thrusters, muzzle flares and hit sparks.
   - Thrusters, muzzle flares and hit sparks use a new optional `pal.rim` colour in the shared modules. Pilots without it look exactly as before.
 - Screenshots refreshed in `screenshots/tess/`.
+
+
+---
+
+# Rebuild v2 (Step 1)
+
+Branch: `art/tess-v2`, on top of `art/bruno-v2`. It uses the shared component-mecha rig that Kairo, Mira and Bruno use. The source folder stays read-only.
+
+## New images
+
+| File | Size | Real transparency? | What it shows | Notes |
+|------|------|--------------------|---------------|-------|
+| `new-top-down-main.png` | 1362×1155 PNG RGB | **No**: painted checkerboard | **New in-game sprite.** Feet-first, mirror-symmetric about x ≈ 681. Two long glowing arm blades sweep up and out to the top corners (tips near (19, 30) and (1343, 30)). The two leg blades with red chevrons are in the centre (feet at about (585, 320) and (777, 320)). The waist has a red tip at about (681, 570), and the head is at about (681, 850) with its rear spike down to y ≈ 1000. Long shoulder spikes cross into an X at the bottom. | Needs `bg: 'checker'`, like Bruno. The magenta halo round the blades must survive (the pocket detection keeps it). `glowRule` stays off because of the thin red lines. Bounding box is about x 15–1347, y 20–1150. |
+| `new-top-down-front.png` | 1024×1536 PNG RGB | **No**: solid black | Front view, upright: horned head, X shoulder spikes, arm blades held down, long leg blades. Used for the select card and the cut-in. | Needs `frontBg: 'flat'`. |
+| `new-ultimate.png` | 1671×941 PNG RGB | **No**: painted checkerboard | Ultimate FX reference: a black-violet void cross with a white-hot core and rings, a vertical spear, and two crescent wings curving back, with ragged ink edges and white cutting edges. | Reference only; it is rebuilt in code, like Dax's crescent. |
+| `pilot_portrait.jpg` | — | — | The old portrait of the wrong (male) pilot. **Deleted from the folder by the owner.** | The deletion is committed with the new art. The game uses `pilot-portrait-main.jpg`, which is unchanged. |
+
+**Facing.** The mecha flies up, feet-first, like the others. **The two centre leg blades are her feet and never fire.** No rotation is needed.
+
+## Components (source px, L side; R = 1362 − x)
+
+| Part | Where | Role |
+|------|-------|------|
+| **Arm blade** (forearm + glowing blade) | From the wrist at about (375, 650) out to the tip at (19, 30) | **Throws every crescent.** It is animated, and swings on every throw. |
+| **Upper arm** | Shoulder at about (530, 800) → elbow at about (420, 700) | Animated: carries the swing. |
+| Leg blades (feet) | Centre, tips at (585, 320) / (777, 320) | Body. **Never fire.** |
+| Waist, torso, head | Centre line, y 560–1000 | Body. |
+| Shoulder spikes (bottom X) | From about (560, 900) down to the bottom corners | Body. The thrusters sit at their roots. |
+
+**Proposed anchors** (exact values set when processing):
+- `hitbox` (681, 740), the chest centre;
+- `head` (681, 850);
+- `blade` (130, 230), on the blade near the tip: where crescents leave;
+- `bladeTip` (19, 30);
+- `wrist` (375, 650), `elbow` (420, 700), `shoulder` (530, 800);
+- `vent` (560, 960) and `pack` (640, 1010) for the thrusters (wide plumes at the shoulder-spike roots, small ones beside the head spike).
+
+**Scale.** At 90 units tall, 1 source px ≈ 0.08 units.
+- The sprite is about 106 units wide.
+- The blade tips are about 53 units out and 57 ahead of the hitbox.
+- The hitbox stays at 2.2.
+
+## Rig plan (shared `createRig`, Tess-specific state)
+
+- **Parts:** `arm` on each side, split at the elbow. The root is the upper arm (pivot at the shoulder); the tip is the forearm and blade (joint at the elbow). The body holds everything else.
+- **Throw motion** (every throw is a visible swing):
+  - **wind-up:** the blade rotates back and out;
+  - **slash:** it snaps forward and inward across the body, and the crescent leaves the blade at the moment of the snap;
+  - **recovery:** it settles back.
+  - The elbow bends a little more than the shoulder, so the blade whips.
+  - There is a small body twist toward the swinging side.
+- The clones use the same rig, so their arms swing with hers.
+
+## Today's kit (baseline, `tools/dps.mjs tess`)
+
+| Mode | Boss DPS | Small | Range |
+|---|---|---|---|
+| Wire Blades T1–T4 | 29 / 58 / 87 / 116 | 0 | About 150 units, so 0 at 240+ |
+| Ghost Slash (focus) T1–T4 | 20 | 10 | Melee |
+
+- **Special:** Cloak (decoy), 4 s, 12 s cooldown.
+- **Bomb:** Thousand Cuts (1.8 s).
+- **Ultimate:** Shadow Clones (6 s).
+- **For comparison:** Bruno v2 shot 50 / 84 / 131 / 193; Dax shot 58 / 82 / 107 / 131 (plus one-hit kills).
+
+## The new kit as I read the brief
+
+### Main attack: Crescent Blades (no range limit)
+
+- Crescents fly until they leave the screen.
+- They pierce every enemy on their path (each crescent hits each enemy once).
+- They erase enemy bullets along their path.
+- The fire rate stays the same (one volley every 6 steps).
+- They grow per tier toward the large crescent of the old focus look, and fly much faster.
+
+### Focus: Glitch Clones
+
+- Two clones appear ahead of her, one on each side, and follow her.
+- They look glitchy: horizontal slice offsets, RGB split, flicker and scanlines.
+- They throw exactly her volley (same count, size, speed and damage), and only when she throws.
+- Their arms swing with hers.
+
+### Special: Shadow Form
+
+- For 10 s she becomes a living shadow: black-violet, smoky and flickering.
+- Every attack phases through her: bullets, lasers, contact and boss attacks (`intangible`).
+- She keeps attacking. The decoy is removed.
+
+### Bomb: Thousand Cuts + Triple Crescent
+
+- Thousand Cuts is kept as it is.
+- She also summons her two clones for the bomb.
+- She and each clone throw a fan of **three wide AOE crescents**, so nine sweep up the screen and erase bullets.
+- The clones also throw with her for the length of the bomb.
+
+### Ultimate: Void Cross Annihilation
+
+- **Shape and motion:** Dax's Crescent of Chaos motion and shape (the same ragged-ink crescent arch), in Tess's black / violet / lavender / white, with the vertical spear and the white-hot ringed core of `new-ultimate.png`. It is very wide.
+- **Phases:**
+  1. **Compression:** the core gathers at Tess, the rings spin faster, and particles are drawn in.
+  2. **Launch:** a flash, pressure rings and radial streaks.
+  3. **Travel:** it sweeps up the screen at a medium pace.
+     - Every bullet it touches is erased.
+     - Regular enemies and mid-bosses on contact die at once, each with a white-violet flash and disintegration (mid-bosses get a larger implosion).
+     - Bosses take heavy damage instead.
+  4. **Critical compression:** at the top, the wings curl in, the core goes almost black with a thin white rim, then white.
+  5. **Detonation:**
+     - a flash and spherical shock front;
+     - an expanding plasma sphere;
+     - a towering, volumetric violet-black mushroom cloud;
+     - a ground shockwave ring racing outward;
+     - a fragmenting void halo whose pieces spin off as crescents;
+     - screen distortion.
+  6. **Aftermath:** the cloud lingers with lightning inside, and embers fall.
+- No orange anywhere in the ultimate, as the guide asks.
+
+### Lore: Dax Morrow's love interest
+
+**Proposed bio:**
+
+> Ex-syndicate infiltrator turned precinct ghost, and the one person Dax Morrow slows down for. Tess flies the Wireghost, a violet blade mecha that throws crescent cuts across the whole sky. She learned his void tricks the way she learns everything: by watching once, then doing it better.
+
+**Proposed lore file line** (it keeps her Black Tide rivalry):
+
+> Grew up on Black Tide smuggling skiffs. Dax Morrow is the only one who ever caught her picking his lock; she has been riding his slipstream ever since.
+
+## Decisions needed
+
+1. **Main attack numbers.** No range limit, pierce and bullet erasing make her much stronger than her current 29–116 DPS at 150 units.
+   - **A (recommended):**
+     - Crescents per volley: 2 / 3 / 4 / 6 (split across the two blades).
+     - Size: ×1.0 / 1.25 / 1.5 / 1.8 (T4 is the old focus crescent's size).
+     - Speed: 12 / 14 / 16 / 18 units per step, up from 9.5.
+     - Damage tuned for boss DPS of about **45 / 80 / 120 / 165**: mid-pack, below Bruno, because bullet erasing is itself strong.
+   - **B:** the same count, size and speed, with damage tuned to Bruno's level (50 / 84 / 131 / 193).
+2. **Which arm throws.** A swing every 6 steps (10 per second) on both arms at once looks like trembling.
+   - **A (recommended):** the arms alternate. Left volley, right volley; each arm gets a 12-step swing, and the fire rate is unchanged. The swinging arm throws that volley's crescents.
+   - **B:** both arms slash together on every volley (a fast 6-step snap). The crescents split across the two blades, as today.
+3. **Focus clone power.** You asked for "same power", which makes focus **3×** normal fire (T4 about 500 boss DPS with option 1 A).
+   - **A:** full power, as written.
+   - **B (recommended):** the clones throw at full size and speed but deal 60% damage (focus about 2.2×).
+   - Placement: 70 units out to each side and 90 ahead of her, following her smoothly (not too close, not too far). They can't be hit (they are projections).
+4. **Shadow Form cooldown.** The cooldown starts at activation. Today it is 12 s, which with 10 s of immunity would make her almost always immune.
+   - **A (recommended):** a 30 s cooldown (10 s immune, 20 s down).
+   - **B:** 25 s.
+   - **C:** keep 12 s.
+5. **Bomb numbers.**
+   - **Recommended:**
+     - The bomb lasts 2.5 s (up from 1.8 s) so the clones have time to appear, throw and fade.
+     - Each wide crescent is 110 units across, hits each enemy once for 14 damage, and erases bullets in its band.
+     - Thousand Cuts is unchanged.
+   - Yes / adjust?
+6. **Ultimate numbers.**
+   - **Recommended:**
+     - **Crescent:** 360 units wide (75% of the screen; Dax's is 300). It travels at 4 units per step, so it crosses in about 2.8 s.
+     - **Damage on the way:** regular enemies and mid-bosses die on contact; bosses take 10 damage every 5 steps while in contact.
+     - **Detonation** at the top: screen-wide, 80 damage once per enemy including bosses, and it clears every bullet.
+     - **Timing:** about 8.5 s in total (0.6 s compression, 2.8 s travel, 0.7 s critical compression, 4.4 s detonation and aftermath).
+   - Yes / adjust?
+7. **Bio and lore text** as written above.
+   - Yes / adjust?
+8. **Size:** 90 units tall, hitbox unchanged at 2.2. The clones are copies drawn at the same size.
+   - Yes / adjust?
+
+## Removed
+
+- **Removed:** Ghost Slash, the Cloak and its decoy, and the old Shadow Clones ultimate.
+- **Kept:** the procedural sprite as the fallback.
+- **Unchanged:** the sounds, apart from reusing the existing ones.
