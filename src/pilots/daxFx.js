@@ -13,7 +13,7 @@ import { H } from './common.js';
 
 const LOOK = daxArt.LOOK;
 const fxOf = () => daxArt.frames().fx;
-const hash = (n) => { const s = Math.sin(n) * 43758.5453; return s - Math.floor(s); };
+export const hash = (n) => { const s = Math.sin(n) * 43758.5453; return s - Math.floor(s); };
 
 function shardTex(ctx, w, h) {
   // Jagged black-glass shard.
@@ -225,17 +225,18 @@ export function renderGhost(p, b, x, y, alpha, seed = 0) {
 // ------------------------------------------------------------ special, bomb, ultimate
 
 // The Void Crescent's shape, shared by the textures, the render and the hits
+// (also reused by Tess's Void Cross ultimate, tessUltFx.js: her lover's crescent motion)
 // (after the owner's void-crescent.png, a Getsuga-style slash): a thick
 // inverted-U arch of radius R, convex side forward, whose blade tips sweep
 // well down past the horizontal; the band is thick at the crown and tapers to
 // sharp points.
-const CR_E = 0.55;  // the tips sweep this far (rad) below the horizontal
-const CR_D = 0.46;  // crown thickness / R
-const CR_R = 150, CR_M = 26; // texture radius (logical px) and margin (room for the ragged edge)
-const CR_TW = CR_R * 2 + CR_M * 2, CR_TH = Math.ceil(CR_R * (1 + Math.sin(CR_E)) + CR_M * 2);
-const crA = (u) => -Math.PI - CR_E + (Math.PI + 2 * CR_E) * u;
-const crTh = (u, R) => R * CR_D * Math.pow(Math.max(0, Math.sin(Math.PI * u)), 0.85);
-const CR_CY = 0.35; // the arch's circle centre sits this far (× R) behind the crescent's position
+export const CR_E = 0.55;  // the tips sweep this far (rad) below the horizontal
+export const CR_D = 0.46;  // crown thickness / R
+export const CR_R = 150, CR_M = 26; // texture radius (logical px) and margin (room for the ragged edge)
+export const CR_TW = CR_R * 2 + CR_M * 2, CR_TH = Math.ceil(CR_R * (1 + Math.sin(CR_E)) + CR_M * 2);
+export const crA = (u) => -Math.PI - CR_E + (Math.PI + 2 * CR_E) * u;
+export const crTh = (u, R) => R * CR_D * Math.pow(Math.max(0, Math.sin(Math.PI * u)), 0.85);
+export const CR_CY = 0.35; // the arch's circle centre sits this far (× R) behind the crescent's position
 
 /**
  * The Void Crescent's shape in the world: points along its arc with the outer
@@ -254,7 +255,7 @@ export function crescentPts(c, n = 32) {
 }
 
 /** Point in the band in texture space: u along the arc (0..1), v across it (0 = outer rim, 1 = inner edge; may go past). */
-function crescentAt(u, v) {
+export function crescentAt(u, v) {
   const a = crA(u), r = CR_R - crTh(u, CR_R) * v;
   return [CR_M + CR_R + Math.cos(a) * r, CR_M + CR_R + Math.sin(a) * r];
 }
@@ -263,7 +264,7 @@ function crescentAt(u, v) {
  * One tapered brush stroke along the arch, from u0 to u1 at depth v (texture
  * space): thickest in the middle, pointed at both ends, wavering a little.
  */
-function brush(ctx, u0, u1, v, wd, seed) {
+export function brush(ctx, u0, u1, v, wd, seed) {
   const n = 18, side = [];
   ctx.beginPath();
   for (let j = 0; j <= n; j++) {
@@ -278,7 +279,7 @@ function brush(ctx, u0, u1, v, wd, seed) {
 }
 
 /** A spray of specks off the edge at depth v, flung outward (dir +1) or inward (−1). */
-function spatter(ctx, n, v, dir, reach, color, seed) {
+export function spatter(ctx, n, v, dir, reach, color, seed) {
   ctx.fillStyle = color;
   for (let k = 0; k < n; k++) {
     const u = 0.03 + 0.94 * hash(seed + k * 1.31), a = crA(u), d = reach * hash(seed + k * 2.77) ** 1.6;
