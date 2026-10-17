@@ -1,28 +1,41 @@
 import { WORLD_W, WORLD_H } from '../core/constants.js';
 import { mirrorPath, outline, neonLines } from '../fx/art.js';
-import { tessArt, tessMechaFx, PAL } from './tessArt.js';
-import { renderShots, renderSlash, renderCut, renderCopy, buildSprites as buildFxSprites } from './tessFx.js';
+import { DMG_IGNORES_SHIELDS, DMG_INSTANT_KILL } from '../core/damage.js';
+import { crescentPts } from './daxFx.js';
+import { tessArt, tessMechaFx } from './tessArt.js';
+import {
+  renderShots, renderCut, renderClones, renderShadow, renderWaves, buildSprites as buildFxSprites,
+  bladeRelease, shadowParticles, shadowBurst, cloneBurst, waveTrail, cutFx,
+} from './tessFx.js';
+import { buildUltSprites, ultParticles, renderUlt, launchFx, annihilate, detonateFx, SQ } from './tessUltFx.js';
+import { rigState, step as rigStep, release } from './tessRig.js';
+import { TESS, clampT } from './tessTuning.js';
 
-// TESS KURO — WIREGHOST (stealth mecha)
-// Short-range piercing blades · Focus: close-quarters slash that cuts bullets
-// Special: cloak (enemy aim locks onto a decoy) · Bomb: Thousand Cuts
-// Ultimate: Shadow Clones that mirror her attacks
+// TESS KURO — WIREGHOST (blade mecha)
+// Crescent Blades: homing crescents at any range that cut bullets on their path
+// Focus: two glitch clones ahead of her throw her exact volley
+// Special: Shadow Form (10 s, every attack phases through her)
+// Bomb: Thousand Cuts + a three-crescent fan from her and both clones
+// Ultimate: Void Cross Annihilation (her lover Dax Morrow's crescent, crossed
+// with a void spear; it clears its path and detonates like a nuclear blast)
 //
-// TESS ART TEST: the hand-made mecha art (tessArt.js) replaces drawShip()
-// when it loads; drawShip() stays as the automatic fallback. Crescents are
-// thrown from the two forearm blades; the leg blades (feet) never fire.
-// Clones and the decoy are full copies of the mecha. FX are violet outside,
-// orange inside.
+// TESS v2 (ASSET_NOTES.md "Rebuild v2"): the component mecha (tessArt.js +
+// tessRig.js + tessFx.js) replaces drawShip() when the art loads; drawShip()
+// stays as the automatic fallback. Every volley is one arm's slash, the arms
+// alternating; the crescents leave that blade along its length. The leg
+// blades (feet) never fire.
 
 const VIOLET = [0.75, 0.4, 1.0];
 const UP = -Math.PI / 2;
-const CLONE_OFFSETS = [[-70, 14], [70, 14], [-130, 34], [130, 34]];
-const REF = 130; // blade crescents cross the old crescent paths this far ahead (near the end of their short range)
+const KILL = DMG_INSTANT_KILL | DMG_IGNORES_SHIELDS;
+const TAG_SELF = 1, TAG_CLONE = 3;
+const NEVER = 1 << 30;
 
-/** Angle from a blade at (mx, my) through the point the old shot (from ox, oy at angle a) reached REF ahead. */
-function aimAcross(mx, my, ox, oy, a) {
-  return Math.atan2(oy + Math.sin(a) * REF - my, ox + Math.cos(a) * REF - mx);
-}
+/** Main bosses (arena bosses, their parts, the stage core) resist the ultimate; mid-bosses do not. */
+const isMainBoss = (e) => !!(e.ctrl || e.kind === 'bosspart' || (e.boss && e.kind !== 'gatekeeper'));
+const onField = (e) => e.alive && !e.untargetable && e.x > -20 && e.x < WORLD_W + 20 && e.y > -20 && e.y < WORLD_H + 20;
+const inSight = (e) => e.alive && !e.untargetable && e.x > 0 && e.x < WORLD_W && e.y > 0 && e.y < WORLD_H;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 function drawShip(ctx, w, h, tier) {
   const cx = w / 2;
@@ -75,54 +88,187 @@ function drawBlade(ctx, w, h) {
   ctx.globalCompositeOperation = 'source-over';
 }
 
-/**
- * Fire one volley from (x, y). Used by Tess and by each shadow clone (a full
- * copy: same blades, same pattern). Art test (approved): every crescent
- * leaves a forearm blade, never the leg blades (feet).
- */
-function volley(p, w, x, y, dmgMul, self) {
-  const t = p.tier, S = w.shots;
-  const flash = (name, size) => {
-    const [fx, fy] = self ? tessArt.animatedAnchor(p, name) : (([ax, ay]) => [x + ax, y + ay])(tessArt.anchor(name));
-    tessMechaFx.muzzleFlash(p, w, fx, fy, size);
-  };
-  if (p.focus) {
-    // Close-quarters slash: big damage, also cuts enemy bullets it touches.
-    // The swinging blade alternates; the small crescent leaves that blade.
-    const sx = x, sy = y - 34, r = 30 + t * 6;
-    w.damageCircle(sx, sy, r, (4 + t * 0.6) * dmgMul);
-    w.cancelCircle(sx, sy, r * 0.8);
-    const flip = (p.ps.flip = -p.ps.flip);
-    p.ps.slashes.push({ x: sx, y: sy, r, t: 0, flip });
-    const name = flip < 0 ? 'bladeL' : 'bladeR', [mx, my] = tessArt.anchor(name);
-    const i = w.shot(x + mx, y + my, aimAcross(mx, my, 0, -16, UP), 10, p.ps.fBlade, 1.4, 7);
-    if (i >= 0) { S.behave(i, 1.4 * dmgMul, 22, 1); S.motion(i, -0.25, 0, 3.5, 10); S.aux[i] = 2; }
-    if (self) p.ps[flip < 0 ? 'kickL' : 'kickR'] = 1;
-    flash(name, 18);
-    return;
-  }
-  // The fan splits across the two blades; the middle crescent of an odd count alternates.
-  const n = t + 1, used = new Set();
-  for (let k = 0; k < n; k++) {
-    const a0 = UP + (k / Math.max(1, n - 1) - 0.5) * (n > 1 ? 0.45 : 0);
-    const side = k * 2 < n - 1 ? -1 : k * 2 > n - 1 ? 1 : p.ps.mid;
-    const name = side < 0 ? 'bladeL' : 'bladeR', [mx, my] = tessArt.anchor(name);
-    const i = w.shot(x + mx, y + my, aimAcross(mx, my, 0, -16, a0), 9.5, p.ps.fBlade, 1.5, 7);
-    if (i >= 0) { S.behave(i, 1.5 * dmgMul, 22, 1); S.motion(i, -0.25, 0, 3.5, 10); S.aux[i] = 1; }
-    used.add(name);
-  }
-  for (const name of used) flash(name, 14);
+// ------------------------------------------------------------- crescents
+
+/** Enemies in sight for a volley of n crescents: a random one each (spread over the field), or null. */
+function pickTargets(w, n) {
+  const E = w.enemies.active.filter(inSight), out = [];
+  for (let k = 0; k < n; k++) out.push(E.length ? E[w.rng.int(0, E.length - 1)] : null);
+  return out;
 }
+
+/** Nearest enemy in sight from (x, y), preferring ones ahead (a crescent whose target died). */
+function nextTarget(w, x, y) {
+  let best = null, bd = Infinity;
+  for (const e of w.enemies.active) {
+    if (!inSight(e)) continue;
+    const d = (e.x - x) ** 2 + (e.y - y) ** 2 + (e.y > y + 30 ? 1e5 : 0);
+    if (d < bd) { bd = d; best = e; }
+  }
+  return best;
+}
+
+/**
+ * One volley from the blade of arm `side` of the mecha at (x, y) (Tess, or a
+ * clone: a full copy with the same pose). The crescents leave the blade along
+ * its length, launch at random angles and chase a random enemy in sight.
+ */
+function volley(p, w, x, y, side, mul, tag) {
+  const T = clampT(p), B = TESS.blades, S = w.shots, R = w.rng, s = side < 0 ? 'L' : 'R';
+  const n = B.n[T], sz = B.size[T], dmg = B.dmg[T] * mul;
+  const [bx, by] = tessArt.animatedAnchor(p, 'bladeBase' + s, x, y), [tx, ty] = tessArt.animatedAnchor(p, 'bladeTip' + s, x, y);
+  const tg = pickTargets(w, n);
+  for (let k = 0; k < n; k++) {
+    const u = 0.22 + 0.72 * (k + 0.5) / n + R.range(-0.04, 0.04);
+    const sx = bx + (tx - bx) * u, sy = by + (ty - by) * u;
+    const a = UP - side * 0.2 + R.range(-B.spread, B.spread);
+    const i = w.shot(sx, sy, a, B.speed[T], p.ps.fBlade, dmg, B.r * sz);
+    if (i < 0) break;
+    S.behave(i, dmg, 0, 1, 0, 0, tag);
+    S.ref[i] = { e: tg[k] };
+    bladeRelease(p, w, sx, sy, a, sz, tag === TAG_CLONE);
+  }
+}
+
+/**
+ * Each step: crescents erase enemy bullets along the path they just flew, never
+ * hit the same enemy twice, and steer toward their target until they hit it (then fly straight on), or for
+ * B.seek steps at most.
+ */
+function steer(p, w) {
+  const S = w.shots, B = TESS.blades, turn = B.turn[clampT(p)];
+  for (let i = 0; i < S.count; i++) {
+    const tag = S.aux[i];
+    if (tag !== TAG_SELF && tag !== TAG_CLONE) continue;
+    w.cancelLine(S.px[i], S.py[i], S.x[i], S.y[i], S.radius[i] * 2);
+    // Each crescent hits each enemy once: the engine's piercing re-hit (every PIERCE_REHIT
+    // steps on the last enemy hit) is switched off by pushing the hit time far ahead.
+    if (S.hitUid[i] && S.hitT[i] < NEVER) S.hitT[i] = NEVER;
+    const r = S.ref[i];
+    if (!r || !r.e) continue;
+    const e = r.e;
+    if (S.hitUid[i] === e.uid || S.age[i] > B.seek) { r.e = null; continue; }
+    if (!e.alive || e.untargetable) { r.e = S.age[i] < B.seek - 10 ? nextTarget(w, S.x[i], S.y[i]) : null; continue; }
+    let d = Math.atan2(e.y - S.y[i], e.x - S.x[i]) - S.ang[i];
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    S.setHeading(i, S.ang[i] + clamp(d, -turn, turn));
+  }
+}
+
+// ------------------------------------------------------------- clones
+
+/** Clones are out in focus and for the whole bomb (alpha p.ps.cloneA fades them in and out). */
+const clonesWanted = (p) => p.state === 'alive' && (p.focus || p.ps.bombT >= 0);
+const clonesOn = (p) => p.ps.cloneA > 0.5;
+
+function stepClones(p, w) {
+  const ps = p.ps, C = TESS.clones, want = clonesWanted(p);
+  const was = ps.cloneA;
+  ps.cloneA = clamp(ps.cloneA + (want ? 1 : -1) / C.fade, 0, 1);
+  ps.clones.forEach((c, k) => {
+    const tx = clamp(p.x + C.at[k][0], 14, WORLD_W - 14), ty = clamp(p.y + C.at[k][1], 30, WORLD_H - 30);
+    if (was === 0) { c.x = p.x; c.y = p.y; } // they spring out of her
+    c.px = c.x; c.py = c.y;
+    c.x += (tx - c.x) * (was === 0 ? 0.5 : C.follow);
+    c.y += (ty - c.y) * (was === 0 ? 0.5 : C.follow);
+  });
+  if (was === 0 && ps.cloneA > 0) for (const c of ps.clones) cloneBurst(p, w, c.x, c.y, true);
+  if (was > 0 && ps.cloneA === 0) for (const c of ps.clones) cloneBurst(p, w, c.x, c.y, false);
+}
+
+// ------------------------------------------------------------- bomb waves
+
+/** Points along a wide crescent wave (convex side forward along its heading). */
+function wavePts(v, n = 10) {
+  const R = v.w * 0.5, dx = Math.cos(v.ang), dy = Math.sin(v.ang);
+  const cx = v.x - dx * R * 0.55, cy = v.y - dy * R * 0.55, out = [];
+  for (let j = 0; j <= n; j++) {
+    const th = v.ang + (-1 + 2 * j / n) * 1.05;
+    out.push([cx + Math.cos(th) * R, cy + Math.sin(th) * R]);
+  }
+  return out;
+}
+
+function stepWaves(p, w) {
+  const ps = p.ps, Bm = TESS.bomb;
+  for (const v of ps.waves) {
+    v.t++;
+    v.x += Math.cos(v.ang) * Bm.speed; v.y += Math.sin(v.ang) * Bm.speed;
+    for (const [qx, qy] of wavePts(v)) {
+      w.cancelCircle(qx, qy, 16);
+      for (const e of w.enemies.active) {
+        if (!onField(e) || v.hit.has(e)) continue;
+        if ((e.x - qx) ** 2 + (e.y - qy) ** 2 < (e.r + 14) ** 2) { v.hit.add(e); w.damage(e, Bm.dmg); cutFx(p, w, e.x, e.y); }
+      }
+    }
+    waveTrail(p, w, v, wavePts(v, 6));
+  }
+  if (ps.waves.length) ps.waves = ps.waves.filter((v) => v.y > -v.w && v.y < WORLD_H + v.w && v.x > -v.w && v.x < WORLD_W + v.w);
+}
+
+// ------------------------------------------------------------- ultimate
+
+/** The cross's hit area at (x, y): the wings (Dax's crescent band squashed flat, as circles), the bar and the spear ahead of the core. */
+function crossHits(w, U, fn) {
+  const c = { x: U.x, y: U.y, w: U.w };
+  for (const q of crescentPts(c, 14)) fn(q.mx, U.y + (q.my - U.y) * SQ, q.th * SQ / 2 + 18);
+  for (let xx = -U.w * 0.5; xx <= U.w * 0.5; xx += 30) fn(U.x + xx, U.y, 18);
+  const top = U.y - TESS.ult.spear;
+  for (let yy = U.y; yy >= top; yy -= 24) fn(U.x, yy, 22);
+}
+
+function stepUlt(p, w, t) {
+  const U = p.ps.ult, X = TESS.ult;
+  if (!U) return;
+  U.t = t;
+  if (U.ph === 'compress') {
+    U.x = p.x; U.y = p.y - 40;
+    if (t >= X.compress) {
+      U.ph = 'travel'; U.t0 = t;
+      U.steps = clamp(Math.ceil((U.y - X.top) / X.speed), 1, X.maxTravel);
+      launchFx(p, w, U);
+    }
+  } else if (U.ph === 'travel') {
+    U.y -= X.speed;
+    const hit = new Set();
+    crossHits(w, U, (x, y, r) => {
+      w.cancelCircle(x, y, r);
+      for (const e of w.enemies.active) if (onField(e) && (e.x - x) ** 2 + (e.y - y) ** 2 < (r + e.r) ** 2) hit.add(e);
+    });
+    for (const e of hit) {
+      if (isMainBoss(e)) { if (t % X.bossEvery === 0) w.damage(e, X.bossDmg, DMG_IGNORES_SHIELDS); continue; }
+      if (U.gone.has(e)) continue;
+      U.gone.add(e);
+      const big = !!(e.boss || e.def?.big);
+      w.damage(e, 1, KILL);
+      annihilate(p, w, e.x, e.y, big, e.r);
+    }
+    if (t - U.t0 >= U.steps) { U.ph = 'crit'; U.t0 = t; }
+  } else if (U.ph === 'crit') {
+    w.cancelCircle(U.x, U.y, 90);
+    if (t - U.t0 >= X.crit) {
+      U.ph = 'boom'; U.t0 = t;
+      if (!U.nuked) {
+        U.nuked = true;
+        for (const e of w.enemies.active) if (onField(e)) { w.damage(e, X.nukeDmg, DMG_IGNORES_SHIELDS); U.nukeHits++; }
+        w.cancelAll();
+        detonateFx(p, w, U);
+      }
+    }
+  } else if (U.ph === 'boom' && t - U.t0 < 50) w.cancelAll();
+}
+
+// ------------------------------------------------------------- the pilot
 
 export default {
   id: 'tess',
   name: 'TESS KURO',
   vehicle: 'WIREGHOST',
-  role: 'Stealth Mecha',
-  bio: 'Ex-syndicate infiltrator turned precinct ghost. Tess flies the Wireghost, a violet mecha with a long blade on each forearm. She fights at knife range: she slips inside the bullet storm and cuts it apart from within.',
+  role: 'Blade Mecha',
+  bio: 'Ex-syndicate infiltrator turned precinct ghost. The man she loves, Dax Morrow, went rogue among the stars, and Tess flies sector to sector looking for the night he comes back. Her Wireghost, a violet blade mecha, throws his crescent cuts across the whole sky: void tricks she watched him do once, then did better.',
   color: VIOLET,
   css: '#c07aff',
-  stats: { speed: 4, power: 4, range: 1, bomb: 2 },
+  stats: { speed: 4, power: 4, range: 5, bomb: 3 },
   speed: { normal: 4.9, focus: 2.2 },
   hitbox: 2.2,
   bombStock: 2,
@@ -132,67 +278,75 @@ export default {
   // Procedural fallback, matched to pilot-portrait-main.jpg (long scarlet hair, red eyes, dark bodysuit).
   portrait: { skin: '#f2d6d0', hair: '#d8264a', style: 'long', eyes: 'eyes', iris: '#d0203a', suit: '#2a2c3c' },
   weapons: {
-    main: 'Wire Blades — short-range piercing crescents thrown from both forearm blades',
-    focus: 'Ghost Slash — a forearm-blade arc that cuts bullets',
+    main: 'Crescent Blades — each arm slash throws crescents off the blade that hunt enemies at any range and cut bullets on their path',
+    focus: 'Glitch Clones — two glitching copies ahead of her throw her exact volley',
   },
-  // Art test: the Wireghost's paint (violet / lilac armour, red light lines) + violet energy.
+  // The Wireghost's paint (violet / lilac armour, red light lines) + violet energy.
   palette: { armour: '#b8b4e6', frame: '#2c2648', plating: '#5a46a8', energy: '#c07aff' },
   art: tessArt,
   special: {
-    name: 'CLOAK',
-    desc: 'Vanish: enemy aim locks onto a decoy, double graze charge',
-    cooldown: 720,
-    duration: 240,
+    name: 'SHADOW FORM',
+    desc: 'She becomes a living shadow for 10 s: every attack phases through her',
+    cooldown: TESS.shadow.cd,
+    duration: TESS.shadow.dur,
     activate(p, w) {
-      w.decoy = { x: p.x, y: p.y };
-      p.ps.cloak = 1;
-      p.alpha = 0.3;
-      w.r.post.aberrate(0.015);
+      p.ps.shadow = { t: 0 };
+      shadowBurst(p, w, true);
     },
-    end(p, w) { w.decoy = null; p.ps.cloak = 0; p.alpha = 1; },
+    update(p, w, t) {
+      if (!p.ps.shadow) return;
+      p.ps.shadow.t = t;
+      shadowParticles(p, w);
+    },
+    end(p, w) {
+      if (p.ps.shadow) shadowBurst(p, w, false);
+      p.ps.shadow = null;
+    },
   },
   bomb: {
     name: 'THOUSAND CUTS',
-    duration: 110,
-    activate(p) { p.ps.cuts = []; },
+    duration: TESS.bomb.dur,
+    activate(p) { p.ps.cuts = []; p.ps.bombT = 0; },
     update(p, w, t) {
+      const ps = p.ps, Bm = TESS.bomb;
+      ps.bombT = t;
       w.cancelAll();
+      // The three-crescent fan from her and from each clone (both arms slash).
+      if (t === Bm.at) {
+        const at = [[p.x, p.y - 30], ...ps.clones.map((c) => [c.x, c.y - 30])];
+        for (const [x, y] of at) for (const a of Bm.fan) ps.waves.push({ x, y, ang: UP + a, w: Bm.w, t: 0, hit: new Set() });
+        release(p, -1); release(p, 1);
+        w.r.post.flash(0.8, 0.3, 1, 0.3, 0.06);
+        w.r.post.shockwave(p.x, p.y - 40, 0.03, 0.025, 0.4);
+        w.g.camera.addTrauma(0.3);
+      }
+      // Thousand Cuts: screen-wide slash lines (unchanged).
       if (t % 3 === 0 && t < 96) {
         const E = w.enemies.active.filter((e) => e.alive && e.y > 0);
         const tgt = E.length && w.rng.chance(0.6) ? w.rng.pick(E) : { x: w.rng.range(40, WORLD_W - 40), y: w.rng.range(40, WORLD_H - 120) };
         const a = w.rng.angle(), L = 420;
         const cut = { x0: tgt.x - Math.cos(a) * L, y0: tgt.y - Math.sin(a) * L, x1: tgt.x + Math.cos(a) * L, y1: tgt.y + Math.sin(a) * L, t: 0 };
-        p.ps.cuts.push(cut);
+        ps.cuts.push(cut);
         w.damageLine(cut.x0, cut.y0, cut.x1, cut.y1, 14, 9);
         w.explosions.sparks(tgt.x, tgt.y, 8, [1.0, 0.45, 0.1], 5, 16, 4);
         w.explosions.sparks(tgt.x, tgt.y, 6, VIOLET, 6, 14, 5);
         w.r.post.shockwave(tgt.x, tgt.y, 0.012, 0.025, 0.25);
         w.g.camera.addTrauma(0.08);
       }
-      for (const c of p.ps.cuts) c.t++;
-      p.ps.cuts = p.ps.cuts.filter((c) => c.t < 12);
+      for (const c of ps.cuts) c.t++;
+      ps.cuts = ps.cuts.filter((c) => c.t < 12);
     },
-    end(p) { p.ps.cuts = []; },
+    end(p) { p.ps.cuts = []; p.ps.bombT = -1; },
   },
   ultimate: {
-    name: 'SHADOW CLONES',
-    duration: 360,
-    activate(p) {
-      p.ps.clones = CLONE_OFFSETS.map(([dx, dy]) => ({ dx, dy, x: p.x, y: p.y, px: p.x, py: p.y }));
+    name: 'VOID CROSS',
+    duration: TESS.ult.dur,
+    activate(p, w) {
+      p.ps.ult = { ph: 'compress', t: 0, t0: 0, x: p.x, y: p.y - 40, w: TESS.ult.w, steps: 0, gone: new Set(), nuked: false, nukeHits: 0 };
+      w.r.post.flash(0.6, 0.3, 1, 0.2, 0.05);
     },
-    update(p, w) {
-      for (const c of p.ps.clones) {
-        c.px = c.x; c.py = c.y;
-        c.x += (Math.min(WORLD_W - 12, Math.max(12, p.x + c.dx)) - c.x) * 0.25;
-        c.y += (Math.min(WORLD_H - 18, Math.max(22, p.y + c.dy)) - c.y) * 0.25;
-        w.cancelCircle(c.x, c.y, 14);
-        w.damageCircle(c.x, c.y, 14, 0.5);
-      }
-    },
-    end(p, w) {
-      for (const c of p.ps.clones) w.explosions.sparks(c.x, c.y, 12, VIOLET, 4, 20, 4);
-      p.ps.clones = null;
-    },
+    update(p, w, t) { stepUlt(p, w, t); },
+    end(p) { p.ps.ult = null; },
   },
 
   sprites(atlas) {
@@ -200,72 +354,64 @@ export default {
     atlas.add('t_blade', 18, 18, drawBlade, { scale: 3 });
     tessArt.buildSprites(atlas);
     buildFxSprites(atlas);
+    buildUltSprites(atlas);
   },
 
   // Hand-made art hooks (each returns false without the art → procedural look).
-  renderShip: (p, b, x, y, a) => tessArt.renderMecha(p, b, x, y, a),
+  renderShip(p, b, x, y, a) {
+    if (p.ps.shadow) return renderShadow(p, b, x, y, a);
+    return tessArt.renderMecha(p, b, x, y, a);
+  },
   exhaust: tessArt.exhaust,
   renderShots,
   hitSpark: tessMechaFx.hitSpark,
+  /** Shadow Form: every attack passes through her. */
+  intangible: (p) => !!p.ps.shadow,
 
   init(p, w) {
-    p.ps.fBlade = w.r.frame('t_blade');
-    p.ps.slashes = [];
-    p.ps.flip = 1;
-    p.ps.mid = 1;
-    p.ps.cloak = 0;
+    const ps = p.ps;
+    ps.fBlade = w.r.frame('t_blade');
+    ps.clones = TESS.clones.at.map(() => ({ x: p.x, y: p.y, px: p.x, py: p.y }));
+    ps.cloneA = 0;
+    ps.waves = [];
+    ps.cuts = [];
+    ps.bombT = -1;
+    ps.shadow = null;
+    ps.ult = null;
+    rigState(p);
   },
 
-  reset(p, w) {
-    w.decoy = null;
-    p.ps.cloak = 0;
-    p.alpha = 1;
+  reset(p) {
+    p.ps.shadow = null;
+    p.ps.cloneA = 0;
   },
 
-  update(p) {
+  optionLayout: () => [],
+
+  update(p, w) {
     tessArt.animate(p);
-    // The swinging arm of a Ghost Slash kicks out, then settles.
-    p.ps.kickL = (p.ps.kickL || 0) * 0.78;
-    p.ps.kickR = (p.ps.kickR || 0) * 0.78;
-    for (const s of p.ps.slashes) s.t++;
-    if (p.ps.slashes.length) p.ps.slashes = p.ps.slashes.filter((s) => s.t < 10);
+    rigStep(p);
+    stepClones(p, w);
+    steer(p, w);
+    stepWaves(p, w);
+    if (p.ps.ult) ultParticles(p, w, p.ps.ult);
   },
 
   fire(p, w) {
     if (p.fireCd > 0) return;
-    p.fireCd = p.focus ? 8 : 6;
-    p.ps.mid = -p.ps.mid;
-    volley(p, w, p.x, p.y, 1, true);
-    if (p.ps.clones) for (const c of p.ps.clones) volley(p, w, c.x, c.y, 0.6, false);
+    p.fireCd = TESS.blades.cd;
+    const side = release(p, rigState(p).next);
+    volley(p, w, p.x, p.y, side, 1, TAG_SELF);
+    if (clonesOn(p)) for (const c of p.ps.clones) volley(p, w, c.x, c.y, side, TESS.clones.mul, TAG_CLONE);
   },
 
   renderBelow(p, b, x, y, alpha) {
-    const F = p.F;
-    // Cloak decoy: a flickering full copy of the mecha.
-    if (p.ps.cloak && p.w.decoy) {
-      const d = p.w.decoy, fl = (p.t >> 1) % 5 === 0 ? 0.25 : 0.6;
-      const dx = d.x + Math.sin(p.t * 0.7) * 1.5;
-      if (!renderCopy(p, b, dx, d.y, fl, 0.7)) {
-        const f = p.frames[p.tier - 1];
-        b.draw(f, dx, d.y, f.w, f.h, 0, VIOLET[0], VIOLET[1], VIOLET[2], fl, 1);
-      }
-      b.draw(F.ring, d.x, d.y, 70, 70, p.t * 0.05, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.3, 1);
-    }
-    // Shadow clones: full copies of the mecha (same pose, wings, thrusters and blades).
-    if (p.ps.clones) {
-      for (const c of p.ps.clones) {
-        const cx = c.px + (c.x - c.px) * alpha, cy = c.py + (c.y - c.py) * alpha;
-        b.draw(F.glow, cx, cy, 90, 90, 0, PAL.mid[0] * 0.5, PAL.mid[1] * 0.5, PAL.mid[2] * 0.5, 0.35, 1);
-        if (renderCopy(p, b, cx, cy, 0.85)) continue;
-        const f = p.frames[p.tier - 1];
-        b.draw(f, cx, cy, f.w, f.h, 0, 0.15, 0.1, 0.25, 0.85, 0);
-        b.draw(f, cx, cy, f.w, f.h, 0, VIOLET[0], VIOLET[1], VIOLET[2], 0.5, 1);
-      }
-    }
+    renderClones(p, b, alpha);
   },
 
   renderFx(p, b) {
-    for (const s of p.ps.slashes) renderSlash(p, b, s);
-    if (p.ps.cuts) for (const c of p.ps.cuts) renderCut(p, b, c);
+    renderWaves(p, b, p.ps.waves, wavePts);
+    for (const c of p.ps.cuts) renderCut(p, b, c);
+    if (p.ps.ult) renderUlt(p, b, p.ps.ult);
   },
 };
