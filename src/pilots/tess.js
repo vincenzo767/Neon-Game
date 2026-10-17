@@ -94,7 +94,7 @@ function volley(p, w, x, y, dmgMul, self) {
     w.cancelCircle(sx, sy, r * 0.8);
     const flip = (p.ps.flip = -p.ps.flip);
     p.ps.slashes.push({ x: sx, y: sy, r, t: 0, flip });
-    const name = flip < 0 ? 'bladeL' : 'bladeR', [mx, my] = tessArt.anchor(name);
+    const name = flip < 0 ? 'bladeMidL' : 'bladeMidR', [mx, my] = tessArt.anchor(name);
     const i = w.shot(x + mx, y + my, aimAcross(mx, my, 0, -16, UP), 10, p.ps.fBlade, 1.4, 7);
     if (i >= 0) { S.behave(i, 1.4 * dmgMul, 22, 1); S.motion(i, -0.25, 0, 3.5, 10); S.aux[i] = 2; }
     if (self) p.ps[flip < 0 ? 'kickL' : 'kickR'] = 1;
@@ -106,7 +106,7 @@ function volley(p, w, x, y, dmgMul, self) {
   for (let k = 0; k < n; k++) {
     const a0 = UP + (k / Math.max(1, n - 1) - 0.5) * (n > 1 ? 0.45 : 0);
     const side = k * 2 < n - 1 ? -1 : k * 2 > n - 1 ? 1 : p.ps.mid;
-    const name = side < 0 ? 'bladeL' : 'bladeR', [mx, my] = tessArt.anchor(name);
+    const name = side < 0 ? 'bladeMidL' : 'bladeMidR', [mx, my] = tessArt.anchor(name);
     const i = w.shot(x + mx, y + my, aimAcross(mx, my, 0, -16, a0), 9.5, p.ps.fBlade, 1.5, 7);
     if (i >= 0) { S.behave(i, 1.5 * dmgMul, 22, 1); S.motion(i, -0.25, 0, 3.5, 10); S.aux[i] = 1; }
     used.add(name);

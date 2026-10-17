@@ -8,7 +8,8 @@
 //            art has dark warm shading it would eat, e.g. Mira's gold)
 // portraitCrop optional { left, top, width, height } 4:5 box in portrait pixels (default: full width from the top)
 // bg         'checker' for a painted checkerboard (default: flat colour flood fill);
-//            frontBg overrides it for the front view (e.g. Bruno: checker back, black front)
+//            frontBg overrides it for the front view (e.g. Bruno: checker back, black front);
+//            bgPale also clears pale tinted checker squares (glow halos painted over it, e.g. Tess's blades)
 // holes      optional [x, y] seeds (back source pixels) for enclosed background
 //            gaps the edge flood fill can't reach (frontHoles: same for `front`)
 // anchors    estimates in `back` source pixels; written to <id>.anchors.json
@@ -208,20 +209,50 @@ export const PILOT_ART = {
   },
   tess: {
     folder: 'Tess Kuro',
-    back: 'top-down_main.jpg',
-    front: 'top-down_front.jpg',
+    // v2 (owner's brief, ASSET_NOTES.md "Rebuild v2"): the blade component mecha.
+    // Flies feet-first (the two centre leg blades never fire); the arm blades
+    // point up and out and throw every crescent.
+    back: 'new-top-down-main.png',
+    bg: 'checker',             // painted checkerboard, no alpha
+    bgPale: true,              // the blades' pink halo tints the checker squares: clear those too
+    front: 'new-top-down-front.png',
+    frontBg: 'flat',           // the front view keeps its black background
     portrait: 'pilot-portrait-main.jpg',
     portraitCrop: { left: 125, top: 70, width: 400, height: 500 }, // head and shoulders (4:5)
     glowRule: false,           // thin red light lines
+    // Rigged components (left side, source px; mirrored at `axis`). Draw order and
+    // motion live in src/pilots/tessRig.js.
+    parts: {
+      axis: 681,
+      hole: 3,                 // @2x px: the body hole grows past each outline (no slivers)
+      list: [
+        { // arm: upper arm and elbow armour (root, pivot at the shoulder), forearm, clawed hand and blade (tip, whips about the elbow)
+          name: 'arm', pivot: [470, 800],
+          split: [[315, 738], [478, 698]],
+          poly: [[0, 0], [50, 15], [120, 105], [175, 180], [230, 255], [262, 285], [300, 340], [372, 432], [350, 455], [378, 495], [412, 560], [440, 585], [488, 700], [472, 745], [462, 790], [432, 835], [410, 905], [378, 908], [350, 862], [334, 782], [300, 725], [255, 632], [224, 560], [214, 505], [188, 470], [168, 420], [148, 380], [122, 330], [92, 268], [40, 150], [4, 40]],
+        },
+      ],
+    },
     anchors: {
-      hitbox: [512, 960],      // chest centre: lands on player.x/y
-      head: [512, 1080],
-      bladeL: [140, 707],      // forearm blades, 16 units ahead like the old origin: crescent origins
-      bladeR: [884, 707],
-      ventL: [285, 1230],      // rear of the shoulder armour: wide back plumes
-      ventR: [739, 1230],
-      packL: [480, 1215],      // either side of the head's rear spike
-      packR: [544, 1215],
+      hitbox: [681, 760],       // chest centre: lands on player.x/y
+      head: [681, 860],         // head (rear spike points back)
+      waist: [681, 570],        // red-tipped waist between the leg blades (feet: never fire)
+      bladeTipL: [35, 55],      // blade point
+      bladeTipR: [1327, 55],
+      bladeMidL: [180, 280],    // middle of the glowing blade
+      bladeMidR: [1182, 280],
+      bladeBaseL: [330, 545],   // blade root at the hand: crescents leave the blade between base and tip
+      bladeBaseR: [1032, 545],
+      wristL: [390, 640],       // clawed hand
+      wristR: [972, 640],
+      elbowL: [395, 760],       // elbow joint (forearm + blade swing about it)
+      elbowR: [967, 760],
+      shoulderL: [470, 800],    // shoulder pivot of the whole arm
+      shoulderR: [892, 800],
+      ventL: [590, 985],        // shoulder-spike roots: wide back plumes
+      ventR: [772, 985],
+      packL: [652, 1005],       // either side of the head spike: small plumes
+      packR: [710, 1005],
     },
   },
   oduya: {

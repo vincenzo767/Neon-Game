@@ -3,19 +3,30 @@
   "pilot": "tess",
   "space": "tess_back@2x.png pixels, origin top-left (1x = half)",
   "image": {
-    "w": 266,
+    "w": 436,
     "h": 372,
     "artH": 360,
     "pad": 6
   },
   "anchors": {
-    "hitbox": [133.1, 224.5],
-    "head": [133.1, 254.8],
-    "bladeL": [39.1, 160.6],
-    "bladeR": [227.1, 160.6],
-    "ventL": [75.7, 292.7],
-    "ventR": [190.4, 292.7],
-    "packL": [125, 288.9],
-    "packR": [141.2, 288.9]
+    "hitbox": [217.9, 241.9],
+    "head": [217.9, 273.5],
+    "waist": [217.9, 181.9],
+    "bladeTipL": [13.9, 19.3],
+    "bladeTipR": [421.9, 19.3],
+    "bladeMidL": [59.7, 90.3],
+    "bladeMidR": [376.1, 90.3],
+    "bladeBaseL": [107.1, 174],
+    "bladeBaseR": [328.7, 174],
+    "wristL": [126, 204],
+    "wristR": [309.8, 204],
+    "elbowL": [127.6, 241.9],
+    "elbowR": [308.2, 241.9],
+    "shoulderL": [151.3, 254.5],
+    "shoulderR": [284.5, 254.5],
+    "ventL": [189.2, 312.9],
+    "ventR": [246.6, 312.9],
+    "packL": [208.7, 319.3],
+    "packR": [227.1, 319.3]
   }
 }

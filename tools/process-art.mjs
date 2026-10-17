@@ -66,8 +66,8 @@ function hasRealAlpha({ data }) {
  * pixels within `tol` of the edge colour (and dark, reddish glow pixels),
  * then feather the cut by `feather` px.
  */
-function removeBackground(img, holes = [], tol = 16, feather = 1.5, maxGrad = 10, glowRule = CFG.glowRule, mode = CFG.bg) {
-  if (mode === 'checker') return removeChecker(img, holes, feather);
+function removeBackground(img, holes = [], tol = 16, feather = 1.5, maxGrad = 10, glowRule = CFG.glowRule, mode = CFG.bg, pale = false) {
+  if (mode === 'checker') return removeChecker(img, holes, feather, pale);
   const { data, w, h } = img;
   // Local contrast: backgrounds and baked glows are smooth; line art and dark
   // armour panels are not, so the fill stops at the silhouette's outline even
@@ -454,7 +454,7 @@ async function processBack(srcFile, label = 'back') {
   const img = await raw(srcFile);
   const before = await fromRaw({ ...img, data: Buffer.from(img.data) }).png().toBuffer();
   let removed = false;
-  if (!hasRealAlpha(img)) { removeBackground(img, label === 'back' ? CFG.holes : []); removed = true; }
+  if (!hasRealAlpha(img)) { removeBackground(img, label === 'back' ? CFG.holes : [], undefined, undefined, undefined, undefined, CFG.bg, !!CFG.bgPale); removed = true; }
   cleanAlpha(img);
   const box = alphaBox(img);
   const out = await exportsOf(img, box);
