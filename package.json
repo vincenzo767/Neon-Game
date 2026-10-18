@@ -13,7 +13,8 @@
     "art:tess": "node tools/process-art.mjs tess",
     "art:oduya": "node tools/process-art.mjs oduya",
     "art:lin": "node tools/process-art.mjs lin",
-    "art:miguerre": "node tools/process-art.mjs miguerre"
+    "art:miguerre": "node tools/process-art.mjs miguerre",
+    "art:sera": "node tools/process-art.mjs sera"
   },
   "devDependencies": {
     "sharp": "^0.35.5",

@@ -466,4 +466,85 @@ export const PILOT_ART = {
       wingMidR: [902, 1100],
     },
   },
+  sera: {
+    folder: 'Sera Voss',
+    // Her first hand-made art (ASSET_NOTES.md): a white-and-blue crystal archer flying
+    // feet-first (the crystal leg spikes at the top never fire). The bow is held across
+    // her body; every Frost Shard leaves the nock at her drawing (right) fist.
+    back: 'top-down-sprite.png',
+    front: 'mecha.png',
+    portrait: 'pilot-portrait.png',
+    portraitCrop: { left: 260, top: 0, width: 640, height: 800 }, // face, crown and shoulders (4:5)
+    bg: 'checker',             // painted checkerboard, not real transparency
+    glowRule: false,           // the cyan glow is paint
+    // Owner's 1A: the five ice arrows painted into the sprite are removed (the real shards
+    // fly from the nock). Arrowheads (over the background) are cleared; the shafts across
+    // her body are filled from their neighbours. Fitted shaft lines, from just past the nock.
+    erase: {
+      clear: [ // arrowheads, grown 14 % for their outline and glow
+        [[72, 166], [257, 221], [291, 260], [266, 294], [236, 310], [214, 358], [191, 349], [166, 299], [114, 235]],
+        [[306, 115], [460, 191], [498, 238], [491, 263], [449, 299], [392, 267], [346, 191]],
+        [[630, -3], [648, 48], [676, 139], [713, 196], [710, 217], [682, 212], [662, 228], [639, 219], [607, 192], [591, 151], [591, 88], [607, 43]],
+        [[928, 17], [955, 96], [962, 176], [955, 238], [932, 247], [904, 229], [881, 247], [857, 210], [875, 156], [902, 88]],
+        [[1302, 219], [1282, 258], [1236, 301], [1204, 337], [1195, 388], [1175, 390], [1161, 358], [1131, 342], [1138, 319], [1161, 299], [1168, 285], [1211, 271], [1243, 251]],
+      ],
+      strokes: [ // fitted shaft lines (origin and angle from the glow), out to each arrowhead
+        [798, 628, 36, 188, 40],
+        [798, 602, 299, 111, 40],
+        [816, 604, 591, 48, 40],
+        [816, 634, 948, 38, 40],
+        [810, 642, 1290, 250, 40],
+      ],
+      keep: [
+        [[506, 105], [514, 118], [455, 232], [432, 222]],  // the left limb's crystal spike beside arrow 2
+        [[816, 114], [830, 118], [872, 230], [858, 234]],  // the right limb's crystal spike beside arrow 4 (above the shaft)
+      ],
+      smooth: 40,
+      bgAlpha: 110,            // the shafts' pale glow halo still counts as background
+      largest: true,           // and drop the arrowheads' leftover outline fragments
+    },
+    // The weapon-free `under` image (sera_wings@2x.png): only the drawing arm's footprint,
+    // filled from its neighbours (her other arm is in the mirror: `fillMirror: false`).
+    wings: {
+      axis: 656,
+      fillAll: true,
+      fillGrow: 4,
+      fillMirror: false,
+      fillSmooth: 16,
+      pivotL: [600, 700],
+      wingL: [[590, 690], [600, 690], [600, 700], [590, 700]],
+      keep: [
+        [[832, 600], [870, 596], [898, 608], [904, 640], [905, 680], [912, 720], [900, 740], [870, 742], [845, 720], [838, 690], [828, 660], [818, 632]],
+      ],
+    },
+    // Rigged components: the drawing arm (draws back, releases). Motion in src/pilots/seraRig.js.
+    parts: {
+      axis: 656,
+      hole: 3,
+      bodySrc: 'under',
+      list: [
+        { // drawing arm (right): fist and gauntlet; slides back along her aim as the volley charges
+          name: 'arm', side: 'R', pivot: [880, 760],
+          poly: [[832, 600], [870, 596], [898, 608], [904, 640], [905, 680], [912, 720], [900, 740], [870, 742], [845, 720], [838, 690], [828, 660], [818, 632]],
+        },
+      ],
+    },
+    anchors: {
+      hitbox: [656, 580],      // chest: lands on player.x/y
+      head: [657, 643],
+      nock: [818, 622],        // the nock at her drawing fist: every Frost Shard leaves here
+      grip: [471, 514],        // her bow hand on the riser
+      riser: [650, 543],       // the middle of the glowing riser
+      stringL: [88, 545],      // the bow's tips: the energy string runs tip → nock → tip
+      stringR: [1226, 540],
+      limbL: [250, 700],       // the bow limbs (they glow as the string draws)
+      limbR: [1060, 640],
+      footL: [620, 210],       // the crystal leg spikes (feet) never fire
+      footR: [735, 255],
+      bladeL: [40, 1050],      // ice-blade wing tips: frost vapour
+      bladeR: [1270, 1050],
+      lowL: [300, 1190],
+      lowR: [1010, 1190],
+    },
+  },
 };
