@@ -161,3 +161,128 @@ There are **no thrusters**: she hovers on the ice-blade wings, which trail frost
 4. **Ice Storm Surge area.**
    - **A (recommended):** a 260-unit radius round her (about half the screen), so it stays clearly weaker than Absolute Zero.
    - **B:** the whole screen.
+
+## Decisions at the Step 1 checkpoint (approved by the owner)
+
+1. **A:** the ice arrows painted into the sprite are removed in processing.
+2. **B:** the Zero Field is unlimited.
+3. **A:** boss DPS at full power is about 130 normal and 150 focus.
+4. **A:** the Ice Storm Surge reaches 260 units round her.
+
+## Steps 2–6: results
+
+### Art
+
+- **Processing.** `npm run art:sera`:
+  - painted checkerboard removed (18 enclosed pockets);
+  - sprite exports 408×372 @2x and 204×186 @1x;
+  - front view `mecha.png` at 469×600;
+  - portrait a 640×800 crop at (260, 0), head and shoulders.
+- **The painted arrows, removed** (owner's 1A; opt-in `erase` in process-art). There were **five**, not six; the sixth "arrowhead" was one of the bow limb's crystal spikes, which stays.
+  - **Shaft lines.** Each shaft was fitted from its glow (origin and angle): −150°, −135.5°, −112°, −77.5° and −39.25°. Two of them start a little off the nock.
+  - **Arrowheads** (over the background) are cleared.
+  - **Shafts.** Where a shaft crosses open background on both sides it is cleared; where it crosses her body it is filled from neighbouring pixels and softened.
+  - **Crystal spikes.** Two limb spikes beside the arrows are protected.
+  - **Fragments.** Leftover outline fragments are dropped (the largest connected piece is kept).
+  - See `screenshots/sera/art/sprite_arrows_removed.png`. At game scale the filled centre reads as a soft frost haze.
+- **Rig** (`src/pilots/seraRig.js`): one part, the **drawing arm** (right fist and gauntlet).
+  - It draws back along her aim between volleys (faster in focus) and snaps forward with a recoil on each release.
+  - The `under` image fills its footprint from neighbouring pixels, not the mirror (`fillMirror: false`), because her other arm is in the mirror.
+- **The bow** stays as painted, across her body. Its "string" is a tensioned cyan energy line from both limb tips to the nock: it brightens as it draws, and the arrow forms at the nock. The limbs glow, and the release flashes.
+- **No thrusters.** Frost vapour and drifting crystals come off the ice-blade wing tips, and she has a slow hover breath.
+- **Size:** 100 units.
+- **Select card:** the front view is drawn 1.25× (`previewScale`).
+- **Shared opt-in additions** (no other pilot uses them; their DPS is identical):
+  - process-art: `erase` (`clear`, `strokes`, `keep`, `smooth`, `bgAlpha`, `largest`) and `wings.fillMirror`;
+  - World: a `pierceHit(world, i, enemy)` hook for piercing shots.
+
+### Kit (`src/pilots/sera.js`, FX in `src/pilots/seraFx.js`)
+
+- **Status:** Legendary, with the gold select theme. Role "Frost Archer". Stats 4 / 5 / 5 / 4. Speed 4.6 normal, 2.0 focus. Her option pods are gone.
+- **Frost Shards (basic).**
+  - **Volleys:** every 7 steps, **4 / 8 / 12 / 16** piercing shards (T1–T4) leave the nock. They fly in a fan whose staggered lanes are laid out 220 ahead, centred on her.
+  - **Hits:** each shard hits each enemy once.
+  - **Look:** the shards are drawn by the pilot (`renderShots`): a frost wake, a pale-blue crystal body, a cyan glow and a white core, vibrating slightly. Each volley has a release flash and a frost burst.
+  - **Damage per shard:** 0.84 + 0.112 × tier (focus 0.42 + 0.053 × tier).
+- **Frost.** Each hit adds 0.08 frost to a regular enemy.
+  - **Slowing:** its AI (moving and firing) runs up to 60 % slower, and its clock is held back on the skipped steps, so paths and fire schedules slow down together.
+  - **Frozen solid:** at full frost it is frozen solid for 1.5 s in an ice casing, then thaws to half.
+  - **Fading:** frost fades after 0.5 s without hits.
+  - **Look:** frost crystals and a cold glow grow on enemies as frost builds.
+  - Bosses only show frost (their controllers own their phases).
+- **Zero Field (passive, unlimited per 2B).**
+  - **Size:** radius 60 (focus 95).
+  - **Look:** thin layered rings (dashed inside) turning at different speeds, 12 ice blades and 6 snowflake nodes, and a clear centre.
+  - **Interception:** every enemy bullet that reaches the edge shatters at that point, with a flash, a crystal and a ripple running round the ring. Lasers pass through.
+- **Glacial Focus.** Volleys every 4 steps instead of 7, with the same shards per volley. The field expands with a ripple, and cyan light runs along the riser to the bow.
+- **Ice Storm Surge (special).**
+  - **The wave:** a frost wave front (a thin ring with crystals) races out to 260 at 9 units a step. Each enemy is hit as the wave reaches it.
+  - **Freezing:** regular enemies take 10 damage and freeze for **7 s** in a casing that cracks and breaks away at the end. Bosses take 30.
+  - **Bullets** the wave passes shatter.
+  - **Look:** wind spirals, 14 erupting ice spikes with frost filaments between neighbours, swirling shards and snow.
+  - **Cooldown:** 900.
+- **Frost Arrow Rain (bomb).** 3 s of ice arrows from an icy sky: 2 a step plus a big one every 12, 60 % aimed at enemies.
+  - Each strike deals 6 within 36 (big arrows: 16 within 60), with a crystal burst, a frost ring and ice spikes.
+  - **Regular enemies it touches freeze for 3 s.**
+  - **Enemy bullets it touches freeze** in frost shells, then shatter when the rain ends.
+- **Absolute Zero (ultimate, 12 s).**
+  - **Activation (0.33 s):** the screen dims, light converges to the centre, and fractures race out. Then a flash and a screen-wide freezing wave.
+  - **The freeze:**
+    - every enemy bullet, including new ones, holds still in an ice shell;
+    - every regular enemy freezes solid;
+    - bosses' shots freeze the moment they leave them;
+    - faint crystal geometry, frost veins and drifting snow over the grid.
+    - She moves and fires freely, and is invulnerable throughout.
+  - **Release:** cracks run through everything, then a synchronised shatter. Frozen bullets are cleared and enemies resume.
+  - **Damage:** none from the ultimate itself.
+- **Lore.** She is Vincenzo the Conqueror's wife (bio and lore file), and Vincenzo's file gains "His wife, Sera Voss, followed him through."
+
+### Tests
+
+**Headless gameplay checks** (the real World and Player; the script is kept in the session scratchpad). All passed:
+
+| Check | Result |
+|---|---|
+| Size, status | 100.0 units, Legendary. |
+| Volleys | T1 4, T2 8, T3 12, T4 16 shards, every one from the nock (none from the feet). |
+| Frost | Frozen solid after 45 steps of T4 fire. It thawed to 0.50, and at half frost its AI ran 21 of 30 steps. A boss is never stunned; its frost caps at 0.60. |
+| Zero Field | 24 bullets from all sides all shattered. The closest any got was 56 (radius 60), or 92 in focus (radius 95). |
+| Ice Storm Surge | The enemy 200 away froze at step 23, as the wave front reached it, with 420 steps (7 s) of casing. The enemy 300 away was untouched. |
+| Frost Arrow Rain | The struck enemy froze; a bullet near a strike froze; no bullets were left after the rain. |
+| Absolute Zero | 10 bullets fired after the activation held perfectly still, and the enemy froze, while she fired 1,600 shards. The release left 0 bullets. Duration 720. |
+
+**DPS** (`tools/dps.mjs sera`):
+
+| Mode | T1 | T2 | T3 | T4 |
+|---|---|---|---|---|
+| Shot, boss | 32 | 72 | 110 | **131** (was 108) |
+| Focus, boss | 28 | 62 | 102 | **149** (was 75) |
+
+**Frame rate** (headless, 1,500-bullet storm):
+
+| Situation | With art | Procedural |
+|---|---|---|
+| Firing | 56.9 FPS | 57.4 |
+| Focus | 50.7 | 52.5 |
+| Ultimate | 49–60 | 50–60 |
+
+**Regressions:**
+- Miguerre, Oduya, Tess, Lin, Bruno, Mira, Kairo, Nova and Vincenzo DPS are identical to before.
+- All eight art pilots load and play every tier, focus, special, bomb and ultimate with no errors.
+
+**Screenshots** in `screenshots/sera/art/`:
+- `sheet_poses`: rest, drawn, release, charge;
+- `sheet_fire`: volleys, the field, the focus field;
+- `sheet_special_bomb`: the storm wave, the storm, frozen enemies, the arrow rain;
+- `sheet_ult`: activation, the wave, the frozen battlefield while she fires, the release;
+- `sheet_bullets`: the field against the bullet storm, frozen bullets in the rain;
+- `sprite_arrows_removed`;
+- `select_card`.
+
+### Known limitations
+
+- Where the painted arrow shafts crossed her body, the fill is soft (a frost haze at game scale).
+- The bow limbs and ice-blade wings don't move; the drawing arm, the energy string, the glow and the recoil do.
+- The bow stays across her body as painted, not vertical (see Step 1).
+- Enemy lasers and beams aren't stopped by the Zero Field.
+- Her sounds are the old cryo set.
