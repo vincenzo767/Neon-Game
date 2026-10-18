@@ -1,6 +1,7 @@
 import { FADE_OUT, FADE_INOUT } from '../fx/Particles.js';
 import { crowdFactor } from './art/mechaFx.js';
-import { miguerreArt, PAL, DARK } from './miguerreArt.js';
+import { miguerreArt, PAL, DARK, RIG_FX } from './miguerreArt.js';
+import { rigState, SWING } from './miguerreRig.js';
 import { H } from './common.js';
 
 // Miguerre's void-cosmic effects, drawn after fx-reference.png, void-beams.png,
@@ -10,6 +11,13 @@ import { H } from './common.js';
 // ghosts, a crescent of starry black space with a red rim, and the cosmic Void
 // Cannon. Black parts are alpha-blended (add = 0) under the additive red.
 // Render-time only: damage lives in miguerre.js.
+//
+// v2 (ASSET_NOTES.md "Rebuild v2"): the beams leave both horns and grow from
+// thin to full as they reach the target; the horns charge and flare, the blade
+// charges and leaves a black-red arc trail through the swing (RIG_FX.overlay);
+// the ghosts and clones are the rigged mecha in smoke (their wings beat out of
+// step); wing gusts and void feathers replace the thrusters; feared enemies
+// tremble in a dread aura; Chaos Clones rise out of a smoke vortex.
 
 const LOOK = miguerreArt.LOOK;
 const fxOf = () => miguerreArt.frames().fx;
@@ -59,10 +67,11 @@ export const CHAIN_FADE = 9; // steps a finished chain hop stays lit
 export function renderBeams(p, b) {
   const F = p.F, ps = p.ps, t = p.t, wm = LOOK.widthMul, glowA = LOOK.glowMul * crowdFactor(p.w);
   for (const s of ps.bolts) {
-    const a = 1 - s.t / s.life, pulse = 0.9 + 0.1 * Math.sin(t * 1.3 + s.s);
+    const a = 1 - s.t / s.life, pulse = 0.9 + 0.1 * Math.sin(t * 1.3 + s.s), grow = Math.min(1, (s.t + 1) / 2);
     for (let k = 1; k < s.pts.length; k++) {
-      const [ax, ay] = s.pts[k - 1], [bx, by] = s.pts[k];
-      beamSeg(p, b, ax, ay, bx, by, s.w * wm * pulse, a, glowA);
+      const [ax, ay] = s.pts[k - 1], [bx0, by0] = s.pts[k];
+      const bx = ax + (bx0 - ax) * grow, by = ay + (by0 - ay) * grow; // v2: thin to full as it reaches the target
+      beamSeg(p, b, ax, ay, bx, by, s.w * wm * pulse * (0.45 + 0.55 * grow), a, glowA);
       b.draw(F.glow, bx, by, s.w * 4, s.w * 4, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.45 * a, 1);
       star(b, bx, by, s.w * 4, a, t * 0.1 + k);
     }
@@ -163,18 +172,6 @@ export function burst(w, x, y, s = 1) {
   }
 }
 
-/** Void exhaust: the art's red particles plus trailing black-red smoke (exhaust hook). */
-export function voidExhaust(p, w) {
-  if (!miguerreArt.exhaust(p, w)) return false;
-  const Hp = w.fxHigh, R = w.fxRng, F = p.F;
-  if (R.next() < 0.5) {
-    const name = R.next() < 0.5 ? 'ventL' : 'ventR', [ax, ay] = miguerreArt.anchor(name);
-    const i = Hp.spawn(F.glow, p.x + ax + R.range(-2, 2), p.y + ay + 14, R.range(-0.3, 0.3), R.range(1.6, 2.6), R.range(18, 28));
-    if (i >= 0) { Hp.size(i, 8, 20); Hp.color(i, 0.12, 0.0, 0.02, 0.02, 0, 0); Hp.phys(i, 0.97); Hp.look(i, 0.45 * p.alpha, 0, FADE_INOUT); }
-  }
-  return true;
-}
-
 // ------------------------------------------------------------ ghosts
 
 /**
@@ -199,26 +196,34 @@ export function ghostSmoke(w, x, y, n = 2, thick = false) {
 }
 
 /**
- * A dark-red smoke ghost of the mecha at (x, y): the full sprite tinted void
- * red, see-through and hazy at the edges, with a red core light. The smoke
- * itself is particles (ghostSmoke).
+ * A ghost's own view of the rig: its wings beat out of step with his (by
+ * seed); `still` ghosts (the Chaos Clones) don't swing, charge or bank.
  */
-export function renderGhost(p, b, x, y, alpha, seed = 0) {
-  const K = miguerreArt.frames(), set = K.art && (K.art[LOOK.outline ? 'outline' : 'plain'] || K.art.outline);
+function ghostOf(p, seed, still) {
+  const q = Object.create(p), r = rigState(p);
+  q.ps = Object.create(p.ps);
+  q.ps.mr = { ...r, ph: (r.ph + seed * 0.37) % 1, ...(still ? { swingT: -1, charge: 0, clench: 0, claw: 0, spread: 0 } : null) };
+  if (still || seed) q.bank = 0;
+  return q;
+}
+
+/**
+ * A dark-red smoke ghost of the mecha at (x, y): the rigged mecha (wings
+ * beating, sword swinging) tinted void red, see-through and hazy at the edges,
+ * with a red core light. The smoke itself is particles (ghostSmoke).
+ */
+export function renderGhost(p, b, x, y, alpha, seed = 0, still = false) {
   const F = p.F, t = p.t;
   b.draw(F.glow, x, y + 8, 80, 96, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.45 * alpha, 1);
   b.draw(F.glow, x, y + 10, 70, 90, 0, 0.1, 0, 0.02, 0.35 * alpha, 0);
-  if (!set) return;
-  const A = miguerreArt.anchorData(), hb = A.anchors.hitbox, k = miguerreArt.unitsPerPx();
-  const cx = x + (A.image.w / 2 - hb[0]) * k, cy = y + Math.sin(t * 0.07 + seed) * 1.2 + (A.image.h / 2 - hb[1]) * k;
-  const W0 = A.image.w * k, H0 = A.image.h * k, flick = 0.85 + 0.15 * Math.sin(t * 0.3 + seed * 3);
-  // Hazy smoke edge: two drifting, slightly larger copies.
-  for (let j = 0; j < 2; j++) {
-    const ox = Math.sin(t * 0.09 + seed + j * 2) * 2.5, oy = Math.cos(t * 0.07 + seed * 2 + j) * 2.5, s = 1.05 + 0.03 * j;
-    b.draw(set.full.frame, cx + ox, cy + oy, W0 * s, H0 * s, 0, PAL.mid[0] * 0.4, 0, 0.02, 0.22 * alpha, 1);
+  const q = ghostOf(p, seed, still), flick = 0.85 + 0.15 * Math.sin(t * 0.3 + seed * 3);
+  // Hazy smoke edge: drifting copies (one for the many Chaos Clones).
+  for (let j = 0; j < (still ? 1 : 2); j++) {
+    const ox = Math.sin(t * 0.09 + seed + j * 2) * 2.5, oy = Math.cos(t * 0.07 + seed * 2 + j) * 2.5;
+    if (!miguerreArt.renderMecha(q, b, x + ox, y + oy, 0.22 * alpha, { tint: [PAL.mid[0] * 0.4, 0, 0.02], add: 1 })) return;
   }
-  b.draw(set.full.frame, cx, cy, W0, H0, 0, 0.6, 0.05, 0.08, 0.5 * alpha * flick, 0);
-  b.draw(set.full.frame, cx, cy, W0, H0, 0, PAL.mid[0] * 0.5, 0, 0.02, 0.3 * alpha, 1);
+  miguerreArt.renderMecha(q, b, x, y, 0.5 * alpha * flick, { tint: [0.6, 0.05, 0.08], add: 0 });
+  miguerreArt.renderMecha(q, b, x, y, 0.3 * alpha, { tint: [PAL.mid[0] * 0.5, 0, 0.02], add: 1 });
   star(b, x, y, 18, 0.8 * alpha * flick, t * 0.08 + seed);
 }
 
@@ -553,7 +558,11 @@ function renderOneCrescent(p, b, c) {
 
 /** Every live Void Crescent (one, or three when cast in focus). */
 export function renderCrescent(p, b) {
-  for (const c of p.ps.crescents) renderOneCrescent(p, b, c);
+  for (const c of p.ps.crescents) {
+    // v2: it tears off the blade small and grows to full size (the hits use the full shape).
+    const g = Math.min(1, c.t / 10);
+    renderOneCrescent(p, b, g < 1 ? { ...c, w: c.w * (0.35 + 0.65 * g * (2 - g)) } : c);
+  }
 }
 
 /**
@@ -816,4 +825,222 @@ export function renderCannon(p, b, x, y, wd, a, seed = 0) {
   b.draw(F.glow, x, y, wd * 1.1, wd * 0.7, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.5 * a, 1);
   star(b, x, y, wd * 0.55, 0.8 * a, 0, PAL.hot);
   cannonRing(p, b, x, y + 4, wd * 1.15, wd * 0.28, 0, t * 0.15, a, true, 1.3);
+}
+
+// ------------------------------------------------------------ v2: the rig's FX
+
+/** The world points of a line from anchor a to anchor b on the posed mecha (api.at), n + 1 of them. */
+const line = (api, a, b2, n) => {
+  const [x0, y0] = api.at(a), [x1, y1] = api.at(b2), out = [];
+  for (let k = 0; k <= n; k++) out.push([x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n]);
+  return out;
+};
+
+/**
+ * Over the mecha (RIG_FX.overlay): the horns' glow (a red charge running from
+ * root to edge between strikes, a flare as the beams leave), the blade charging
+ * through the swing's wind-up and the black-red arc trail behind it, and the
+ * ultimate's horn blaze with black lightning between the horns.
+ */
+function rigOverlay(p, b, api) {
+  const F = p.F, r = rigState(p), t = p.t, a = api.a, ps = p.ps;
+  // Horns.
+  for (const s of ['L', 'R']) {
+    const fl = s === 'L' ? r.hornL : r.hornR, base = 0.25 + 0.75 * r.charge;
+    const pts = line(api, 'hornRoot' + s, 'hornTip' + s, 4);
+    for (let k = 0; k < pts.length; k++) {
+      const [x, y] = pts[k], g = (base + fl * (1 - k / 6)) * (0.85 + 0.15 * Math.sin(t * 0.4 + k));
+      b.draw(F.glow, x, y, 9 + 6 * r.charge, 9 + 6 * r.charge, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.5 * g * a, 1);
+    }
+    // The charge bead running root → edge before the next strike.
+    const u = Math.min(1, (r.hornT ?? 99) / 4);
+    if (u < 1) {
+      const [x0, y0] = pts[0], [x1, y1] = pts[pts.length - 1], x = x0 + (x1 - x0) * u, y = y0 + (y1 - y0) * u;
+      b.draw(F.glow, x, y, 7, 7, 0, PAL.core[0], PAL.core[1], PAL.core[2], 0.8 * a, 1);
+    }
+    if (fl > 0.05) {
+      const [x, y] = api.at('horn' + s);
+      b.draw(F.glow, x, y, 26 * fl, 26 * fl, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.8 * fl * a, 1);
+      star(b, x, y, 22 * fl, fl * a, t * 0.2);
+    }
+  }
+  // Ultimate: the horns blaze and black lightning gathers between them.
+  if (r.charge > 0.05) {
+    const [cx, cy] = api.at('core'), c = r.charge;
+    b.draw(F.glow, cx, cy, 70 * c, 70 * c, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.7 * c * a, 1);
+    b.draw(F.glow, cx, cy, 34 * c, 34 * c, 0, DARK[0], DARK[1], DARK[2], 0.8 * c * a, 0);
+    b.draw(F.glow, cx, cy, 16 * c, 16 * c, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.9 * c * a, 1);
+    const [lx, ly] = api.at('hornL'), [rx, ry] = api.at('hornR');
+    for (let j = 0; j < 3; j++) {
+      // A jagged bolt horn → core → horn, re-rolled every 2 steps.
+      const sd = Math.floor(t / 2) * 7.3 + j * 3.1;
+      let px = lx, py = ly;
+      for (let k = 1; k <= 6; k++) {
+        const u = k / 6, bx = lx + (rx - lx) * u, by = ly + (ry - ly) * u - Math.sin(u * Math.PI) * 6 * c;
+        const x = k === 6 ? rx : bx + (hash(sd + k) - 0.5) * 10 * c, y = k === 6 ? ry : by + (hash(sd + k * 2.7) - 0.5) * 10 * c;
+        const len = Math.hypot(x - px, y - py), ang = Math.atan2(y - py, x - px);
+        b.draw(F.laser, (px + x) / 2, (py + y) / 2, len + 2, 4, ang, DARK[0], DARK[1], DARK[2], 0.8 * c * a, 0);
+        b.draw(F.laser, (px + x) / 2, (py + y) / 2, len + 2, 1.6, ang, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.9 * c * a, 1);
+        px = x; py = y;
+      }
+    }
+  }
+  // The swing: the blade charges through the wind-up; the arc trail follows the slash.
+  const st = r.swingT;
+  if (st >= 0 && st < SWING.slash + 4) {
+    const k = st < SWING.wind ? st / SWING.wind : 1;
+    const pts = line(api, 'guard', 'swordTip', 8);
+    pts.forEach(([x, y], j) => {
+      const g = k * (0.6 + 0.4 * Math.sin(t * 0.7 + j * 1.3));
+      b.draw(F.glow, x, y, 16 + 10 * k, 16 + 10 * k, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.45 * g * a, 1);
+      b.draw(F.glow, x, y, 7, 7, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.7 * g * a, 1);
+    });
+  }
+  const tr = ps.trail;
+  if (tr && tr.length > 1) {
+    for (let j = 1; j < tr.length; j++) {
+      const A0 = tr[j - 1], A1 = tr[j], al = (j / tr.length) * a * A1.a;
+      // Fill between the guard and the tip of two consecutive blade positions, as strokes.
+      for (let m = 0; m <= 4; m++) {
+        const u = 0.25 + 0.75 * m / 4;
+        const x0 = p.x + A0.gx + (A0.tx - A0.gx) * u, y0 = p.y + A0.gy + (A0.ty - A0.gy) * u;
+        const x1 = p.x + A1.gx + (A1.tx - A1.gx) * u, y1 = p.y + A1.gy + (A1.ty - A1.gy) * u;
+        const len = Math.hypot(x1 - x0, y1 - y0) + 3, ang = Math.atan2(y1 - y0, x1 - x0);
+        b.draw(F.laser, (x0 + x1) / 2, (y0 + y1) / 2, len, 10 * u, ang, DARK[0], DARK[1], DARK[2], 0.55 * al, 0);
+        b.draw(F.laser, (x0 + x1) / 2, (y0 + y1) / 2, len, 6 * u, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.6 * al * u, 1);
+        if (m === 4) b.draw(F.laser, (x0 + x1) / 2, (y0 + y1) / 2, len, 3, ang, PAL.core[0], PAL.core[1], PAL.core[2], 0.9 * al, 1);
+      }
+    }
+  }
+}
+RIG_FX.overlay = rigOverlay;
+
+/** Black flame and red sparks licking off the blade through the wind-up (each step). */
+export function swordCharge(p, w, k) {
+  const Hp = w.fxHigh, R = w.fxRng, F = w.F;
+  const [gx, gy] = miguerreArt.animatedAnchor(p, 'guard'), [tx, ty] = miguerreArt.animatedAnchor(p, 'swordTip');
+  for (let j = 0; j < 2; j++) {
+    const u = R.next(), x = gx + (tx - gx) * u, y = gy + (ty - gy) * u;
+    let i = Hp.spawn(F.glow, x + R.range(-3, 3), y, R.range(-0.4, 0.4), R.range(-1.4, -0.4), R.range(14, 22));
+    if (i >= 0) { Hp.size(i, 6, 18 * (0.5 + k)); Hp.color(i, DARK[0], DARK[1], DARK[2]); Hp.phys(i, 0.95); Hp.look(i, 0.7, 0, FADE_INOUT); }
+    i = Hp.spawn(F.spark, x, y, R.range(-1.5, 1.5), R.range(-2, 0.5), R.range(8, 14));
+    if (i >= 0) { Hp.size(i, 4); Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.mid[0], PAL.mid[1], PAL.mid[2]); Hp.phys(i, 0.9); Hp.look(i, 1, 1, FADE_OUT, 0.5); }
+  }
+}
+
+/** The crescent tears off the blade: a flash and black shards and red sparks flung forward along it. */
+export function swordRelease(p, w) {
+  const Hp = w.fxHigh, R = w.fxRng, F = w.F, sh = w.r.frame('mz_shard');
+  const [gx, gy] = miguerreArt.animatedAnchor(p, 'guard'), [tx, ty] = miguerreArt.animatedAnchor(p, 'swordTip');
+  for (let j = 0; j < 14; j++) {
+    const u = j / 13, x = gx + (tx - gx) * u, y = gy + (ty - gy) * u, a = -Math.PI / 2 + R.range(-0.7, 0.7), sp = R.range(3, 8);
+    let i = Hp.spawn(j & 1 ? sh : F.spark, x, y, Math.cos(a) * sp, Math.sin(a) * sp, R.range(12, 22));
+    if (i < 0) break;
+    if (j & 1) { Hp.size(i, R.range(5, 9)); Hp.spin(i, a, R.range(-0.3, 0.3)); Hp.color(i, DARK[0], DARK[1], DARK[2]); Hp.phys(i, 0.9); Hp.look(i, 0.95, 0, FADE_OUT); }
+    else { Hp.size(i, 6); Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.hot[0], PAL.hot[1], PAL.hot[2]); Hp.phys(i, 0.88); Hp.look(i, 1, 1, FADE_OUT, 0.5); }
+    i = Hp.spawn(F.glow, x, y, 0, -1, 10);
+    if (i >= 0) { Hp.size(i, 30, 50); Hp.color(i, PAL.hot[0], PAL.hot[1], PAL.hot[2], PAL.edge[0], PAL.edge[1], PAL.edge[2]); Hp.look(i, 0.6, 1, FADE_OUT); }
+  }
+}
+
+/** Each downstroke: a dark gust ripple off both wings and void feathers shed from the trailing edges. */
+export function wingGust(p, w) {
+  const Hp = w.fxHigh, R = w.fxRng, F = w.F, sh = w.r.frame('mz_shard');
+  for (const s of ['L', 'R']) {
+    const [tx, ty] = miguerreArt.animatedAnchor(p, 'wingLow' + s), [mx, my] = miguerreArt.animatedAnchor(p, 'wingMid' + s);
+    const dir = s === 'L' ? -1 : 1;
+    let i = Hp.spawn(F.ring, (tx + mx) / 2, (ty + my) / 2 + 6, dir * 0.6, 1.4, 16);
+    if (i >= 0) { Hp.size(i, 10, 46); Hp.color(i, PAL.mid[0], PAL.mid[1], PAL.mid[2], PAL.edge[0], PAL.edge[1], PAL.edge[2]); Hp.look(i, 0.3, 1, FADE_OUT); }
+    for (let j = 0; j < 2; j++) {
+      const u = R.next(), x = mx + (tx - mx) * u, y = my + (ty - my) * u;
+      i = Hp.spawn(sh, x, y, dir * R.range(0.4, 1.4), R.range(1.2, 2.4), R.range(22, 34));
+      if (i >= 0) { Hp.size(i, R.range(4, 7)); Hp.spin(i, R.range(0, 6.3), R.range(-0.15, 0.15)); Hp.phys(i, 0.97); Hp.color(i, DARK[0], DARK[1], DARK[2]); Hp.look(i, 0.85, 0, FADE_OUT); }
+      i = Hp.spawn(F.glow, x, y, dir * R.range(0.2, 0.8), R.range(1, 2), R.range(20, 30));
+      if (i >= 0) { Hp.size(i, 10, 26); Hp.color(i, 0.12, 0.0, 0.02, 0.02, 0, 0); Hp.phys(i, 0.96); Hp.look(i, 0.45 * p.alpha, 0, FADE_INOUT); }
+    }
+  }
+}
+
+/** Exhaust hook (no thrusters): a faint trail of void smoke and red embers off the wing tips. */
+export function wingTrail(p, w) {
+  if (!miguerreArt.exhaust(p, w)) return false;
+  const Hp = w.fxHigh, R = w.fxRng, F = p.F;
+  if (R.next() < 0.35) {
+    const [x, y] = miguerreArt.animatedAnchor(p, R.next() < 0.5 ? 'wingLowL' : 'wingLowR');
+    let i = Hp.spawn(F.glow, x + R.range(-3, 3), y, R.range(-0.2, 0.2), R.range(1.2, 2), R.range(16, 24));
+    if (i >= 0) { Hp.size(i, 6, 16); Hp.color(i, 0.12, 0.0, 0.02, 0.02, 0, 0); Hp.phys(i, 0.97); Hp.look(i, 0.4 * p.alpha, 0, FADE_INOUT); }
+    i = Hp.spawn(F.spark, x, y, R.range(-0.3, 0.3), R.range(0.8, 1.6), R.range(10, 16));
+    if (i >= 0) { Hp.size(i, 3); Hp.color(i, PAL.hot[0], PAL.hot[1], PAL.hot[2], PAL.edge[0], PAL.edge[1], PAL.edge[2]); Hp.look(i, 0.7 * p.alpha, 1, FADE_OUT); }
+  }
+  return true;
+}
+
+/** The terrifying vibration's peak: a dark-red flash, a heavy shock ring and dread rings over every enemy. */
+export function terrorBurst(p, w, list) {
+  const Hp = w.fxHigh, F = w.F;
+  w.r.post.flash(0.35, 0.0, 0.03, 0.3, 0.04);
+  w.r.post.shockwave(p.x, p.y, 0.06, 0.03, 0.9);
+  w.r.post.aberrate(0.04);
+  w.g.camera.addTrauma(0.45);
+  for (const f of list) {
+    const i = Hp.spawn(F.ring, f.e.x, f.e.y, 0, 0, 14);
+    if (i >= 0) { Hp.size(i, 50, 8); Hp.color(i, PAL.hot[0], PAL.hot[1], PAL.hot[2], PAL.edge[0], PAL.edge[1], PAL.edge[2]); Hp.look(i, 0.8, 1, FADE_OUT); }
+  }
+}
+
+/** Dark wisps of dread rising off a feared enemy (call every few steps). */
+export function fearWisp(w, e) {
+  const Hp = w.fxHigh, R = w.fxRng, F = w.F;
+  const i = Hp.spawn(F.glow, e.x + R.range(-e.r, e.r), e.y + R.range(-e.r, e.r) * 0.5, R.range(-0.3, 0.3), R.range(-1.4, -0.6), R.range(18, 28));
+  if (i >= 0) { Hp.size(i, 8, 22); Hp.color(i, 0.4, 0.0, 0.05, 0.05, 0, 0); Hp.phys(i, 0.96); Hp.look(i, 0.6, 0, FADE_INOUT); }
+}
+
+/**
+ * Feared enemies (render): a trembling dark-red dread aura, a distortion halo
+ * of shaking copies of the ring, and twitching red marks. Bosses tremble here
+ * too (visual only).
+ */
+export function renderFear(p, b) {
+  const F = p.F, t = p.t;
+  for (const f of p.ps.fear) {
+    const e = f.e;
+    if (!e.alive) continue;
+    const k = 1 - f.t / f.life, a = Math.min(1, f.t / 4) * k, R0 = (e.r || 14) * (f.boss ? 1.4 : 2.2);
+    const jx = Math.sin(t * 2.7 + f.s) * 2.2 * k, jy = Math.cos(t * 3.1 + f.s) * 1.6 * k;
+    b.draw(F.glow, e.x + jx, e.y + jy, R0 * 2.4, R0 * 2.4, 0, 0.05, 0, 0.01, 0.55 * a, 0);
+    b.draw(F.glow, e.x + jx, e.y + jy, R0 * 2, R0 * 2, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.6 * a, 1);
+    for (let j = 0; j < 3; j++) {
+      const s = R0 * (1.3 + 0.35 * j + 0.1 * Math.sin(t * 0.9 + j * 2 + f.s));
+      b.draw(F.ring, e.x - jx * (j + 1) * 0.6, e.y - jy * (j + 1) * 0.6, s, s * (0.9 + 0.1 * Math.sin(t * 1.3 + j)), t * 0.1 * (j & 1 ? 1 : -1), PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.35 * a / (j + 1), 1);
+    }
+    if ((t + f.s) % 7 < 3) {
+      const ang = hash(Math.floor(t / 3) + f.s) * Math.PI * 2;
+      b.draw(F.laser, e.x + Math.cos(ang) * R0 * 0.8, e.y + Math.sin(ang) * R0 * 0.8, R0 * 0.9, 2, ang + 1.3, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.8 * a, 1);
+    }
+  }
+}
+
+/** A Chaos Clone rises: a swirling vortex of black and dark-red smoke drawn into its spot. */
+export function chaosVortex(w, x, y) {
+  const Hp = w.fxHigh, R = w.fxRng, F = w.F;
+  for (let k = 0; k < 16; k++) {
+    const a = k / 16 * Math.PI * 2, d = R.range(40, 70), tg = a + Math.PI / 2;
+    const i = Hp.spawn(F.glow, x + Math.cos(a) * d, y + Math.sin(a) * d, -Math.cos(a) * 1.6 + Math.cos(tg) * 2.2, -Math.sin(a) * 1.6 + Math.sin(tg) * 2.2, R.range(20, 30));
+    if (i < 0) return;
+    Hp.size(i, 18, 8);
+    if (k & 1) Hp.color(i, 0.12, 0.0, 0.02, 0.02, 0, 0); else Hp.color(i, 0.6, 0.04, 0.08, 0.1, 0, 0.02);
+    Hp.phys(i, 0.95); Hp.look(i, 0.7, 0, FADE_INOUT);
+  }
+}
+
+/** The ultimate's charge (each step, k 0..1): red motes and black smoke drawn into the horns, then a flash. */
+export function ultCharge(p, w, k) {
+  const Hp = w.fxHigh, R = w.fxRng, F = w.F, [cx, cy] = miguerreArt.animatedAnchor(p, 'core');
+  for (let j = 0; j < 3; j++) {
+    const a = R.range(0, Math.PI * 2), d = R.range(50, 90);
+    let i = Hp.spawn(F.spark, cx + Math.cos(a) * d, cy + Math.sin(a) * d, -Math.cos(a) * d / 12, -Math.sin(a) * d / 12, 12);
+    if (i >= 0) { Hp.size(i, 4); Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.hot[0], PAL.hot[1], PAL.hot[2]); Hp.look(i, 1, 1, FADE_OUT, 0.5); }
+    i = Hp.spawn(F.glow, cx + Math.cos(a) * d, cy + Math.sin(a) * d, -Math.cos(a) * d / 16, -Math.sin(a) * d / 16, 16);
+    if (i >= 0) { Hp.size(i, 18, 6); Hp.color(i, DARK[0], DARK[1], DARK[2]); Hp.look(i, 0.6 * k, 0, FADE_INOUT); }
+  }
 }
