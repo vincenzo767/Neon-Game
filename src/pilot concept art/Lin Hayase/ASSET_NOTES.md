@@ -196,3 +196,115 @@ Where they live:
 **The path is drawn under the enemies** (new optional World hook `renderUnder`), so a boss inside it stays visible.
 
 Damage is unchanged. In the storm Lin runs at about 50 FPS with art versus 45 procedural.
+
+
+---
+
+# Rebuild v2 (Step 1)
+
+Branch: `art/lin-v2`, on top of `art/oduya-v2`. No new art: the current `top-down-main.jpg` stays. The source folder stays read-only.
+
+**The owner's brief:**
+- the emerald shards come out of the **whip**;
+- the whip is placed **in front of the mecha**, and its crystals glow with every attack;
+- the **ultimate** is redrawn: the void much more noticeable, cracked space along its edges, and a stronger charge before the spear is thrown;
+- a **wider special**;
+- an **enhanced bomb**;
+- overall FX motion and animation like Kairo, Mira, Bruno, Tess and Oduya v2.
+
+## Components (source px; sprite 1319×1192, mirror axis x 660)
+
+| Part | Where | Role |
+|------|-------|------|
+| **Whip** (left hand) | A chain of about 12 crystal blades from the handle at about (470, 580), curving up and left to the tip at (140, 12) | **Throws every shard.** It is animated: it swings out in front and lashes with each volley, and its crystals glow as the shards leave them. Split in two (handle half / tip half) so the tip whips behind the handle. |
+| **Spear** (right hand) | Shaft from the tip at (955, 15) through the guard and hand at about (955, 560) to the broad lower blade ending at (950, 900) | Focus spears and the ultimate. It is animated: a thrust along its axis on each throw; it is raised and drawn back during the ultimate's charge. |
+| **Butterfly wings** | Left and right, under everything | Animated: they keep beating as they do now, flaring in the charge and the special. |
+| Crystal legs (feet), waist spike, torso, head | Centre | Body. **The feet never fire.** |
+
+**Hidden wing art.** The whip and spear are painted over the wings. When they move, the wing art under them must be filled in:
+- from the mirrored other wing;
+- where both sides are hidden (a small strip near the whip handle), from neighbouring wing pixels.
+
+This is a new opt-in `fill` step in `process-art`. The art test already filled the wings this way for the flap (`keep` + `wings2x`).
+
+**Wing beat.** The rig path can only scale layers evenly. A new opt-in `sx` (horizontal scale) on rig poses keeps the butterfly beat. Other pilots don't set it.
+
+## Today's kit (baseline, `tools/dps.mjs lin`)
+
+| Mode | T1 | T2 | T3 | T4 |
+|---|---|---|---|---|
+| Shot, boss | 40 | 58 | 77 | 97 |
+| Focus, boss | 36 | 70 | 87 | 104 |
+
+- **Main: Crystal Seed.** A fan of 2 + tier shards from the waist spike every 6 steps. Seeds grow into swarm turrets, and option turrets orbit him.
+- **Focus: Emerald Spears.** Spears leave the spear blade, split on hit, and the turrets throw them too.
+- **Special: Root Field.** It holds every enemy within **200** units for 1.5 s, then crushes them.
+- **Bomb: Spear Rain.** 3 s of crystal spears falling, damaging through shields.
+- **Ultimate: Cosmic Spear.** A 0.8 s charge at the spear blade, then a giant spear flies up. It hits everything it passes once for 120 and leaves a starry black rift (a damaging beam) for about 3 s.
+
+## Proposed redesign (beginning → travel → impact, like the others)
+
+### Main: Whip Shards
+
+- **Beginning:**
+  - The whip swings out in front of him, lashing alternately left and right across the front with each volley.
+  - The handle leads and the tip half whips after it.
+  - The crystals light up in a wave from the handle to the tip.
+- **Travel:** the 2 + tier shards leave the glowing crystals along the whip and fly in the same fan as today. They are aimed through the old fan's lanes, so damage and reach stay the same.
+- **Impact:** an emerald crystal spark burst, as today.
+- Seeds and turrets are unchanged.
+
+### Focus: Emerald Spears
+
+- **Beginning:** the spear thrusts forward along its axis and flashes at the blade.
+- **Travel:** the spears fly as now.
+- **Impact:** they split, as now.
+- Damage is unchanged.
+
+### Special: Root Field (wider)
+
+- **Beginning:** he plants the spear, the whip coils, and a shockwave of roots bursts out.
+- **Travel:** the field spreads to the new radius, with roots racing out along the ground and crystal spikes rising.
+- **Impact:** the crush, with crystal shatter bursts at each held enemy.
+
+### Bomb: Spear Rain (enhanced)
+
+- **Beginning:** he raises the spear, and an emerald portal of cracked sky opens across the top of the screen.
+- **Travel:** the same 3 s of spears falls out of it, with longer streaks, crystal trails, star seals and crystal blooms at the impacts.
+- **Impact:** a closing burst as the portal shatters.
+- Damage is unchanged.
+
+### Ultimate: Cosmic Spear (redrawn)
+
+1. **Charge** (longer and stronger):
+   - the spear is raised and drawn back, and the wings flare;
+   - a sphere of black space opens round the blade with stars streaming into it;
+   - emerald rings spin faster, crystal shards grow into a crown round the spear head, and space starts to crack round the sphere;
+   - the light dims, then flashes.
+2. **Throw:** the spear thrusts and launches the giant spear (flash, shockwave, shake).
+3. **Rift:**
+   - The void is a deep black band, wider than today and clearly visible: nebula colour, drifting stars, a slow swirl inside.
+   - Its edges are **cracked space**: jagged white-emerald fracture lines along both edges, with branches spreading out, shards of space flaking off and sparkling, and the cracks pulsing.
+4. **Close:** the cracks seal and the void fades.
+- Damage is unchanged (one 120 hit as the spear passes, then the rift's beam damage).
+
+## Decisions needed
+
+1. **Where the whip goes.**
+   - **A (recommended):** swung out in front of the mecha. It turns about his left hand to point forward, ahead of his left side, and lashes across the front with every volley. The wing art it uncovers is filled in (see above).
+   - **B:** it stays at his side as painted, and lashes in place.
+2. **Shard origin.** The shards leave the whip's crystals (along its length), aimed through today's fan lanes so damage stays the same. Yes / adjust?
+3. **Special radius.**
+   - **A (recommended):** 200 → **300**.
+   - **B:** 260.
+   - The hold, crush and cooldown are unchanged.
+4. **Ultimate charge length.**
+   - **A (recommended):** 0.8 → **1.2 s**, to give the charge time to read. The total stays 4 s, so the rift is a little shorter.
+   - **B:** keep 0.8 s.
+5. **Ultimate rift width.**
+   - **A (recommended):** drawn about 40% wider (the void and its cracks); the damaging width is unchanged.
+   - **B:** the damaging width grows with it.
+
+## Unchanged
+
+The stats, the tiers, the size (90 units), the hitbox (2.4), the seeds, swarm turrets and option turrets, the bomb's damage, the bio and the procedural fallback.
