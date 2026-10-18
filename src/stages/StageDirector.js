@@ -57,7 +57,7 @@ export class StageDirector {
         this.w.event('warning', { boss: s.type === 'boss' });
         break;
       case 'tally': {
-        // Optional pilot hook: the stage is cleared (e.g. Dax's Chaos Clones dissolve).
+        // Optional pilot hook: the stage is cleared (e.g. Miguerre's Chaos Clones dissolve).
         const pl = this.w.player;
         if (pl && pl.def.stageClear) pl.def.stageClear(pl, this.w);
         this.w.event('tally', this.tally());

@@ -1,9 +1,9 @@
-# Dax Morrow — Asset Notes (Step 1)
+# Miguerre Zo'Rajah — Asset Notes (Step 1)
 
-Pilot: **Dax Morrow**, vehicle **OVERCLOCK**. Built the same way as Kairo,
+Pilot: **Miguerre Zo'Rajah**, vehicle **OVERCLOCK**. Built the same way as Kairo,
 Mira, Bruno, Tess, Oduya and Lin (see `ART_PIPELINE.md` and their
 `ASSET_NOTES.md`). The source folder is read-only. Coordinates are source
-pixels, origin top-left. Branch: `art/dax-test` (based on `art/lin-test`,
+pixels, origin top-left. Branch: `art/miguerre-test` (based on `art/lin-test`,
 which has the latest pipeline: checkerboard cut-out, FX picks, wing layers).
 
 ## Images
@@ -57,7 +57,7 @@ at the top are his feet: they never fire.** No rotation needed.
 - **Size: 90 units tall.**
 - **No feet fire.**
 
-## Dax's weapons today (being replaced)
+## Miguerre's weapons today (being replaced)
 
 | Mode | T1 | T2 | T3 | T4 |
 |---|---|---|---|---|
@@ -65,7 +65,7 @@ at the top are his feet: they never fire.** No rotation needed.
 | Shot, line of 6 | 34 | 52 | 86 | 104 |
 | Focus, boss | 40 | 60 | 63 | 83 |
 
-(`tools/dps.mjs dax`.) The current kit uses heat-ramped cannons, a Heat Lance focus beam, Vent Blast, Nitro Wall (2 bombs) and Meltdown Nova.
+(`tools/dps.mjs miguerre`.) The current kit uses heat-ramped cannons, a Heat Lance focus beam, Vent Blast, Nitro Wall (2 bombs) and Meltdown Nova.
 
 ## Proposed mapping (needs your decision)
 
@@ -117,22 +117,22 @@ Same method as the others: feathered polygons plus the exact alpha complement fo
 
 ## Steps 2–6: results
 
-- **Processing.** `npm run art:dax`.
+- **Processing.** `npm run art:miguerre`.
   - `bg: 'checker'`; 4 enclosed checker pockets were found automatically.
   - Sprite exports: 303×372 @2x and 151×186 @1x, with outline variants. Front view: 484×600.
   - Portrait: a 520×650 crop at (110, 0).
-- **Wings.** Generated `dax.layers.json`: the lower blade wings and their fins move, drawn under the body (no keep areas).
-- **FX picks.** The owner's pictures aren't exact crops of the sheets, so they are stored in `tools/art-ref/dax/` and used directly (as with Lin). They are un-blended with a **red** glow tint (`tint: 'red'`); two have crop boxes.
-  - `dax_fx_beam`: zigzag void beam, the main beam segments.
-  - `dax_fx_bent`: bent beam, the arcs that erase attacks.
-  - `dax_fx_ghost`: the smoke ghost.
-  - `dax_fx_crescent`: the Void Crescent.
-  - `dax_fx_ult`: straight from `ultimate-fx.png`, which has real alpha.
-  - The beam and bent beam are in the shared atlas; the ghost, crescent and cannon are in Dax's own texture.
+- **Wings.** Generated `miguerre.layers.json`: the lower blade wings and their fins move, drawn under the body (no keep areas).
+- **FX picks.** The owner's pictures aren't exact crops of the sheets, so they are stored in `tools/art-ref/miguerre/` and used directly (as with Lin). They are un-blended with a **red** glow tint (`tint: 'red'`); two have crop boxes.
+  - `miguerre_fx_beam`: zigzag void beam, the main beam segments.
+  - `miguerre_fx_bent`: bent beam, the arcs that erase attacks.
+  - `miguerre_fx_ghost`: the smoke ghost.
+  - `miguerre_fx_crescent`: the Void Crescent.
+  - `miguerre_fx_ult`: straight from `ultimate-fx.png`, which has real alpha.
+  - The beam and bent beam are in the shared atlas; the ghost, crescent and cannon are in Miguerre's own texture.
 - **Code.**
-  - `src/pilots/daxArt.js`: config, void-red palette with `dark`.
-  - `src/pilots/daxFx.js`: beams, arcs, hits, bursts, smoke ghosts, crescent, rods, cannon.
-  - `src/pilots/dax.js`: the new kit.
+  - `src/pilots/miguerreArt.js`: config, void-red palette with `dark`.
+  - `src/pilots/miguerreFx.js`: beams, arcs, hits, bursts, smoke ghosts, crescent, rods, cannon.
+  - `src/pilots/miguerre.js`: the new kit.
 - **Shared, all optional; the other pilots are unchanged and were checked.**
   - `Player`: `intangible(p)` hook.
   - `mechaArt`: `pal.dark`, a black under-flame for thrusters.
@@ -151,7 +151,7 @@ Same method as the others: feathered polygons plus the exact alpha complement fo
   - **Void Crescent.** 260 units wide. It drifts forward 1.8 units per step for 5 s, erases attacks along its arc, and deals 5 every 5 steps through shields. Cooldown 600.
   - **Void Rod Rain.** 5 s. Two rods a step (a big one every 12), half aimed at enemies. Bursts are 52 units / 5 damage, or 90 / 14 for big rods, through shields. Clears bullets.
   - **Void Cannon.** 7 s. A 150-unit beam from his chest to the top of the screen that follows him: 2.6 per step through shields, clearing bullets. He is invulnerable throughout.
-- **DPS** (`tools/dps.mjs dax`, dummies flagged as bosses because normal enemies die in one hit):
+- **DPS** (`tools/dps.mjs miguerre`, dummies flagged as bosses because normal enemies die in one hit):
 
   | Mode | T1 | T2 | T3 | T4 |
   |---|---|---|---|---|
@@ -166,7 +166,7 @@ Same method as the others: feathered polygons plus the exact alpha complement fo
   - The fallback portrait has white spiky hair, shades and tattoos.
 - **Frame rate.** Storm: about 57 FPS with art versus 53 procedural; 60 FPS during the special and ultimate.
 - **Atlas.** The shared atlas is 84.8 % full (was 86.5 %; his old gun and plasma sprites are gone).
-- **Screenshots** in `screenshots/dax/`:
+- **Screenshots** in `screenshots/miguerre/`:
   - `14_d_main_kills`: chained one-hit kills;
   - `14_d_main_storm`: erasing bullets;
   - `14_d_focus_ghosts`;
@@ -181,7 +181,7 @@ Same method as the others: feathered polygons plus the exact alpha complement fo
 
 ## Polish round (owner's feedback)
 
-The owner said the picked FX images looked cut out. Every effect is now drawn live in the reference style, with no image picks. The `dax_fx_*.png` files, their `art.config` entries and their manifest entries are gone; `tools/art-ref/dax/` stays as the reference.
+The owner said the picked FX images looked cut out. Every effect is now drawn live in the reference style, with no image picks. The `miguerre_fx_*.png` files, their `art.config` entries and their manifest entries are gone; `tools/art-ref/miguerre/` stays as the reference.
 
 - **Void Beam.** Straight beams, like eye beams: no zigzag. Each beam has a red haze, a black sheath, a red body and a white-hot core, with star flares where it leaves the core and where it hits. The interception beams are straight too.
 - **Ghost and clones.** Real smoke: dark-red particle puffs and red wisps billow off every ghost and trail behind it. The ghost body is the mecha sprite, tinted void red, with hazy drifting edges.
@@ -190,7 +190,7 @@ The owner said the picked FX images looked cut out. Every effect is now drawn li
   - Width 300; it moves at a medium 3.2 units per step (was 1.8).
   - Its hits follow the drawn band.
 - **Void Cannon.** A column of black void with blazing red walls, red nebula, stars and black shards streaming up. It has a white-hot core line, halo rings and a star-crowned seal at the muzzle, and throws sparks and shards off its walls.
-- **Screenshots:** `screenshots/dax/15_*_polish.png`.
+- **Screenshots:** `screenshots/miguerre/15_*_polish.png`.
 
 ## Polish round 2 (owner's feedback)
 
@@ -207,7 +207,7 @@ The owner said the picked FX images looked cut out. Every effect is now drawn li
   - torn, wavering red walls;
   - black void smoke and dark-red smoke rolling off it.
   - The muzzle seal is calmer: flat rings, no spinning ones.
-- **Checks.** DPS is unchanged (boss T4: beam 131, focus 137). With 1,500 bullets the frame rate is 52–60 FPS. Screenshots: `screenshots/dax/16_*`.
+- **Checks.** DPS is unchanged (boss T4: beam 131, focus 137). With 1,500 bullets the frame rate is 52–60 FPS. Screenshots: `screenshots/miguerre/16_*`.
 
 ## Polish round 3: the crescent moon (owner's reference picture)
 
@@ -244,7 +244,7 @@ The black-flame rounds (commits `3c859ce` to `53a757f`) were rolled back to the 
   - Black orbs drift and bob around the slash.
 - **Smoke.** Ink-black, charcoal and some crimson smoke tears off the edge, peels off the tips and boils in the hollow. It lags behind as the slash moves. White-hot vapour and black ink shards come off it too.
 - **Frame rate.** Headless test: 59 FPS idle, 53 with the crescent, 57 with three in focus.
-- **Screenshot:** `screenshots/dax/23_crescent_getsuga.png`.
+- **Screenshot:** `screenshots/miguerre/23_crescent_getsuga.png`.
 
 ## Polish round 5: Void Cannon, Gran Rey Cero × Getsuga Tenshō (owner's reference)
 
@@ -265,7 +265,7 @@ The owner supplied an in-game mock-up of the ultimate and a written brief. The c
 - **Particles** (`cannonSpray`): black plumes hug the column, crimson vapour and grey-white wisps billow outward, and black rocks and sparks are flung away.
 - **Focus.** The two side cannons from the clones use lighter detail at 60 % brightness, so three cannons don't wash out the screen.
 - **Frame rate (headless).** 60 idle, 53 during the ultimate, 49 with three cannons.
-- **Screenshots:** `screenshots/dax/24_*`.
+- **Screenshots:** `screenshots/miguerre/24_*`.
 
 ## Polish round 6: solid crimson-and-black cannon (owner's `enhance-ultimate.png`)
 
@@ -282,7 +282,7 @@ The owner asked for no transparency and full light, following `enhance-ultimate.
 - **Rocks.** Black rocks with a crimson edge stream up.
 - **Unchanged:** damage, width and duration.
 - **Frame rate (headless).** 60 idle, 51 during the ultimate, 44 with three cannons in focus.
-- **Screenshots:** `screenshots/dax/25_*`.
+- **Screenshots:** `screenshots/miguerre/25_*`.
 
 ## Polish round 7: darker cannon (owner: "more darker")
 
@@ -291,7 +291,7 @@ The owner asked for no transparency and full light, following `enhance-ultimate.
 - **Glow layers dimmed.** The aura, the light rays (now red), the streaks, the core line, the edge lightning and the ring glow are all dimmer.
 - **Rims.** Ring rims are a deeper crimson. Sphere and orb rims, compression rings and cross spikes are deep red instead of pink-white. Rocks have a dark-red edge.
 - **Still opaque.** Nothing became see-through.
-- **Screenshots:** `screenshots/dax/26_*`.
+- **Screenshots:** `screenshots/miguerre/26_*`.
 
 ## Kit changes: chaos (owner's request)
 
@@ -304,20 +304,20 @@ The owner asked for no transparency and full light, following `enhance-ultimate.
   - They stay through deaths until the stage is cleared. Recasting adds six more, up to 30 (five bombs); a sixth bomb replaces the oldest six.
   - The 1 s cast still gives the usual bomb bullet clear and cover.
   - Their total smoke stays about six clones' worth however many there are, for the frame rate.
-  - New optional pilot hook `stageClear(p, w)`, called by `StageDirector` when the tally starts. It also works in practice runs. Dax's clones dissolve into smoke there.
+  - New optional pilot hook `stageClear(p, w)`, called by `StageDirector` when the tally starts. It also works in practice runs. Miguerre's clones dissolve into smoke there.
   - The old rod-rain code and the `dx_rod` sprite are gone.
 - **Special: CRESCENT OF CHAOS** (was Void Crescent). Regular enemies it touches die instantly through shields. Bosses and mid-bosses take 9 every 5 steps (was 5).
 - **Ultimate: BREATHE OF THE CHAOS** (was Void Cannon). 4 damage per step per beam (was 2.6). Three beams in focus, as before.
-- **DPS** (`tools/dps.mjs dax`, boss dummies). Beam T4: 131 (unchanged). Ghost focus T4: 343 averaged over the test window (was 137), because the ramp builds up.
+- **DPS** (`tools/dps.mjs miguerre`, boss dummies). Beam T4: 131 (unchanged). Ghost focus T4: 343 averaged over the test window (was 137), because the ramp builds up.
 - **Frame rate (headless, noisy).** 60 idle; about 50–57 with 6 clones and enemies; about 41–49 with 12; 37–58 with 30.
-- **Screenshot:** `screenshots/dax/27_chaos_clones.png`.
+- **Screenshot:** `screenshots/miguerre/27_chaos_clones.png`.
 
 ---
 
 # Rebuild v2: Miguerre Zo'Rajah (Step 1)
 
 Branch `art/miguerre-v2` (on top of `art/lin-v2`). The owner renames the pilot
-**Dax Morrow → Miguerre Zo'Rajah** everywhere (code, data, docs, file and
+**Miguerre Zo'Rajah → Miguerre Zo'Rajah** everywhere (code, data, docs, file and
 folder names) and supplies a new mecha: `new-top-down-sprite.png` (in-game
 sprite) and `new-mecha.png` (front view). He becomes a component mecha like
 Tess, Oduya and Lin. His powers, abilities and their effects stay; the motion
@@ -325,7 +325,7 @@ and animation are new, and the FX are enhanced.
 
 ## The owner's brief
 
-- **Rename** every "Dax Morrow" to "Miguerre Zo'Rajah", including file and folder names.
+- **Rename** every "Miguerre Zo'Rajah" to "Miguerre Zo'Rajah", including file and folder names.
 - **Void Beam:** the beams now leave the **horns on his head** (owner's screenshot), not the chest.
 - **Wings:** no thrusters any more. He flies on his wings, with an improved wing-beat motion.
 - **Size:** 100 units tall, like Oduya Rex.
@@ -369,7 +369,7 @@ The old `top-down-main.jpg` and `top-down-front.jpg` stay in the folder but are 
 
 ## Today's kit (baseline, preserved)
 
-`tools/dps.mjs dax` (boss-flagged dummies, since normal enemies die in one hit):
+`tools/dps.mjs miguerre` (boss-flagged dummies, since normal enemies die in one hit):
 
 | Mode | T1 | T2 | T3 | T4 |
 |---|---|---|---|---|
@@ -430,10 +430,10 @@ A headless probe placed enemies beside each clone:
   - files `miguerre.js`, `miguerreArt.js`, `miguerreFx.js` and the new `miguerreRig.js`;
   - assets `public/assets/pilots/miguerre/`, script `npm run art:miguerre`, screenshots `screenshots/miguerre/`;
   - source folder `src/pilot concept art/Miguerre Zo'Rajah`.
-  - Atlas names move from `dax`/`dx_` to `miguerre`/`mz_`.
+  - Atlas names move from `miguerre`/`dx_` to `miguerre`/`mz_`.
   - Tess's lore and bio name Miguerre Zo'Rajah as the man she loves.
   - Every document's mentions are updated too.
-  - **Not renamed:** git history and the old `art/dax-test` branch name. Old high-score entries keep the name they were saved with.
+  - **Not renamed:** git history and the old `art/miguerre-test` branch name. Old high-score entries keep the name they were saved with.
 - **Unchanged:**
   - the vehicle name **OVERCLOCK**;
   - his story (only the name changes);

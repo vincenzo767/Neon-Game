@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "pilot": "dax",
-  "space": "dax_back@2x.png pixels, origin top-left (1x = half)",
+  "pilot": "miguerre",
+  "space": "miguerre_back@2x.png pixels, origin top-left (1x = half)",
   "image": {
     "w": 303,
     "h": 372,

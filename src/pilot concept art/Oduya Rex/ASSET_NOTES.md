@@ -386,7 +386,7 @@ Strand growth, the stats, the speed, the bomb stock (5), the hitbox (3.0), the s
 | Ultimate, next 3 s | 59.0 | 51.5 |
 
 **Regressions:**
-- Tess, Bruno, Mira, Kairo and Dax DPS are identical to the baseline.
+- Tess, Bruno, Mira, Kairo and Miguerre DPS are identical to the baseline.
 - All seven art pilots load and play every tier, focus, special, bomb and ultimate with no errors.
 
 **Screenshots** in `screenshots/oduya/v2/`:

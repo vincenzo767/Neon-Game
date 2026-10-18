@@ -2,12 +2,12 @@ import { FADE_OUT, FADE_INOUT, FADE_FLICKER } from '../fx/Particles.js';
 import { WORLD_W, WORLD_H } from '../core/constants.js';
 import {
   hash, CR_R, CR_M, CR_TW, CR_TH, CR_CY, crA, crTh, crescentAt, brush, spatter, crescentPts,
-} from './daxFx.js';
+} from './miguerreFx.js';
 import { TESS } from './tessTuning.js';
 
 // TESS v2 ultimate FX: VOID CROSS ANNIHILATION (new-ultimate.png and the
-// owner's guide). Her lover Dax Morrow's Crescent of Chaos (its shape and
-// motion: daxFx.js's crescent helpers) in Tess's black / violet / lavender /
+// owner's guide). Her lover Miguerre Zo'Rajah's Crescent of Chaos (its shape and
+// motion: miguerreFx.js's crescent helpers) in Tess's black / violet / lavender /
 // white, crossed with a void spear, with a white-hot ringed core.
 //
 // Phases (tess.js stepUlt; U.ph): compress (the core gathers at Tess) →
@@ -23,11 +23,11 @@ const LAV = [1.6, 1.15, 2.2];
 const WHT = [2.3, 2.1, 2.5];
 const SMOKE = [[0.05, 0.02, 0.08], [0.16, 0.12, 0.2], [0.3, 0.12, 0.45]];
 const CLOUD = [[0.13, 0.07, 0.2], [0.34, 0.27, 0.44]]; // cloud lobes: shadowed underside, lit top
-export const SQ = 0.62; // the wings are Dax's arch squashed flat: they read as the cross's bar (tess.js hits use it too)
+export const SQ = 0.62; // the wings are Miguerre's arch squashed flat: they read as the cross's bar (tess.js hits use it too)
 
 // ------------------------------------------------------------- textures
 
-/** The void crescent body (alpha-blended): Dax's ink-brush arch repainted black / violet / lavender. */
+/** The void crescent body (alpha-blended): Miguerre's ink-brush arch repainted black / violet / lavender. */
 function bodyTex(ctx) {
   ctx.fillStyle = '#030006';
   for (let k = 0; k < 70; k++) {
@@ -59,7 +59,7 @@ function bodyTex(ctx) {
   }
 }
 
-/** The blazing leading edge (additive white, tinted when drawn): the same brush rim as Dax's. */
+/** The blazing leading edge (additive white, tinted when drawn): the same brush rim as Miguerre's. */
 function rimTex(ctx) {
   ctx.save();
   ctx.shadowColor = '#fff'; ctx.shadowBlur = 10;
@@ -175,7 +175,7 @@ function bolt(b, F, x, y, ang, len, seed, a, wd = 1.4) {
   streak(b, F, pts, wd, a, 0.4);
 }
 
-/** World point in the cross's crescent band (u along the arc, v across it, o outward), Dax's layout. */
+/** World point in the cross's crescent band (u along the arc, v across it, o outward), Miguerre's layout. */
 function bandAt(U, w, u, v, o = 0) {
   const Rw = w * 0.5, cx = U.x, cy = U.y + Rw * CR_CY, ang = crA(u), r = Rw - crTh(u, Rw) * v + o;
   return [cx + Math.cos(ang) * r, U.y + (cy + Math.sin(ang) * r - U.y) * SQ];
@@ -219,7 +219,7 @@ function renderCompress(b, F, U, t) {
 }
 
 /**
- * The traveling cross: the void crescent wings (Dax's arch), the spear ahead
+ * The traveling cross: the void crescent wings (Miguerre's arch), the spear ahead
  * and its tail, the ringed core; a wake and wing ribbons trailing back to where
  * it launched, speed streaks, plasma currents racing along the wings toward the
  * spear, crescent shock fronts sweeping out ahead, lightning off the edges.

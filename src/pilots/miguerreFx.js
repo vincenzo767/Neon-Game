@@ -1,18 +1,18 @@
 import { FADE_OUT, FADE_INOUT } from '../fx/Particles.js';
 import { crowdFactor } from './art/mechaFx.js';
-import { daxArt, PAL, DARK } from './daxArt.js';
+import { miguerreArt, PAL, DARK } from './miguerreArt.js';
 import { H } from './common.js';
 
-// Dax's void-cosmic effects, drawn after fx-reference.png, void-beams.png,
-// ultimate-fx.png and the owner's picks (tools/art-ref/dax/), all built live
+// Miguerre's void-cosmic effects, drawn after fx-reference.png, void-beams.png,
+// ultimate-fx.png and the owner's picks (tools/art-ref/miguerre/), all built live
 // (no cut-out images): straight void beams (white-hot core, red body, black
 // sheath), red star flares, black shard bursts with red rings, dark-red smoke
 // ghosts, a crescent of starry black space with a red rim, and the cosmic Void
 // Cannon. Black parts are alpha-blended (add = 0) under the additive red.
-// Render-time only: damage lives in dax.js.
+// Render-time only: damage lives in miguerre.js.
 
-const LOOK = daxArt.LOOK;
-const fxOf = () => daxArt.frames().fx;
+const LOOK = miguerreArt.LOOK;
+const fxOf = () => miguerreArt.frames().fx;
 export const hash = (n) => { const s = Math.sin(n) * 43758.5453; return s - Math.floor(s); };
 
 function shardTex(ctx, w, h) {
@@ -22,9 +22,9 @@ function shardTex(ctx, w, h) {
   ctx.fillStyle = '#fff'; ctx.fill();
 }
 
-/** Atlas textures (part of dax.js `sprites`). */
-export function daxFxSprites(atlas) {
-  atlas.add('dx_shard', 12, 10, shardTex, { scale: 3 });
+/** Atlas textures (part of miguerre.js `sprites`). */
+export function miguerreFxSprites(atlas) {
+  atlas.add('mz_shard', 12, 10, shardTex, { scale: 3 });
   crescentSprites(atlas);
   cannonSprites(atlas);
 }
@@ -102,7 +102,7 @@ export function renderBeams(p, b) {
 
 /** Small impact (World hitSpark hook): red flash, white core, black shards, ring, a star. */
 export function hitSpark(w, x, y, angle) {
-  const Hp = w.fxHigh, R = w.fxRng, F = w.F, sh = w.r.frame('dx_shard');
+  const Hp = w.fxHigh, R = w.fxRng, F = w.F, sh = w.r.frame('mz_shard');
   let i = Hp.spawn(F.glow, x, y, 0, 0, 5);
   if (i >= 0) { Hp.size(i, 32, 16); Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.mid[0], PAL.mid[1], PAL.mid[2]); Hp.look(i, 0.9, 1, FADE_OUT); }
   i = Hp.spawn(F.ring, x, y, 0, 0, 9);
@@ -129,7 +129,7 @@ export function hitSpark(w, x, y, angle) {
  * tiny white cosmic dots. `s` scales it (1 ≈ a normal enemy).
  */
 export function burst(w, x, y, s = 1) {
-  const Hp = w.fxHigh, R = w.fxRng, F = w.F, sh = w.r.frame('dx_shard'), fx = fxOf();
+  const Hp = w.fxHigh, R = w.fxRng, F = w.F, sh = w.r.frame('mz_shard'), fx = fxOf();
   for (let k = 0; k < 4 * s; k++) {
     const a = R.range(0, Math.PI * 2), sp = R.range(0.4, 1.4) * s;
     const i = Hp.spawn(F.glow, x + Math.cos(a) * 6 * s, y + Math.sin(a) * 6 * s, Math.cos(a) * sp, Math.sin(a) * sp - 0.15, R.range(20, 32));
@@ -165,10 +165,10 @@ export function burst(w, x, y, s = 1) {
 
 /** Void exhaust: the art's red particles plus trailing black-red smoke (exhaust hook). */
 export function voidExhaust(p, w) {
-  if (!daxArt.exhaust(p, w)) return false;
+  if (!miguerreArt.exhaust(p, w)) return false;
   const Hp = w.fxHigh, R = w.fxRng, F = p.F;
   if (R.next() < 0.5) {
-    const name = R.next() < 0.5 ? 'ventL' : 'ventR', [ax, ay] = daxArt.anchor(name);
+    const name = R.next() < 0.5 ? 'ventL' : 'ventR', [ax, ay] = miguerreArt.anchor(name);
     const i = Hp.spawn(F.glow, p.x + ax + R.range(-2, 2), p.y + ay + 14, R.range(-0.3, 0.3), R.range(1.6, 2.6), R.range(18, 28));
     if (i >= 0) { Hp.size(i, 8, 20); Hp.color(i, 0.12, 0.0, 0.02, 0.02, 0, 0); Hp.phys(i, 0.97); Hp.look(i, 0.45 * p.alpha, 0, FADE_INOUT); }
   }
@@ -204,12 +204,12 @@ export function ghostSmoke(w, x, y, n = 2, thick = false) {
  * itself is particles (ghostSmoke).
  */
 export function renderGhost(p, b, x, y, alpha, seed = 0) {
-  const K = daxArt.frames(), set = K.art && (K.art[LOOK.outline ? 'outline' : 'plain'] || K.art.outline);
+  const K = miguerreArt.frames(), set = K.art && (K.art[LOOK.outline ? 'outline' : 'plain'] || K.art.outline);
   const F = p.F, t = p.t;
   b.draw(F.glow, x, y + 8, 80, 96, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.45 * alpha, 1);
   b.draw(F.glow, x, y + 10, 70, 90, 0, 0.1, 0, 0.02, 0.35 * alpha, 0);
   if (!set) return;
-  const A = daxArt.anchorData(), hb = A.anchors.hitbox, k = daxArt.unitsPerPx();
+  const A = miguerreArt.anchorData(), hb = A.anchors.hitbox, k = miguerreArt.unitsPerPx();
   const cx = x + (A.image.w / 2 - hb[0]) * k, cy = y + Math.sin(t * 0.07 + seed) * 1.2 + (A.image.h / 2 - hb[1]) * k;
   const W0 = A.image.w * k, H0 = A.image.h * k, flick = 0.85 + 0.15 * Math.sin(t * 0.3 + seed * 3);
   // Hazy smoke edge: two drifting, slightly larger copies.
@@ -241,7 +241,7 @@ export const CR_CY = 0.35; // the arch's circle centre sits this far (× R) behi
 /**
  * The Void Crescent's shape in the world: points along its arc with the outer
  * rim (ox, oy), the outward normal, the band thickness and the band middle
- * (mx, my), plus the circle centre (cx, cy) and radius R. dax.js uses the
+ * (mx, my), plus the circle centre (cx, cy) and radius R. miguerre.js uses the
  * same points for its hits.
  */
 export function crescentPts(c, n = 32) {
@@ -354,11 +354,11 @@ function orbTex(ctx, w, h) {
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
 }
 
-/** Atlas textures for the crescent (part of daxFxSprites). */
+/** Atlas textures for the crescent (part of miguerreFxSprites). */
 function crescentSprites(atlas) {
-  atlas.add('dx_cres_body', CR_TW, CR_TH, crescentBodyTex, { scale: 1.5 });
-  atlas.add('dx_cres_rim', CR_TW, CR_TH, crescentRimTex, { scale: 1 });
-  atlas.add('dx_orb', 16, 16, orbTex, { scale: 3 });
+  atlas.add('mz_cres_body', CR_TW, CR_TH, crescentBodyTex, { scale: 1.5 });
+  atlas.add('mz_cres_rim', CR_TW, CR_TH, crescentRimTex, { scale: 1 });
+  atlas.add('mz_orb', 16, 16, orbTex, { scale: 3 });
 }
 
 /**
@@ -369,7 +369,7 @@ function crescentSprites(atlas) {
  * outward, black ink shards and embers.
  */
 export function crescentSmoke(w, c) {
-  const Hp = w.fxHigh, R = w.fxRng, F = w.F, sh = w.r.frame('dx_shard'), P = crescentPts(c, 20);
+  const Hp = w.fxHigh, R = w.fxRng, F = w.F, sh = w.r.frame('mz_shard'), P = crescentPts(c, 20);
   const drift = -1.4; // the crescent moves 3.2 a step: the smoke stretches back behind it
   // Ink black, charcoal grey and crimson (black alone vanishes on a dark stage).
   const INK = [[0.03, 0, 0.01, 0, 0, 0, 0.82], [0.3, 0.27, 0.29, 0.06, 0.04, 0.05, 0.6], [0.8, 0.04, 0.09, 0.2, 0, 0.03, 0.62]];
@@ -592,10 +592,10 @@ function barTex(ctx, w, h) {
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(0, 0, w, 1); ctx.fillRect(0, h - 1, w, 1);
 }
 
-/** Atlas textures for the Void Cannon (part of daxFxSprites). */
+/** Atlas textures for the Void Cannon (part of miguerreFxSprites). */
 function cannonSprites(atlas) {
-  atlas.add('dx_column', 64, 128, columnTex, { scale: 2 });
-  atlas.add('dx_bar', 16, 8, barTex, { scale: 2 });
+  atlas.add('mz_column', 64, 128, columnTex, { scale: 2 });
+  atlas.add('mz_bar', 16, 8, barTex, { scale: 2 });
 }
 
 /**
@@ -604,7 +604,7 @@ function cannonSprites(atlas) {
  * wisps billowing outward, black rock debris and sparks flung away.
  */
 export function cannonSpray(w, x, y, wd, lite = false) {
-  const Hp = w.fxHigh, R = w.fxRng, F = w.F, sh = w.r.frame('dx_shard');
+  const Hp = w.fxHigh, R = w.fxRng, F = w.F, sh = w.r.frame('mz_shard');
   const n = lite ? 1 : 2;
   for (let k = 0; k < n; k++) { // black rock debris flung outward
     const s = R.chance(0.5) ? -1 : 1, py = R.range(0, y);

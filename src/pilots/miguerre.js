@@ -2,13 +2,13 @@ import { mirrorPath, chrome, neonLines, outline, canopy, glowDot } from '../fx/a
 import { TAU, W, H, ringPulse, targets, shipScale } from './common.js';
 import { DMG_IGNORES_SHIELDS, DMG_INSTANT_KILL } from '../core/damage.js';
 import { FADE_OUT } from '../fx/Particles.js';
-import { daxArt, PAL } from './daxArt.js';
+import { miguerreArt, PAL } from './miguerreArt.js';
 import {
-  daxFxSprites, renderBeams, hitSpark, burst, voidExhaust, renderGhost,
+  miguerreFxSprites, renderBeams, hitSpark, burst, voidExhaust, renderGhost,
   renderCrescent, renderCannon, ghostSmoke, crescentPts, crescentSmoke, cannonSpray, CHAIN_FADE,
-} from './daxFx.js';
+} from './miguerreFx.js';
 
-// DAX MORROW — OVERCLOCK (void knight) · LEGENDARY
+// MIGUERRE ZO'RAJAH — OVERCLOCK (void knight) · LEGENDARY
 // Void Beam: an instant straight beam to the nearest enemy; from there it races
 // on, enemy to enemy, at any range (a visible chain), destroying normal enemies
 // in one hit and erasing attacks in its path and around him
@@ -19,7 +19,7 @@ import {
 // stage is cleared; each bomb adds six more) · Ultimate: Breathe of the Chaos (7 s)
 // In focus the two outermost clones cast the crescent and fire the cannon too.
 //
-// DAX ART TEST: the hand-made mecha art (daxArt.js) replaces drawShip() when it
+// MIGUERRE ART TEST: the hand-made mecha art (miguerreArt.js) replaces drawShip() when it
 // loads; drawShip() stays as the automatic fallback. Every beam leaves the red
 // chest core (owner's choice); the legs (feet) never fire.
 
@@ -151,7 +151,7 @@ function nullify(p, w, x, y) {
 }
 
 function muzzle(p, w, x, y, size = 30) {
-  const fx = daxArt.frames().fx, Hp = w.fxHigh;
+  const fx = miguerreArt.frames().fx, Hp = w.fxHigh;
   if (!fx) return;
   let i = Hp.spawn(p.F.glow, x, y, 0, 0, 3);
   if (i >= 0) { Hp.size(i, size, size * 0.6); Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.hot[0], PAL.hot[1], PAL.hot[2]); Hp.look(i, 0.6, 1, FADE_OUT); }
@@ -195,12 +195,12 @@ function smokeBurst(w, x, y, n = 10, ring = true) {
 }
 
 export default {
-  id: 'dax',
-  name: 'DAX MORROW',
+  id: 'miguerre',
+  name: "MIGUERRE ZO'RAJAH",
   vehicle: 'OVERCLOCK',
   role: 'Void Knight',
   legendary: true,
-  bio: 'Street racer with more tickets than flight hours, until he crashed through the edge of the Grid into the void and something answered. Dax came back flying the Overclock, a black-and-red void knight whose beams never miss and never stop.',
+  bio: 'Street racer with more tickets than flight hours, until he crashed through the edge of the Grid into the void and something answered. Miguerre came back flying the Overclock, a black-and-red void knight whose beams never miss and never stop.',
   color: RED,
   css: '#ff2a3a',
   // Art test: the Overclock's paint (black armour, red light).
@@ -217,7 +217,7 @@ export default {
     main: 'Void Beam — an instant straight beam, then a chain racing through every enemy at any range; one-hit kills (not bosses); erases attacks aimed at him',
     focus: 'Ghost Launch — a smoke ghost and five clones fire void beams that grow stronger the longer he holds focus; completely intangible',
   },
-  art: daxArt,
+  art: miguerreArt,
   special: {
     name: 'CRESCENT OF CHAOS',
     desc: 'A gigantic chaos crescent sweeps forward, erasing every attack it touches, killing regular enemies outright and burning bosses (three in focus)',
@@ -299,9 +299,9 @@ export default {
 
   sprites(atlas) {
     const s = shipScale(atlas);
-    for (let t = 1; t <= 4; t++) atlas.add(`ship_dax_${t}`, 46, 54, (c, w, h) => drawShip(c, w, h, t), { scale: s });
-    daxFxSprites(atlas);
-    daxArt.buildSprites(atlas);
+    for (let t = 1; t <= 4; t++) atlas.add(`ship_miguerre_${t}`, 46, 54, (c, w, h) => drawShip(c, w, h, t), { scale: s });
+    miguerreFxSprites(atlas);
+    miguerreArt.buildSprites(atlas);
   },
 
   // Hand-made art hooks (each returns false without the art → procedural look).
@@ -312,11 +312,11 @@ export default {
       const [cx, cy] = chaosPos(p, c), grow = Math.min(1, c.t / 20);
       renderGhost(p, b, cx + (x - p.x), cy + (y - p.y), 0.85 * a * grow, 20 + k);
     });
-    if (!g) return daxArt.renderMecha(p, b, x, y, a);
+    if (!g) return miguerreArt.renderMecha(p, b, x, y, a);
     // Focus: the body stays parked (untargetable); the ghost and its clones are smoke.
     const body = Object.create(p);
     body.focus = false;
-    if (!daxArt.renderMecha(body, b, g.bx, g.by, a * 0.85)) return false;
+    if (!miguerreArt.renderMecha(body, b, g.bx, g.by, a * 0.85)) return false;
     for (const [k, [cx, cy]] of clonesOf(p).entries()) renderGhost(p, b, cx, cy, 0.75 * a, k + 1);
     renderGhost(p, b, x, y, a, 0);
     return true;
@@ -335,12 +335,12 @@ export default {
 
   init(p, w) {
     const ps = p.ps;
-    ps.fShard = w.r.frame('dx_shard');
-    ps.fCresBody = w.r.frame('dx_cres_body');
-    ps.fCresRim = w.r.frame('dx_cres_rim');
-    ps.fOrb = w.r.frame('dx_orb');
-    ps.fColumn = w.r.frame('dx_column');
-    ps.fBar = w.r.frame('dx_bar');
+    ps.fShard = w.r.frame('mz_shard');
+    ps.fCresBody = w.r.frame('mz_cres_body');
+    ps.fCresRim = w.r.frame('mz_cres_rim');
+    ps.fOrb = w.r.frame('mz_orb');
+    ps.fColumn = w.r.frame('mz_column');
+    ps.fBar = w.r.frame('mz_bar');
     ps.chains = [];
     ps.bolts = [];
     ps.arcs = [];
@@ -353,7 +353,7 @@ export default {
   reset(p) { p.ps.ghost = null; p.ps.bolts = []; p.ps.chains = []; p.ps.arcs = []; },
 
   update(p, w) {
-    daxArt.animate(p);
+    miguerreArt.animate(p);
     const ps = p.ps;
     // Ghost Launch: on focus the ghost dashes forward; the body stays where it was.
     const focusing = p.focus && p.state === 'alive';
@@ -410,7 +410,7 @@ export default {
         if ((p.t + k * 2) % CLONE_CD < STRIKE_CD) strike(p, w, cx, cy, 0.2 * ramp, 0.7);
       });
     } else {
-      const [cx, cy] = daxArt.anchor('core');
+      const [cx, cy] = miguerreArt.anchor('core');
       strike(p, w, p.x + cx, p.y + cy, 1);
       muzzle(p, w, p.x + cx, p.y + cy, 30);
     }

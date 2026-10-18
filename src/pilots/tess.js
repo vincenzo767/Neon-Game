@@ -1,7 +1,7 @@
 import { WORLD_W, WORLD_H } from '../core/constants.js';
 import { mirrorPath, outline, neonLines } from '../fx/art.js';
 import { DMG_IGNORES_SHIELDS, DMG_INSTANT_KILL } from '../core/damage.js';
-import { crescentPts } from './daxFx.js';
+import { crescentPts } from './miguerreFx.js';
 import { tessArt, tessMechaFx } from './tessArt.js';
 import {
   renderShots, renderCut, renderClones, renderShadow, renderWaves, buildSprites as buildFxSprites,
@@ -16,7 +16,7 @@ import { TESS, clampT } from './tessTuning.js';
 // Focus: two glitch clones ahead of her throw her exact volley
 // Special: Shadow Form (10 s, every attack phases through her)
 // Bomb: Thousand Cuts + a three-crescent fan from her and both clones
-// Ultimate: Void Cross Annihilation (her lover Dax Morrow's crescent, crossed
+// Ultimate: Void Cross Annihilation (her lover Miguerre Zo'Rajah's crescent, crossed
 // with a void spear; it clears its path and detonates like a nuclear blast)
 //
 // TESS v2 (ASSET_NOTES.md "Rebuild v2"): the component mecha (tessArt.js +
@@ -208,7 +208,7 @@ function stepWaves(p, w) {
 
 // ------------------------------------------------------------- ultimate
 
-/** The cross's hit area at (x, y): the wings (Dax's crescent band squashed flat, as circles), the bar and the spear ahead of the core. */
+/** The cross's hit area at (x, y): the wings (Miguerre's crescent band squashed flat, as circles), the bar and the spear ahead of the core. */
 function crossHits(w, U, fn) {
   const c = { x: U.x, y: U.y, w: U.w };
   for (const q of crescentPts(c, 14)) fn(q.mx, U.y + (q.my - U.y) * SQ, q.th * SQ / 2 + 18);
@@ -265,7 +265,7 @@ export default {
   name: 'TESS KURO',
   vehicle: 'WIREGHOST',
   role: 'Blade Mecha',
-  bio: 'Ex-syndicate infiltrator turned precinct ghost. The man she loves, Dax Morrow, went rogue among the stars, and Tess flies sector to sector looking for the night he comes back. Her Wireghost, a violet blade mecha, throws his crescent cuts across the whole sky: void tricks she watched him do once, then did better.',
+  bio: "Ex-syndicate infiltrator turned precinct ghost. The man she loves, Miguerre Zo'Rajah, went rogue among the stars, and Tess flies sector to sector looking for the night he comes back. Her Wireghost, a violet blade mecha, throws his crescent cuts across the whole sky: void tricks she watched him do once, then did better.",
   color: VIOLET,
   css: '#c07aff',
   stats: { speed: 4, power: 4, range: 5, bomb: 3 },

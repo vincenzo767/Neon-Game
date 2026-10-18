@@ -13,7 +13,7 @@
 //   holt       63      the twin's mirrored fire rarely converges on one target
 //   pike       71      drones scramble rather than add sustained fire
 //   aiko       72      tornado cells are defensive (bullet grinding)
-//   dax       136      heat ramp rewards holding fire; trimmed lightly
+//   miguerre       136      heat ramp rewards holding fire; trimmed lightly
 //   bruno     148      slow armoured gunship; trimmed but still the hardest hitter
 //   rufus   ~110      untouched: a random gun every 2 s makes single runs swing
 //                     51–148; three runs average near the median
@@ -28,7 +28,7 @@ export const PILOT_DAMAGE = {
   holt: 1.2,
   pike: 1.15,
   aiko: 1.1,
-  dax: 0.9,
+  miguerre: 0.9,
   bruno: 0.85,
 };
 

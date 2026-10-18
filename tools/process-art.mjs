@@ -589,7 +589,7 @@ async function main() {
     const tiles = [];
     for (const [name, F] of Object.entries(CFG.fx)) {
       const file = path.join(ROOT, F.file);
-      // Real alpha (e.g. Dax's ultimate-fx.png) is kept; a painted checkerboard is un-blended.
+      // Real alpha (e.g. Miguerre's ultimate-fx.png) is kept; a painted checkerboard is un-blended.
       const src = await raw(F.box ? await sharp(file).extract(F.box).png().toBuffer() : file); // optional crop box
       const im = hasRealAlpha(src) ? src : keyFx(src, F.tint);
       cleanAlpha(im);

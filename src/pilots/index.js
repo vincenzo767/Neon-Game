@@ -4,7 +4,7 @@ import bruno from './bruno.js';
 import tess from './tess.js';
 import oduya from './oduya.js';
 import lin from './lin.js';
-import dax from './dax.js';
+import miguerre from './miguerre.js';
 import sera from './sera.js';
 import nova from './nova.js';
 import rufus from './rufus.js';
@@ -20,7 +20,7 @@ import { isUnlocked } from './unlocks.js';
 // Pilot registry. To add a pilot: create src/pilots/<id>.js exporting a
 // definition (see kairo.js for the full shape) and list it here.
 
-export const PILOTS = [kairo, mira, bruno, tess, oduya, lin, dax, sera, nova, rufus, aiko, pike, zuri, cass, holt, warden, vincenzo];
+export const PILOTS = [kairo, mira, bruno, tess, oduya, lin, miguerre, sera, nova, rufus, aiko, pike, zuri, cass, holt, warden, vincenzo];
 
 /** The 16 standard pilots in roster order, plus the Legendary slot (#17). */
 export const ROSTER = PILOTS;

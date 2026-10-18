@@ -1,7 +1,7 @@
 import { createMechaArt } from './art/mechaArt.js';
 
-// DAX ART TEST: the hand-made Overclock void knight (src/pilot concept art/Dax
-// Morrow, ASSET_NOTES.md), built on the shared mecha-art module. The sprite
+// MIGUERRE ART TEST: the hand-made Overclock void knight (src/pilot concept art/Miguerre
+// Zo'Rajah, ASSET_NOTES.md), built on the shared mecha-art module. The sprite
 // flies feet-first; the legs (feet) never fire. Every void beam leaves the
 // red chest core (owner's choice). 90 units tall.
 
@@ -15,10 +15,10 @@ export const PAL = {
 };
 export const DARK = PAL.dark;
 
-export const daxArt = createMechaArt({
-  id: 'dax',
+export const miguerreArt = createMechaArt({
+  id: 'miguerre',
   pal: PAL,
-  // Built-in copy of dax.anchors.json (gameplay anchors never depend on the file loading).
+  // Built-in copy of miguerre.anchors.json (gameplay anchors never depend on the file loading).
   defaults: {
     image: { w: 303, h: 372, artH: 360, pad: 6 },
     anchors: {

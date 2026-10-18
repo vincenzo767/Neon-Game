@@ -504,7 +504,7 @@ export function createMechaArt(cfg) {
       const ux = -sr, uy = cr; // local "down"
       const at = (d) => [fx + ux * d, fy + uy * d];
       let [cx, cy] = at(L * 0.5);
-      // Optional black under-flame (alpha-blended), e.g. Dax's void plumes.
+      // Optional black under-flame (alpha-blended), e.g. Miguerre's void plumes.
       if (pal.dark) b.draw(K.fx.flame, cx, cy + L * 0.08, Wd * 2.3, L * 1.35, rot, pal.dark[0], pal.dark[1], pal.dark[2], 0.7 * a, 0);
       b.draw(K.fx.flame, cx, cy, Wd * 1.7, L * 1.15, rot, pal.mid[0], pal.mid[1], pal.mid[2], 0.75 * a, 1);
       // Optional rim band between the outer and inner colours (e.g. Tess's scarlet).

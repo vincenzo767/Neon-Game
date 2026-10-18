@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "pilot": "dax",
-  "space": "dax_back@2x.png pixels, origin top-left (same as dax.anchors.json); generated from tools/art.config.mjs",
+  "pilot": "miguerre",
+  "space": "miguerre_back@2x.png pixels, origin top-left (same as miguerre.anchors.json); generated from tools/art.config.mjs",
   "feather": 3,
   "seam": 10,
   "under": true,

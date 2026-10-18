@@ -383,8 +383,8 @@ export const PILOT_ART = {
       wingPivotR: [830, 700],
     },
   },
-  dax: {
-    folder: 'Dax Morrow',
+  miguerre: {
+    folder: "Miguerre Zo'Rajah",
     back: 'top-down-main.jpg',
     front: 'top-down-front.jpg',
     portrait: 'pilot-portrait.jpg',
@@ -398,7 +398,7 @@ export const PILOT_ART = {
       wingL: [[-80, 1150], [150, 1000], [300, 900], [440, 820], [490, 860], [490, 930], [440, 1000], [420, 1140], [400, 1420], [-80, 1420]],
       keep: [],
     },
-    // No FX picks: Dax's effects are drawn live after the owner's references (tools/art-ref/dax/).
+    // No FX picks: Miguerre's effects are drawn live after the owner's references (tools/art-ref/miguerre/).
     anchors: {
       hitbox: [572, 805],      // red chest core: lands on player.x/y
       head: [572, 900],

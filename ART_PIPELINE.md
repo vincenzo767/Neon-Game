@@ -87,7 +87,7 @@ screenshots/<id>/                          test-range captures for review
    - If an enclosed gap in the art stays opaque (the edge fill can't reach it), add a seed pixel to `holes` (back view) or `frontHoles` (front view), as for Bruno's backpack frame.
    - If the "transparency" is a **painted checkerboard** (a JPEG or RGB PNG showing grey squares), set `bg: 'checker'`, as for Lin. Light neutral greys are filled from the edges, enclosed pockets holding both checker greys are found automatically, and the grey fringe next to the line art is removed.
    - If held weapons cross wings that should move, generate the layers with `wings` instead of writing them by hand (see section 6).
-   - FX entries also take `tint` (`emerald` default, or `red`) and an optional crop `box`; an image with real alpha (Dax's `ultimate-fx.png`) is used as is.
+   - FX entries also take `tint` (`emerald` default, or `red`) and an optional crop `box`; an image with real alpha (Miguerre's `ultimate-fx.png`) is used as is.
    - Effect art the owner picks (glow painted over a checkerboard) goes in `tools/art-ref/<id>/` and `fx: { name: { file, height } }` → `<id>_fx_<name>.png`. It is un-blended: the checkerboard becomes transparent, glow becomes translucent and tinted, black and white stay solid. Small, frequent sprites go in the shared atlas; big ones go in `extras` (the pilot texture).
    - A turret or drone on a concept sheet can be cut out with `turret: { file, box, rotate, height }` → `<id>_turret.png`. It removes the checkerboard and a baked pale glow, and keeps only the largest piece.
    - Add an npm script (`"art:<id>": "node tools/process-art.mjs <id>"`) and run it.
@@ -289,8 +289,8 @@ All hooks are optional. A pilot without them runs the original code paths.
 | `shotHit(w, i, enemy)` | `World._collide` | called when a non-piercing shot lands, before it is removed. Queue any new shots (the pool is being compacted), e.g. Lin's splitting spears |
 | `renderOptions(p, b, alpha)` | `Player.render` | `true` = drew the options itself (e.g. Lin's drones from the art texture) |
 | `renderUnder(p, b, alpha)` | `World.renderMid` | draws under the air enemies (e.g. Lin's starry void path) |
-| `intangible(p)` | `Player.invulnerable` | `true` = every attack passes through (e.g. Dax's ghost focus) |
-| `stageClear(p, w)` | `StageDirector` (tally) | the stage is cleared (e.g. Dax's Chaos Clones dissolve) |
+| `intangible(p)` | `Player.invulnerable` | `true` = every attack passes through (e.g. Miguerre's ghost focus) |
+| `stageClear(p, w)` | `StageDirector` (tally) | the stage is cleared (e.g. Miguerre's Chaos Clones dissolve) |
 | `dpsBossTargets` | `tools/dps.mjs` | the dummies count as bosses (for pilots that one-hit-kill normal enemies) |
 
 **Extra images.**
