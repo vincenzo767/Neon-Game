@@ -42,7 +42,8 @@ import { FADE_OUT } from '../../fx/Particles.js';
 //                 before(p, b, api, name): drawn just under a layer (keep it to the
 //                   layer's own texture, e.g. api.drawLayer halos: no batch flush;
 //                   drawLayer(name, { rest: true }) draws it unposed),
-//                 overlay(p, b, api): FX over the whole mecha, once (atlas textures) }
+//                 overlay(p, b, api): FX over the whole mecha, once (atlas textures),
+//                 bob(p) (optional): the body's vertical bob in world units (default a slow sine) }
 //               replaces the wing animation; the pilot drives the poses.
 //
 // layers.json may also set `under: true` (wings drawn under the body) and
@@ -475,14 +476,15 @@ export function createMechaArt(cfg) {
 
   /**
    * Draw the mecha. Returns false when the art isn't available (the Player then
-   * draws the procedural sprite).
+   * draws the procedural sprite). Opt-in `look` (rig pilots): { tint, add } for
+   * every layer and no FX hooks, flames or hitbox dot, e.g. Miguerre's smoke ghosts.
    */
-  function renderMecha(p, b, x, y, a) {
+  function renderMecha(p, b, x, y, a, look = null) {
     const arts = ensureArt(p.w.r);
     const set = arts && (arts[LOOK.outline ? 'outline' : 'plain'] || arts.outline);
     if (!set) return false;
     const A = anchorData(), hb = A.anchors.hitbox, k = unitsPerPx(), F = p.F;
-    const bob = Math.sin(p.t * 0.07) * 0.8;
+    const bob = cfg.rig?.bob ? cfg.rig.bob(p) : Math.sin(p.t * 0.07) * 0.8; // opt-in rig bob (e.g. Miguerre's wing beat)
     const rot = p.bank * 0.14;                      // up to ~8°
     const sq = 1 - Math.abs(p.bank) * 0.08;         // slight horizontal squash
     const cr = Math.cos(rot), sr = Math.sin(rot);
@@ -504,7 +506,7 @@ export function createMechaArt(cfg) {
       const ux = -sr, uy = cr; // local "down"
       const at = (d) => [fx + ux * d, fy + uy * d];
       let [cx, cy] = at(L * 0.5);
-      // Optional black under-flame (alpha-blended), e.g. Dax's void plumes.
+      // Optional black under-flame (alpha-blended), e.g. Miguerre's void plumes.
       if (pal.dark) b.draw(K.fx.flame, cx, cy + L * 0.08, Wd * 2.3, L * 1.35, rot, pal.dark[0], pal.dark[1], pal.dark[2], 0.7 * a, 0);
       b.draw(K.fx.flame, cx, cy, Wd * 1.7, L * 1.15, rot, pal.mid[0], pal.mid[1], pal.mid[2], 0.75 * a, 1);
       // Optional rim band between the outer and inner colours (e.g. Tess's scarlet).
@@ -547,8 +549,8 @@ export function createMechaArt(cfg) {
         const bx = part.box, g = o.grow ?? 1;
         const [cx, cy] = still ? [bx.x + bx.w / 2 - hb[0], bx.y + bx.h / 2 - hb[1]] : rigPoint(p, set, name, bx.x + bx.w / 2 - hb[0], bx.y + bx.h / 2 - hb[1]);
         const [wx, wy] = place(cx + (o.dx || 0), cy + (o.dy || 0));
-        const t = o.tint || [1, 1, 1], sc = (ps.s ?? 1) * g;
-        b.draw(part.frame, wx, wy, bx.w * k * sq * sc * (ps.sx ?? 1), bx.h * k * sc, rot + (ps.rot || 0), t[0], t[1], t[2], (o.alpha ?? a) * (ps.alpha ?? 1), o.add ?? 0);
+        const t = o.tint || look?.tint || [1, 1, 1], sc = (ps.s ?? 1) * g;
+        b.draw(part.frame, wx, wy, bx.w * k * sq * sc * (ps.sx ?? 1), bx.h * k * sc, rot + (ps.rot || 0), t[0], t[1], t[2], (o.alpha ?? a) * (ps.alpha ?? 1), o.add ?? look?.add ?? 0);
       };
       const api = {
         place, k, rot, sq, hb, A, set, a, x, y: y + bob, drawLayer,
@@ -562,9 +564,10 @@ export function createMechaArt(cfg) {
       // Layers (pilot texture) first, then the FX overlay (atlas) in one pass: switching
       // textures between layers would flush the sprite batch every time.
       for (const name of R.order) {
-        if (R.before) R.before(p, b, api, name);
+        if (R.before && !look) R.before(p, b, api, name);
         drawLayer(name);
       }
+      if (look) return true;
       if (R.overlay) R.overlay(p, b, api);
     } else {
       const L = wingPose(p, -1), R = wingPose(p, 1);
@@ -606,7 +609,8 @@ export function createMechaArt(cfg) {
       const set = K.art && (K.art[LOOK.outline ? 'outline' : 'plain'] || K.art.outline), L = cfg.rig.attach?.[name];
       if (L && set) [lx, ly] = rigPoint(p, set, L, lx, ly);
       const rot = p.bank * 0.14, sq = 1 - Math.abs(p.bank) * 0.08, dx = lx * k * sq, dy = ly * k;
-      return [x + dx * Math.cos(rot) - dy * Math.sin(rot), y + Math.sin(p.t * 0.07) * 0.8 + dx * Math.sin(rot) + dy * Math.cos(rot)];
+      const bob = cfg.rig.bob ? cfg.rig.bob(p) : Math.sin(p.t * 0.07) * 0.8;
+      return [x + dx * Math.cos(rot) - dy * Math.sin(rot), y + bob + dx * Math.sin(rot) + dy * Math.cos(rot)];
     }
     const side = name.endsWith('L') ? -1 : name.endsWith('R') ? 1 : 0;
     if (side && wingAnchors.some((w) => name.startsWith(w)) && K.art) {

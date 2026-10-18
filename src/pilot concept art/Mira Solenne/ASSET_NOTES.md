@@ -325,7 +325,7 @@ Screenshots are in `screenshots/mira/v2/`.
   The machine was slower today than at Kairo's earlier measurement (procedural 54.5 now versus 60 then); Kairo with art still matches his procedural fallback.
 - **Regressions.**
   - Kairo: the rig fingerprint is identical, and the tiers, transitions, firing and beam cycle check out in the running game.
-  - Mira, Bruno, Tess, Oduya, Lin, Dax and Kairo load their art and play T1–T4 with focus, with no console errors.
+  - Mira, Bruno, Tess, Oduya, Lin, Miguerre and Kairo load their art and play T1–T4 with focus, with no console errors.
   - `&noart` plays Mira with the procedural Halo Sprite.
 
 ### Known limitations

@@ -21,13 +21,14 @@
 | **Art: Tess** | Hand-made art for Tess Kuro (Wireghost) on the shared art modules (branch `art/tess-test`, on top of `art/bruno-test`, not merged) | 🔍 In review |
 | **Art: Oduya** | Hand-made art and a redesigned kit for Oduya Rex (Thunderjaw), the god of thunder (branch `art/oduya-test`, on top of `art/tess-test`, not merged) | 🔍 In review |
 | **Art: Lin** | Hand-made art and a redesigned kit for Lin Hayase (Petal Engine), an emerald crystal knight on butterfly wings (branch `art/lin-test`, on top of `art/oduya-test`, not merged) | 🔍 In review |
-| **Art: Dax** | Hand-made art and a Legendary void kit for Dax Morrow (Overclock), a black-and-red void knight (branch `art/dax-test`, on top of `art/lin-test`, not merged) | 🔍 In review |
+| **Art: Miguerre** | Hand-made art and a Legendary void kit for Miguerre Zo'Rajah (Overclock), a black-and-red void knight (branch `art/dax-test`, on top of `art/lin-test`, not merged) | 🔍 In review |
 | **Art: Kairo v2** | Component mecha rebuild for Kairo Vance: new top-down art, tier-deployed inner and outer wings, hand cannons, chest focus beam (branch `art/kairo-v2`, on top of `art/dax-test`, not merged) | 🔍 In review |
 | **Art: Mira v2** | Component mecha rebuild for Mira Solenne: new gold-and-white top-down art, chest fire at T1, hand cannons from T2, tier-deployed inner and outer blades, chest focus attack (branch `art/mira-v2`, on top of `art/kairo-v2`, not merged) | 🔍 In review |
 | **Art: Bruno v2** | Heavy-artillery component mecha for Bruno Hagen: new purple-and-red top-down art, tier-expanding shoulder cannons and side cannons, unlimited-range explosive shells, shoulder-cannon focus barrage, reactive shield, wide bomb, carpet-bomb ultimate with a final nuke (branch `art/bruno-v2`, on top of `art/mira-v2`, not merged) | 🔍 In review |
-| **Art: Tess v2** | Blade component mecha for Tess Kuro: new violet top-down art with swinging arm blades, unlimited-range crescents that erase bullets, glitch-clone focus, Shadow Form special, triple-crescent bomb with clones, void-cross ultimate with a nuclear-scale detonation; Dax Morrow's love interest (branch `art/tess-v2`, on top of `art/bruno-v2`, not merged) | 🔍 In review |
+| **Art: Tess v2** | Blade component mecha for Tess Kuro: new violet top-down art with swinging arm blades, unlimited-range crescents that erase bullets, glitch-clone focus, Shadow Form special, triple-crescent bomb with clones, void-cross ultimate with a nuclear-scale detonation; Miguerre Zo'Rajah's love interest (branch `art/tess-v2`, on top of `art/bruno-v2`, not merged) | 🔍 In review |
 | **Art: Oduya v2** | Thunder-god component mecha for Oduya Rex (current sprite): punching arms (every bolt leaves a fist), flaring lightning wings, every attack rebuilt as beginning → travel → detonation, new God Thunder ultimate (branch `art/oduya-v2`, on top of `art/tess-v2`, not merged) | 🔍 In review |
 | **Art: Lin v2** | Emerald crystal knight as a component mecha (current sprite): whip in front that throws the shards, thrusting spear, beating wings; wider Root Field, enhanced Spear Rain, redrawn Cosmic Spear (stronger charge, visible void with cracked-space edges) (branch `art/lin-v2`, on top of `art/oduya-v2`, not merged) | 🔍 In review |
+| **Art: Miguerre v2** | The void knight renamed **Miguerre Zo'Rajah** (id `miguerre`), with a new horned, winged sword knight as a component mecha (150 units tall): void beams from the horns, a real wing beat (no thrusters), the sword swing that launches the Crescent of Chaos with a fear-inducing vibration, and the Chaos Clone targeting fix (branch `art/miguerre-v2`, on top of `art/lin-v2`, not merged) | 🔍 In review |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -333,7 +334,7 @@ Every boss also gets:
 |---|---|---|---|---|
 | 5 | Oduya Rex · Thunderjaw | arcing plasma mortars that curve onto targets and burst · chain-lightning strand that locks on and jumps | Ground-Slam EMP (clear + stun) | Storm Cell · Chain-Lightning Storm |
 | 6 | Lin Hayase · Petal Engine | petals + seeds that take root as turrets (turrets eat bullets) · converged petals, every turret fires on your target | Bloom (instant garden) | Petal Storm · Forest of Light (beam pillars) |
-| 7 | Dax Morrow · Overclock | fire rate climbs with heat (9 → 2 steps), heat gauge · Heat Lance widens with heat | Vent Blast (cone ∝ heat) | Nitro Wall · Meltdown Nova |
+| 7 | Miguerre Zo'Rajah · Overclock | fire rate climbs with heat (9 → 2 steps), heat gauge · Heat Lance widens with heat | Vent Blast (cone ∝ heat) | Nitro Wall · Meltdown Nova |
 | 8 | Sera Voss · Glacier | piercing frost shards that chill bullets · Cryo Beam slows every bullet in its path | Cryo Shell (frost field) | Absolute Zero · Time-Stop Shatter (bullets hang, regular enemies freeze, then shatter) |
 | 9 | NOVA-7 · Cipher | homing data bolts · Breach Beam: hold the lock to **hack** an enemy into an ally that hunts its squad, then self-destructs | Firewall | System Crash · City-Wide Override (all regulars hacked, all bullets rewritten) |
 | 10 | Rufus Graine · Junkyard Saint | the hopper deals a random scrap gun every 2 s (nails, rails, springs, saws, bolt flak) · Magnet Choke | Magnet Pull (vacuums items, swallows bullets into a ball you fling) | Scrap Storm · Junk Meteor |
@@ -428,7 +429,7 @@ Everything is synthesized with the Web Audio API at runtime; there are no sound 
   - arena crossfade whoosh;
   - laser-telegraph charge whine;
   - soft enemy-volley ticks.
-- **Pilots:** a distinct shot voice per pilot. Examples: Dax's pitch climbs with engine heat, Holt fires left/right twins, and Cass drops a bass hit on her beat. Beams get a sustained hum, and every pilot has its own special sound.
+- **Pilots:** a distinct shot voice per pilot. Examples: Miguerre's pitch climbs with engine heat, Holt fires left/right twins, and Cass drops a bass hit on her beat. Beams get a sustained hum, and every pilot has its own special sound.
 - **Vincenzo:** the Trumpet is a B♭ brass stack with a semitone scoop into the 5 s cathedral reverb. The Void Mecha slash and the hand grab have their own sounds; the choir select sting now runs through the mixer.
 - **Menus:** the Precinct theme plays under difficulty and pilot select; UI ticks, confirm and back sounds.
 
@@ -648,7 +649,7 @@ All gains still pass through the difficulty score multiplier (UPDATE_01 §3).
   - Small enemies are unaffected.
 - **Pilot damage multipliers** ([data/balance.js](src/data/balance.js), applied in `World.damage`; instant flags unaffected). Method: tier-4 DPS over 8 s of fire against a large target 180 units ahead (normal and focus) and a line of six small targets (wave). Outliers were pulled about halfway to the median:
   - NOVA-7 ×1.35, Holt ×1.2, Pike ×1.15, Aiko ×1.1;
-  - Dax ×0.9, Bruno ×0.85;
+  - Miguerre ×0.9, Bruno ×0.85;
   - Rufus measured 51–148 across runs (random guns), so he stays untrimmed;
   - Vincenzo is excluded.
 - **Final boss-DPS spread** across the 16 standard pilots: ~70–124 (was 52–455).
@@ -661,7 +662,7 @@ All gains still pass through the difficulty score multiplier (UPDATE_01 §3).
   | tess | 117 | 20 | 0 (short range by design) |
   | oduya | 97 | 62 | 68 |
   | lin | 79 | 80 | 47 |
-  | dax | 122 | 84 | 52 |
+  | miguerre | 122 | 84 | 52 |
   | sera | 108 | 75 | 43 |
   | nova | 70 | 6 (focus = hack) | 69 |
   | rufus | 51–137 (random) | 54–148 | 20–25 |
@@ -867,9 +868,9 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Lin%20Hayase/ASS
 - **FX from the owner's picks** (`tools/art-ref/lin/`, un-blended by `process-art.mjs` `fx`): main-shot arrows, focus / split / rain spears, the star seal on every Spear Rain hit, and the Cosmic Spear. Its path is a black void of stars, drawn under the enemies (new World hook `renderUnder`).
 - **Frame rate.** In the 1,500-bullet storm, about 53 FPS with art versus 49 procedural (Intel HD 5500).
 
-## Art: Dax Morrow (branch `art/dax-test`)
+## Art: Miguerre Zo'Rajah (branch `art/dax-test`)
 
-Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Dax%20Morrow/ASSET_NOTES.md).
+Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Miguerre%20Zo%27Rajah/ASSET_NOTES.md).
 
 - **Art.** Checkerboard cut-out, 90 units tall, feet-first (the legs never fire). The lower blade wings move. Void plumes: black, red and white-hot.
 - **Legendary, as the owner wrote it** (marked LEGENDARY like Vincenzo).
@@ -881,6 +882,33 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Dax%20Morrow/ASS
 - **Balance.** Boss DPS at T4: beam 131, ghost focus 137. Normal enemies don't matter: they die in one hit.
 - **FX.** Drawn live after the owner's references, with no cut-out images (polish round): straight eye-beam style void beams, real-smoke ghosts and clones spread wide, a starry black crescent at medium speed, and a cosmic void column for the cannon.
 - **Frame rate.** Storm: about 57 FPS with art versus 53 procedural.
+
+## Art: Miguerre v2 (branch `art/miguerre-v2`)
+
+Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Miguerre%20Zo%27Rajah/ASSET_NOTES.md), "Rebuild v2".
+
+- **Step 1:** the new art read; components and rig plan; baseline (boss T4: beam 131, focus 343); the Chaos Clone bug diagnosed (chains from far clones killed the enemies beside the other clones: 77 of 149 in a probe).
+- **Rename.** Id `miguerre` everywhere (files, assets, folder, atlas `mz_`); Tess's lover renamed too. The `art/dax-test` branch keeps its real name.
+- **Art.** `new-top-down-sprite.png` as a **component mecha**, 150 units tall (feedback round 1):
+  - the sword arm swings;
+  - the claw reaches and clenches;
+  - the bat wings really beat (no thrusters), with gusts and void feathers.
+  - The body and wings draw from a weapon-free `under` image.
+- **Kit (approved 1 B, 2 A, 3 A, 4 A).**
+  - **Main:** beams from both horns, one hit.
+  - **Special:** the sword swing launches the crescent; its terrifying vibration freezes regular enemies in fear for 2 s.
+  - **Bomb:** each Chaos Clone guards its own side (bug fixed).
+  - **Ultimate:** the cannon pours from between the horns after a 0.4 s charge.
+  - Damage is unchanged.
+- **Checks.**
+  - All 8 headless checks pass. Clone fix: 150 of 150 enemies beside a clone are shot by that clone (was 72 of 149).
+  - DPS is unchanged (T4: beam 131, focus 343).
+  - Frame rate: storm 57 FPS, ultimate 47–53, 30 clones 60.
+  - The other six pilots are unchanged (identical DPS); all seven art pilots run with no errors.
+- **Feedback round 1.**
+  - In-game size 150 units: the art includes the upright sword, and his wingspan now about matches Oduya's.
+  - Select preview 1.4× (`previewScale`), with the text drawn above it.
+  - The ultimate is drawn over his body.
 
 ## Art: Lin v2 (branch `art/lin-v2`)
 
@@ -901,7 +929,7 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Lin%20Hayase/ASS
   - All 5 headless gameplay checks pass.
   - Boss DPS is unchanged.
   - Storm: 52 FPS with art versus 55 procedural.
-  - Oduya, Tess, Bruno, Mira, Kairo and Dax are unchanged (identical DPS).
+  - Oduya, Tess, Bruno, Mira, Kairo and Miguerre are unchanged (identical DPS).
 
 ## Art: Oduya v2 (branch `art/oduya-v2`)
 
@@ -921,7 +949,7 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Oduya%20Rex/ASSE
   - All 9 headless gameplay checks pass.
   - Strand and focus DPS are unchanged.
   - Storm: 51 FPS with art versus 48 procedural.
-  - Tess, Bruno, Mira, Kairo and Dax are unchanged (identical DPS).
+  - Tess, Bruno, Mira, Kairo and Miguerre are unchanged (identical DPS).
 
 ## Art: Tess v2 (branch `art/tess-v2`)
 
@@ -933,13 +961,13 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Tess%20Kuro/ASSE
   - **Focus:** two glitch clones throw her exact volley at 60% damage.
   - **Shadow Form:** 10 s intangible, 30 s cooldown.
   - **Bomb:** Thousand Cuts, plus nine wide crescents from her and both clones.
-  - **Ultimate:** Void Cross Annihilation. Dax's crescent motion in violet, crossed with a spear. It kills regular enemies and mid-bosses on contact, burns main bosses, then detonates: 80 damage once per enemy, with a mushroom cloud.
-- **Lore.** Dax Morrow's love: he went cosmic rogue, and she searches for him.
+  - **Ultimate:** Void Cross Annihilation. Miguerre's crescent motion in violet, crossed with a spear. It kills regular enemies and mid-bosses on contact, burns main bosses, then detonates: 80 damage once per enemy, with a mushroom cloud.
+- **Lore.** Miguerre Zo'Rajah's love: he went cosmic rogue, and she searches for him.
 - **Checks.**
   - All 13 headless gameplay checks pass.
   - Boss DPS shot 45 / 81 / 121 / 164 (was 29–116 at short range only); focus about 1.9×.
   - Storm: 57.5 FPS with art versus 49.3 procedural.
-  - Dax, Kairo, Mira and Bruno are unchanged (identical DPS).
+  - Miguerre, Kairo, Mira and Bruno are unchanged (identical DPS).
 
 ## Art: Bruno v2 (branch `art/bruno-v2`)
 
@@ -1015,7 +1043,7 @@ npm run build      # production bundle in dist/
 Flow right now:
 - **Title** → START → difficulty → **Pilot Select → (Z) endless procedural stages**: intro → waves → mid-boss → waves → boss → tally → next stage...
 - **(C) on pilot select → Test Range**: placeholder waves with a selectable bullet density.
-- **`?test=<id>`** (`kairo`, `mira`, `bruno`, `tess`, `oduya`, `lin`, `dax`): a pilot's art test range (see the *Art* sections above). The art is also live in the normal flow: pick the pilot on pilot select.
+- **`?test=<id>`** (`kairo`, `mira`, `bruno`, `tess`, `oduya`, `lin`, `miguerre`): a pilot's art test range (see the *Art* sections above). The art is also live in the normal flow: pick the pilot on pilot select.
 - **`?noart`**: skip hand-made pilot art (procedural fallback).
 - **Title → PRACTICE**: a single fight against any boss reached so far. **RANKING** and **OPTIONS** are also on the title.
 - Idle on the title for 20 s: attract demo → ranking pages.
@@ -1178,4 +1206,4 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
-6. Pilot art: review and merge `art/lin-v2` (it contains `art/oduya-v2`, `art/tess-v2`, `art/bruno-v2`, `art/mira-v2`, `art/kairo-v2`, `art/dax-test`, `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.
+6. Pilot art: review and merge `art/miguerre-v2` (it contains `art/lin-v2`, `art/oduya-v2`, `art/tess-v2`, `art/bruno-v2`, `art/mira-v2`, `art/kairo-v2`, `art/dax-test`, `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.

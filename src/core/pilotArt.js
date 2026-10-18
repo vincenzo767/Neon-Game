@@ -72,16 +72,16 @@ export const ART_MANIFEST = {
     },
     json: { anchors: 'lin.anchors.json', layers: 'lin.layers.json' },
   },
-  dax: {
+  miguerre: {
     images: {
-      back2x: 'dax_back@2x.png',
-      outline2x: 'dax_back_outline@2x.png',
-      wings2x: 'dax_wings@2x.png',
-      wingsOutline2x: 'dax_wings_outline@2x.png',
-      front: 'dax_front@2x.png',
-      portrait: 'dax_portrait.jpg',
+      back2x: 'miguerre_back@2x.png',
+      outline2x: 'miguerre_back_outline@2x.png',
+      wings2x: 'miguerre_wings@2x.png',
+      wingsOutline2x: 'miguerre_wings_outline@2x.png',
+      front: 'miguerre_front@2x.png',
+      portrait: 'miguerre_portrait.jpg',
     },
-    json: { anchors: 'dax.anchors.json', layers: 'dax.layers.json' },
+    json: { anchors: 'miguerre.anchors.json', layers: 'miguerre.layers.json' },
   },
 };
 

@@ -164,7 +164,7 @@ Branch `art/kairo-v2`, made from `art/dax-test`, which holds every earlier art b
 
 | File | Size | Transparency | Use |
 |---|---|---|---|
-| `top-down-enhance.png` | 1362×1155 | **none**: painted checkerboard (RGB) → `bg: 'checker'` (as for Lin and Dax) | new in-game sprite |
+| `top-down-enhance.png` | 1362×1155 | **none**: painted checkerboard (RGB) → `bg: 'checker'` (as for Lin and Miguerre) | new in-game sprite |
 | `Top-Down-front-new.png` | 1312×1199 | real alpha | new select-card front view and cut-in |
 
 - **Facing (checked).** The top of the image is the front. The mecha flies **feet-first**, as with the old art: the twin red-tipped **feet** are at the top centre and must never fire. Both **hand cannons** point up, with their bores at the top. The **blue chest plate** sits mid-body, with the **head** below it (red V-fin, cyan eye at about (655, 720)). The backpack spikes trail at the bottom.
@@ -310,7 +310,7 @@ Also planned:
 
   Focus loses up to 1 DPS to the 0.2 s charge. The single-target sweep differs in places: the cannons sit 42 units apart instead of 8, so lanes widen slightly at close range.
 - **Frame rate** (1,500-bullet storm, T4 firing): **59.5 FPS** with the art versus 60 procedural; 52 versus 52 with the focus beam; `&atlas=2048` 58.5.
-- **Regressions.** Mira, Bruno, Tess, Oduya, Lin and Dax load their art with no console errors. `&noart` plays with the procedural Stormlance.
+- **Regressions.** Mira, Bruno, Tess, Oduya, Lin and Miguerre load their art with no console errors. `&noart` plays with the procedural Stormlance.
 
 ### Known limitations
 

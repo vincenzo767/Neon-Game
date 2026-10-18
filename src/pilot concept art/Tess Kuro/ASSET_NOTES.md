@@ -145,7 +145,7 @@ Branch: `art/tess-v2`, on top of `art/bruno-v2`. It uses the shared component-me
 |------|------|--------------------|---------------|-------|
 | `new-top-down-main.png` | 1362×1155 PNG RGB | **No**: painted checkerboard | **New in-game sprite.** Feet-first, mirror-symmetric about x ≈ 681. Two long glowing arm blades sweep up and out to the top corners (tips near (19, 30) and (1343, 30)). The two leg blades with red chevrons are in the centre (feet at about (585, 320) and (777, 320)). The waist has a red tip at about (681, 570), and the head is at about (681, 850) with its rear spike down to y ≈ 1000. Long shoulder spikes cross into an X at the bottom. | Needs `bg: 'checker'`, like Bruno. The magenta halo round the blades must survive (the pocket detection keeps it). `glowRule` stays off because of the thin red lines. Bounding box is about x 15–1347, y 20–1150. |
 | `new-top-down-front.png` | 1024×1536 PNG RGB | **No**: solid black | Front view, upright: horned head, X shoulder spikes, arm blades held down, long leg blades. Used for the select card and the cut-in. | Needs `frontBg: 'flat'`. |
-| `new-ultimate.png` | 1671×941 PNG RGB | **No**: painted checkerboard | Ultimate FX reference: a black-violet void cross with a white-hot core and rings, a vertical spear, and two crescent wings curving back, with ragged ink edges and white cutting edges. | Reference only; it is rebuilt in code, like Dax's crescent. |
+| `new-ultimate.png` | 1671×941 PNG RGB | **No**: painted checkerboard | Ultimate FX reference: a black-violet void cross with a white-hot core and rings, a vertical spear, and two crescent wings curving back, with ragged ink edges and white cutting edges. | Reference only; it is rebuilt in code, like Miguerre's crescent. |
 | `pilot_portrait.jpg` | — | — | The old portrait of the wrong (male) pilot. **Deleted from the folder by the owner.** | The deletion is committed with the new art. The game uses `pilot-portrait-main.jpg`, which is unchanged. |
 
 **Facing.** The mecha flies up, feet-first, like the others. **The two centre leg blades are her feet and never fire.** No rotation is needed.
@@ -194,7 +194,7 @@ Branch: `art/tess-v2`, on top of `art/bruno-v2`. It uses the shared component-me
 - **Special:** Cloak (decoy), 4 s, 12 s cooldown.
 - **Bomb:** Thousand Cuts (1.8 s).
 - **Ultimate:** Shadow Clones (6 s).
-- **For comparison:** Bruno v2 shot 50 / 84 / 131 / 193; Dax shot 58 / 82 / 107 / 131 (plus one-hit kills).
+- **For comparison:** Bruno v2 shot 50 / 84 / 131 / 193; Miguerre shot 58 / 82 / 107 / 131 (plus one-hit kills).
 
 ## The new kit as I read the brief
 
@@ -228,7 +228,7 @@ Branch: `art/tess-v2`, on top of `art/bruno-v2`. It uses the shared component-me
 
 ### Ultimate: Void Cross Annihilation
 
-- **Shape and motion:** Dax's Crescent of Chaos motion and shape (the same ragged-ink crescent arch), in Tess's black / violet / lavender / white, with the vertical spear and the white-hot ringed core of `new-ultimate.png`. It is very wide.
+- **Shape and motion:** Miguerre's Crescent of Chaos motion and shape (the same ragged-ink crescent arch), in Tess's black / violet / lavender / white, with the vertical spear and the white-hot ringed core of `new-ultimate.png`. It is very wide.
 - **Phases:**
   1. **Compression:** the core gathers at Tess, the rings spin faster, and particles are drawn in.
   2. **Launch:** a flash, pressure rings and radial streaks.
@@ -247,15 +247,15 @@ Branch: `art/tess-v2`, on top of `art/bruno-v2`. It uses the shared component-me
   6. **Aftermath:** the cloud lingers with lightning inside, and embers fall.
 - No orange anywhere in the ultimate, as the guide asks.
 
-### Lore: Dax Morrow's love interest
+### Lore: Miguerre Zo'Rajah's love interest
 
 **Proposed bio:**
 
-> Ex-syndicate infiltrator turned precinct ghost, and the one person Dax Morrow slows down for. Tess flies the Wireghost, a violet blade mecha that throws crescent cuts across the whole sky. She learned his void tricks the way she learns everything: by watching once, then doing it better.
+> Ex-syndicate infiltrator turned precinct ghost, and the one person Miguerre Zo'Rajah slows down for. Tess flies the Wireghost, a violet blade mecha that throws crescent cuts across the whole sky. She learned his void tricks the way she learns everything: by watching once, then doing it better.
 
 **Proposed lore file line** (it keeps her Black Tide rivalry):
 
-> Grew up on Black Tide smuggling skiffs. Dax Morrow is the only one who ever caught her picking his lock; she has been riding his slipstream ever since.
+> Grew up on Black Tide smuggling skiffs. Miguerre Zo'Rajah is the only one who ever caught her picking his lock; she has been riding his slipstream ever since.
 
 ## Decisions needed
 
@@ -285,7 +285,7 @@ Branch: `art/tess-v2`, on top of `art/bruno-v2`. It uses the shared component-me
    - Yes / adjust?
 6. **Ultimate numbers.**
    - **Recommended:**
-     - **Crescent:** 360 units wide (75% of the screen; Dax's is 300). It travels at 4 units per step, so it crosses in about 2.8 s.
+     - **Crescent:** 360 units wide (75% of the screen; Miguerre's is 300). It travels at 4 units per step, so it crosses in about 2.8 s.
      - **Damage on the way:** regular enemies and mid-bosses die on contact; bosses take 10 damage every 5 steps while in contact.
      - **Detonation** at the top: screen-wide, 80 damage once per enemy including bosses, and it clears every bullet.
      - **Timing:** about 8.5 s in total (0.6 s compression, 2.8 s travel, 0.7 s critical compression, 4.4 s detonation and aftermath).
@@ -309,7 +309,7 @@ Branch: `art/tess-v2`, on top of `art/bruno-v2`. It uses the shared component-me
 4. **A:** Shadow Form has a 30 s cooldown.
 5. **Yes** (bomb).
 6. **Yes** (ultimate).
-7. **Lore:** Dax is a cosmic rogue; Tess travels in search of him and waits for him to come back.
+7. **Lore:** Miguerre is a cosmic rogue; Tess travels in search of him and waits for him to come back.
 8. **Yes** (size).
 
 ## Steps 2–6: results
@@ -361,7 +361,7 @@ Branch: `art/tess-v2`, on top of `art/bruno-v2`. It uses the shared component-me
   1. **Compression** (0.6 s): the core gathers at Tess, the rings contract and spin faster, light streaks and smoke are drawn in.
   2. **Launch:** a flash, pressure rings, radial sparks, a distortion wave and a shake.
   3. **Travel** (4 units per step):
-     - **Shape:** Dax's crescent shape and motion (his shape helpers, now exported from `daxFx.js`), repainted black / violet / lavender / white and squashed flat into the cross's wings. A white crossbar, a void spear ahead with a tail behind, and a ringed white-hot core.
+     - **Shape:** Miguerre's crescent shape and motion (his shape helpers, now exported from `miguerreFx.js`), repainted black / violet / lavender / white and squashed flat into the cross's wings. A white crossbar, a void spear ahead with a tail behind, and a ringed white-hot core.
      - **Effects:**
        - plasma currents racing toward the spear;
        - lightning off the edges;
@@ -389,7 +389,7 @@ Branch: `art/tess-v2`, on top of `art/bruno-v2`. It uses the shared component-me
 - **Data:**
   - **Role:** "Blade Mecha".
   - **Stats:** range 1 → 5, bomb 2 → 3.
-  - **New bio:** Dax Morrow, her love, went rogue among the stars, and she searches sector to sector for the night he comes back.
+  - **New bio:** Miguerre Zo'Rajah, her love, went rogue among the stars, and she searches sector to sector for the night he comes back.
   - **New lore file line** (`src/data/lore/pilots.js`).
 
 ### Tests
@@ -427,7 +427,7 @@ Branch: `art/tess-v2`, on top of `art/bruno-v2`. It uses the shared component-me
 | Ultimate, next 3 s | 48.6 | 41.4 |
 
 **Regressions:**
-- Dax, Kairo, Mira and Bruno DPS are identical to the baseline. Dax's file only gained `export` keywords.
+- Miguerre, Kairo, Mira and Bruno DPS are identical to the baseline. Miguerre's file only gained `export` keywords.
 - All seven art pilots load, play every tier, focus, special, bomb and ultimate with no errors.
 
 **Screenshots** in `screenshots/tess/v2/`:

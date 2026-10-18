@@ -149,7 +149,7 @@ export const PILOT_VOICES = {
     },
   },
   // Overclock cannons: the pitch climbs with engine heat.
-  dax: {
+  miguerre: {
     gap: 0.065, pitch: 300, gain: 0.66,
     shot(c, o, t, s) {
       const heat = Math.min(1, ((s.p && (s.p.ps.nova ? 100 : s.p.ps.heat)) || 0) / 100);

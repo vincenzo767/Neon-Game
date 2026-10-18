@@ -58,7 +58,7 @@ function run(def, power, focus, targets, tier) {
   const p = w.setPlayer(def, { power });
   if (def.dpsLevel) def.dpsLevel(p, tier); // pilots whose strength isn't the power tier
   p.invuln = 1e9;
-  // def.dpsBossTargets: the pilot one-hit-kills normal enemies (Dax), so the dummies count as bosses.
+  // def.dpsBossTargets: the pilot one-hit-kills normal enemies (Miguerre), so the dummies count as bosses.
   const es = targets.map(([dx, dy, r]) => w.spawnEnemy({ x: p.x + dx, y: p.y - dy, r, hp: 1e12, blast: 0, boss: !!def.dpsBossTargets }));
   for (let s = 0; s < STEPS; s++) {
     w.update();

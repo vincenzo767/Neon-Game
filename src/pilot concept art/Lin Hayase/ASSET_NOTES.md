@@ -399,7 +399,7 @@ The small and line targets shift because the fan now crosses its lanes from the 
 | Ultimate | 51–60 | 59–60 |
 
 **Regressions:**
-- Oduya, Tess, Bruno, Mira, Kairo and Dax DPS are identical to the baseline.
+- Oduya, Tess, Bruno, Mira, Kairo and Miguerre DPS are identical to the baseline.
 - All seven art pilots load and play every tier, focus, special, bomb and ultimate with no errors.
 
 **Screenshots** in `screenshots/lin/v2/`:

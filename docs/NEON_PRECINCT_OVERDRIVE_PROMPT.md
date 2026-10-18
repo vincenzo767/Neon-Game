@@ -81,7 +81,7 @@ Every pilot has:
 | 4 | Tess Kuro | Wireghost (stealth fighter) | Short-range blades. Ability: cloak that freezes bullet tracking. Ultimate: shadow clones that mirror her attacks. |
 | 5 | Oduya Rex | Thunderjaw (hover tank) | Arcing plasma mortars. Ability: ground-slam EMP. Ultimate: chain-lightning storm. |
 | 6 | Lin Hayase | Petal Engine (bio-tech craft) | Seeding spores that bloom into turrets. Ultimate: a blooming forest of beam pillars. |
-| 7 | Dax Morrow | Overclock (hot-rod jet) | Fire rate ramps up with heat. Ability: vent blast. Ultimate: meltdown nova. |
+| 7 | Miguerre Zo'Rajah | Overclock (hot-rod jet) | Fire rate ramps up with heat. Ability: vent blast. Ultimate: meltdown nova. |
 | 8 | Sera Voss | Glacier (cryo frigate) | Freeze rays that slow bullets. Ultimate: time-stop shatter. |
 | 9 | NOVA-7 (android) | Cipher (hacker pod) | Hacks enemies into allies. Ultimate: city-wide system override. |
 | 10 | Rufus Graine | Junkyard Saint (scrap ship) | Random scrap weapons. Ability: magnet pull. Ultimate: junk meteor. |
