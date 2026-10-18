@@ -1,9 +1,14 @@
 import { createMechaArt } from './art/mechaArt.js';
+import { RIG, pose, bob } from './miguerreRig.js';
 
-// MIGUERRE ART TEST: the hand-made Overclock void knight (src/pilot concept art/Miguerre
-// Zo'Rajah, ASSET_NOTES.md), built on the shared mecha-art module. The sprite
-// flies feet-first; the legs (feet) never fire. Every void beam leaves the
-// red chest core (owner's choice). 90 units tall.
+// MIGUERRE v2 (ASSET_NOTES.md "Rebuild v2"): the horned, winged sword knight
+// (src/pilot concept art/Miguerre Zo'Rajah, new-top-down-sprite.png) as a
+// component mecha on the shared mecha-art module's rig path. The sword arm, the
+// claw arm and the bat wings move as miguerreRig.js says; the body and wings
+// draw from the weapon-free `under` image (miguerre_wings@2x.png), so the
+// swinging sword leaves no hole. The FX around them come from miguerreFx.js
+// (RIG_FX). Flies feet-first: the legs (feet) never fire. Every void beam leaves
+// the horns on his head. No thrusters: he flies on his wings. 100 units tall.
 
 // Owner's theme: void-cosmic red. Glowing red, black, and white-hot cores.
 export const PAL = {
@@ -15,26 +20,39 @@ export const PAL = {
 };
 export const DARK = PAL.dark;
 
+/** FX hooks around the rig's layers; filled in by miguerreFx.js (avoids an import cycle). */
+export const RIG_FX = { before: null, overlay: null };
+
 export const miguerreArt = createMechaArt({
   id: 'miguerre',
   pal: PAL,
   // Built-in copy of miguerre.anchors.json (gameplay anchors never depend on the file loading).
   defaults: {
-    image: { w: 303, h: 372, artH: 360, pad: 6 },
+    image: { w: 252, h: 372, artH: 360, pad: 6 },
     anchors: {
-      hitbox: [151.5, 215.2], head: [151.5, 240.4], core: [151.5, 215.2], spike: [151.5, 44],
-      lensL: [46.1, 138.2], lensR: [256.6, 138.2],
-      ventL: [113.8, 314.8], ventR: [189.5, 314.8],
-      packL: [140.3, 293.5], packR: [162.9, 293.5],
+      hitbox: [126, 183.8], head: [126, 216.8], core: [126, 217.9],
+      hornL: [112.1, 223.8], hornR: [139.9, 223.8],
+      hornRootL: [120.1, 211.6], hornRootR: [131.9, 211.6],
+      hornTipL: [101.7, 241.3], hornTipR: [150.3, 241.3],
+      spike: [126, 69.4], footL: [99.8, 73], footR: [152.2, 73],
+      shoulderR: [154.1, 202.6], grip: [188.2, 193.2], guard: [194.1, 146],
+      swordMid: [200.3, 75.3], swordTip: [206.9, 6.5], pommel: [187.5, 248.8],
+      shoulderL: [97.9, 202.6], claw: [60.7, 149.6],
+      wingPivotL: [99.8, 226.2], wingPivotR: [152.2, 226.2],
+      wingTipL: [6.9, 134.7], wingTipR: [245.1, 134.7],
+      wingLowL: [21.1, 363.4], wingLowR: [230.9, 363.4],
+      wingMidL: [33.8, 263.9], wingMidR: [218.2, 263.9],
     },
   },
-  flames: [
-    // Void plumes: black outside, red, white-hot core; wide from the fin roots, small from the spine.
-    { name: 'ventL', len: 34, wid: 8, hot: 0.35, i: 2 },
-    { name: 'ventR', len: 34, wid: 8, hot: 0.35, i: 3 },
-    { name: 'packL', len: 22, wid: 5, hot: 0.6, i: 4 },
-    { name: 'packR', len: 22, wid: 5, hot: 0.6, i: 5 },
-  ],
-  exhaust: ['ventL', 'ventR'],
-  size: 90,
+  flames: [], // no thrusters: the wings beat (miguerreRig.js)
+  exhaust: [],
+  rig: {
+    order: RIG.order,
+    attach: RIG.attach,
+    pose: (p, name) => pose(p, name, miguerreArt.anchorData().anchors),
+    bob,
+    before: (p, b, api, name) => RIG_FX.before && RIG_FX.before(p, b, api, name),
+    overlay: (p, b, api) => RIG_FX.overlay && RIG_FX.overlay(p, b, api),
+  },
+  size: 100,
 });

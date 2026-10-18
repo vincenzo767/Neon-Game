@@ -385,31 +385,85 @@ export const PILOT_ART = {
   },
   miguerre: {
     folder: "Miguerre Zo'Rajah",
-    back: 'top-down-main.jpg',
-    front: 'top-down-front.jpg',
+    // v2 (owner's brief, ASSET_NOTES.md "Rebuild v2"): the new horned, winged sword
+    // knight as a component mecha. Flies feet-first (the legs at the top never fire);
+    // every void beam leaves the horns on his head; the bat wings beat (no thrusters).
+    back: 'new-top-down-sprite.png',
+    front: 'new-mecha.png',
     portrait: 'pilot-portrait.jpg',
     portraitCrop: { left: 110, top: 0, width: 520, height: 650 }, // head and shoulders (4:5)
     bg: 'checker',             // painted checkerboard, not real transparency
-    glowRule: false,           // the red glow is paint
-    // The lower blade wings (and the fins under them) move; nothing held crosses them.
+    glowRule: false,           // the copper light is paint
+    // The weapon-free `under` image (miguerre_wings@2x.png): every pixel under the
+    // sword arm (right) and the claw arm (left) is filled from the mirrored side
+    // (from neighbours where both sides are covered). The rig draws the body and
+    // wings from it, so the swinging sword leaves no hole. Mirror axis x 511.
     wings: {
-      axis: 572,
-      pivotL: [480, 880],
-      wingL: [[-80, 1150], [150, 1000], [300, 900], [440, 820], [490, 860], [490, 930], [440, 1000], [420, 1140], [400, 1420], [-80, 1420]],
-      keep: [],
+      axis: 511,
+      fillAll: true,
+      fillGrow: 5,
+      fillSmooth: 30,          // soften the neighbour fill where the claw and the sword cover each other's mirror (round the shoulders)
+      fillClear: [[[130, 500], [330, 500], [330, 742], [130, 742]]], // above the shoulders that overlap is the gap between spikes: transparent
+      pivotL: [400, 940],
+      wingL: [[-20, 530], [40, 590], [110, 660], [170, 730], [230, 800], [280, 860], [330, 900], [390, 905], [440, 930], [470, 980], [440, 1040], [380, 1100], [320, 1170], [260, 1260], [190, 1360], [130, 1460], [90, 1540], [-20, 1540]],
+      keep: [
+        // sword arm: blade, long ribbed haft, hand and arm to the shoulder
+        [[854, 2], [874, 58], [866, 200], [858, 330], [846, 436], [850, 520], [862, 600], [866, 700], [862, 765], [830, 785], [812, 818], [800, 860], [796, 940], [794, 1040], [748, 1044], [752, 950], [756, 862], [735, 848], [690, 852], [650, 864], [618, 852], [610, 810], [640, 770], [690, 752], [735, 742], [750, 700], [752, 600], [762, 540], [776, 380], [797, 300], [822, 70]],
+        // claw arm: claw, forearm and upper arm to the shoulder
+        [[232, 590], [252, 598], [264, 640], [264, 690], [284, 738], [302, 768], [342, 788], [396, 812], [422, 850], [402, 882], [350, 878], [300, 842], [258, 802], [228, 762], [210, 700], [203, 650], [210, 604]],
+      ],
     },
-    // No FX picks: Miguerre's effects are drawn live after the owner's references (tools/art-ref/miguerre/).
+    // Rigged components (source px; the arms are one-sided, the wings mirrored).
+    // Draw order and motion live in src/pilots/miguerreRig.js.
+    parts: {
+      axis: 511,
+      hole: 3,
+      bodySrc: 'under',
+      list: [
+        { // bat wing (beats; under everything)
+          name: 'wing', pivot: [400, 940], src: 'under',
+          poly: [[-20, 530], [40, 590], [110, 660], [170, 730], [230, 800], [280, 860], [330, 900], [390, 905], [440, 930], [470, 980], [440, 1040], [380, 1100], [320, 1170], [260, 1260], [190, 1360], [130, 1460], [90, 1540], [-20, 1540]],
+        },
+        { // sword arm (right): arm, hand and the pole-sword, turning about the shoulder
+          name: 'sword', side: 'R', pivot: [630, 840],
+          poly: [[854, 2], [874, 58], [866, 200], [858, 330], [846, 436], [850, 520], [862, 600], [866, 700], [862, 765], [830, 785], [812, 818], [800, 860], [796, 940], [794, 1040], [748, 1044], [752, 950], [756, 862], [735, 848], [690, 852], [650, 864], [618, 852], [610, 810], [640, 770], [690, 752], [735, 742], [750, 700], [752, 600], [762, 540], [776, 380], [797, 300], [822, 70]],
+        },
+        { // claw arm (left): turning about the shoulder
+          name: 'claw', side: 'L', pivot: [392, 840],
+          poly: [[232, 590], [252, 598], [264, 640], [264, 690], [284, 738], [302, 768], [342, 788], [396, 812], [422, 850], [402, 882], [350, 878], [300, 842], [258, 802], [228, 762], [210, 700], [203, 650], [210, 604]],
+        },
+      ],
+    },
+    // No FX picks: his effects are drawn live after the owner's references (tools/art-ref/miguerre/).
     anchors: {
-      hitbox: [572, 805],      // red chest core: lands on player.x/y
-      head: [572, 900],
-      core: [572, 805],        // the chest core: every void beam leaves here (owner's choice B)
-      spike: [572, 160],       // forward waist spike (reference)
-      lensL: [175, 515],       // red lenses on the forearm shield pods (reference)
-      lensR: [968, 515],
-      ventL: [430, 1180],      // rear fin roots: wide void plumes
-      ventR: [715, 1180],
-      packL: [530, 1100],      // either side of the rear spine: smaller plumes
-      packR: [615, 1100],
+      hitbox: [511, 760],      // chest: lands on player.x/y
+      head: [511, 900],        // the horned head (bottom of the body)
+      core: [511, 905],        // between the horns: the ultimate pours from here
+      hornL: [452, 930],       // the two horns (white-edged blades swept back): every void beam leaves here
+      hornR: [570, 930],
+      hornRootL: [486, 878],   // horn roots (the charge runs root → edge)
+      hornRootR: [536, 878],
+      hornTipL: [408, 1004],   // horn tips
+      hornTipR: [614, 1004],
+      spike: [511, 275],       // forward spike between the legs (never fires)
+      footL: [400, 290],       // the legs (feet) never fire
+      footR: [622, 290],
+      shoulderR: [630, 840],   // sword arm pivot
+      grip: [775, 800],        // his hand on the haft
+      guard: [800, 600],       // where the blade widens (the charge runs guard → tip)
+      swordMid: [826, 300],
+      swordTip: [854, 8],
+      pommel: [772, 1036],     // haft end
+      shoulderL: [392, 840],   // claw arm pivot
+      claw: [234, 615],        // the open claw
+      wingPivotL: [400, 940],  // wing-beat pivots
+      wingPivotR: [622, 940],
+      wingTipL: [6, 552],      // upper wing tips
+      wingTipR: [1016, 552],
+      wingLowL: [66, 1522],    // lower wing tips
+      wingLowR: [956, 1522],
+      wingMidL: [120, 1100],   // trailing edges (void feathers shed from here)
+      wingMidR: [902, 1100],
     },
   },
 };

@@ -334,7 +334,11 @@ function partLayers(Pc, P) {
  * from their neighbours, growing inward. Opt-in `fillAll` fills every covered
  * pixel (body too, not only the wings) and `fillGrow` grows the covered area by
  * that many px (the weapon's outline and glow go too): the rigged Lin v2 draws
- * its body and wings from this image, so moving weapons leave no hole.
+ * its body and wings from this image, so moving weapons leave no hole. Opt-in
+ * `fillSmooth: n` relaxes the neighbour-filled pixels n times (each becomes the
+ * mean of its 8 neighbours), turning the fill's streaks into soft gradients.
+ * Opt-in `fillClear: [poly, …]`: pixels covered on both sides inside these
+ * polygons (and their mirror) become transparent instead (gaps between spikes).
  */
 function fillWings(img, cfg) {
   const { data, w, h } = img;
@@ -357,7 +361,15 @@ function fillWings(img, cfg) {
       for (let c = 0; c < 4; c++) out[p + c] = data[q + c];
     } else left.add(y * w + x);
   }
+  if (cfg.fillClear) {
+    const clear = [...cfg.fillClear, ...cfg.fillClear.map((c) => mirrorPoly(c, cfg.axis))];
+    for (const p of [...left]) {
+      const x = p % w, y = (p / w) | 0;
+      if (clear.some((c) => inPoly(x, y, c))) { out[p * 4 + 3] = 0; left.delete(p); }
+    }
+  }
   const filled = left.size;
+  const fillIdx = cfg.fillSmooth ? [...left] : null;
   for (let pass = 0; pass < 400 && left.size; pass++) {
     const done = [];
     for (const p of left) {
@@ -371,6 +383,18 @@ function fillWings(img, cfg) {
       if (n) done.push([p, acc.map((v) => Math.round(v / n))]);
     }
     for (const [p, v] of done) { for (let c = 0; c < 4; c++) out[p * 4 + c] = v[c]; left.delete(p); }
+  }
+  for (let pass = 0; pass < (cfg.fillSmooth || 0); pass++) {
+    const nv = fillIdx.map((p) => {
+      const x = p % w, y = (p / w) | 0, acc = [0, 0, 0, 0];
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const xx = x + dx, yy = y + dy;
+        if ((dx || dy) && xx >= 0 && yy >= 0 && xx < w && yy < h) { const q = (yy * w + xx) * 4; for (let c = 0; c < 4; c++) acc[c] += out[q + c]; n++; }
+      }
+      return acc.map((v) => Math.round(v / n));
+    });
+    fillIdx.forEach((p, i) => { for (let c = 0; c < 4; c++) out[p * 4 + c] = nv[i][c]; });
   }
   return { data: out, w, h, filled };
 }
