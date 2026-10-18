@@ -153,3 +153,140 @@ All in `src/audio/pilotVoices.js` (the `oduya` voice plus the thunder helpers `c
   - The music stays ducked for the whole 7 s.
 - **Shared change.** `sfx.bomb` and `sfx.ultimate` use a pilot voice's own `bomb` / `ultimate` sound when it has one (new `voiceFx`). Every other pilot keeps the generic sounds.
 - **Levels.** Output peaks are about 0.82–0.87, the same range as the other pilots' bombs and ultimates, and the limiter is never pushed. During the ultimate about 235 sound nodes are live (most of them scheduled ahead).
+
+---
+
+# Rebuild v2 (Step 1)
+
+Branch: `art/oduya-v2`, on top of `art/tess-v2`. The owner keeps the current sprite (`top-down-main.jpg`); no new art. The brief:
+- every lightning attack must visibly come from his hands, with motion;
+- the lightning's glowing look stays;
+- every effect is redesigned as a coherent animated attack with a beginning, a traveling phase and a final detonation;
+- the animation and motion standards match Kairo, Mira, Bruno and Tess v2.
+
+The source folder stays read-only.
+
+## Components (source px, L side; R = 1336 − x, axis 668)
+
+| Part | Where | Role |
+|------|-------|------|
+| **Gauntlet + gold fist** | Knuckles at about (305, 425), gauntlet down to the wrist ring at (395, 620) | **Throws every bolt.** It is animated and punches along its own axis. |
+| **Elbow joint + upper arm** | White joint at about (430, 670) → shoulder at about (480, 750) | Animated: carries the punch and the wind-up. |
+| **Lightning wing** | Black-and-blue blade panels from the root at about (430, 830) out to the tip at (20, 400) and down to (40, 1130) | Animated: flares out while charging and during the ultimate, and folds back while firing. The painted lightning on it crackles. |
+| Drill legs (feet) | Top, tips at (370, 20) / (966, 20) | Body. **Never fire.** |
+| Waist spike, torso, lion head, gold mane | Centre line | Body. |
+
+**Proposed anchors:**
+- `hitbox` (668, 480);
+- `fist` (305, 430), the knuckles, where every bolt leaves;
+- `wrist` (395, 620), `elbow` (430, 675), `shoulder` (480, 750);
+- `wingRoot` (430, 830), `wingTip` (20, 400);
+- `vent` (380, 900) and `mane` (640, 1060) for the thrusters, as today.
+
+**Scale and hitbox** stay as today: 100 units tall, hitbox 3.0.
+
+## Rig plan (Tess-style own rig on the shared rig path)
+
+**Parts:**
+- `arm`, split at the elbow:
+  - the root is the elbow joint and upper arm (pivot at the shoulder);
+  - the tip is the gauntlet and fist.
+- `wing` (excludes the arm).
+
+**Punch** (every bolt):
+1. **Wind-up:** the gauntlet draws back down its axis and the elbow cocks, while blue sparks crackle round the fist.
+2. **Thrust:** the gauntlet shoots out along its axis toward the target side, and the shoulder turns a little toward the target. The bolt leaves the knuckles at full extension.
+3. **Recoil:** a short kick back.
+4. **Settle.**
+
+The fists take turns, as they do now.
+
+**Wings:**
+- they flare while charging (special, bomb, ultimate) and in focus;
+- they fold back with each punch;
+- their painted lightning flickers in time with the strikes.
+
+## Today's kit (baseline, `tools/dps.mjs oduya`)
+
+Damage by strand level (3 / 5 / 7 / 10 strands):
+
+| Mode | Boss | Wave (line) |
+|---|---|---|
+| Strand | 42 / 65 / 73 / 99 | 133 / 230 / 277 / 346 |
+| Focus spears | 28 / 56 / 71 / 99 | — |
+
+- **Strand:** a bolt from one fist every 4 steps (fists alternating), chaining through up to `strands` targets (3, growing to 10 as he fights) and arcing to enemies near each hit. The damage is instant.
+- **Focus:** volleys of piercing thunder spears from one fist.
+- **Coils:** tesla-coil options appear from 5 strands (4 from 8) and throw short arcs. **These don't come from his hands.**
+- **Special:** Thundershock. It stuns every enemy for 2 s, then they explode.
+- **Bomb:** Storm Cell. Sky bolts for 2 s, 5 in stock.
+- **Ultimate:** God Thunder Barrage. Random sky bolts for 7 s, plus one bolt on every enemy every 0.5 s (14 × 7 = 98 per enemy).
+
+## Proposed redesign (each attack: beginning → travel → detonation)
+
+### Main: Thunder Strand
+
+- **Beginning:** the punch, with a crackle charging round the fist.
+- **Travel:** a bright leader bolt races out of the knuckles along the chain, enemy to enemy, at 60 units per step (about 0.1 s across the screen). The flickering bolt stays lit behind it.
+- **Detonation:** at each enemy, a node burst: a white flash, forks and a small ring. The arcs to nearby enemies branch off from there.
+- The strand rules (3 → 10 strands, death costs 2, arcs) and damage stay the same. **See decision 2** for when the damage lands.
+
+### Focus: Thunder Spears
+
+- **Beginning:** a charge flare at the punching fist.
+- **Travel:** the spears fly as now (piercing), with a crackling trail and ring halos (from `fx-reference.png`).
+- **Detonation:** a small thunder burst where a spear hits (cosmetic). Damage is unchanged.
+
+### Special: Thundershock
+
+- **Beginning:** he claps his fists together in front of his chest, and a shock ring bursts out.
+- **Travel:** a lightning web leaves his hands and races enemy to enemy across the screen. Each enemy it reaches is stunned and wrapped in crackling arcs.
+- **Detonation:** after 2 s, a sky bolt lands on each one and they explode. The rules and damage are unchanged.
+
+### Bomb: Storm Cell
+
+- **Beginning:** both fists punch upward, and two bolts climb from the knuckles into a storm cloud gathering over the screen.
+- **Travel:** bolts rain down from the cloud on enemies and random spots for 2 s (the same damage as today).
+- **Detonation:** a closing thunderclap: a flash, a ring and a shake.
+
+### Ultimate: God Thunder
+
+- **Beginning** (about 1 s): he raises both fists and the wings flare wide. Lightning streams from both fists into a growing ball of thunder held between his hands, with rings spinning faster and sparks drawn in.
+- **Launch:** both fists thrust forward and the thunder core launches with a flash, pressure rings and a shake.
+- **Travel** (about 3 s up the screen):
+  - The core lashes chain lightning at every enemy within 220 units.
+  - It erases bullets in a wide radius.
+  - It leaves a crackling plasma wake.
+- **Critical charge** (0.6 s) near the top: it swells, cracks with white light and pulls lightning in from the sky.
+- **Detonation:**
+  - a flash that overpowers the screen;
+  - a shock front;
+  - a dome of lightning;
+  - dozens of sky bolts slamming down across the whole width;
+  - a ground shock ring.
+  - It deals one heavy hit to every enemy on the field and clears every bullet.
+- **Aftermath:** residual arcs crackle over the field and fade.
+- The palette stays blue outside, white inside.
+
+## Decisions needed
+
+1. **Coils** (they don't come from his hands).
+   - **A (recommended):** remove them. Their damage moves into the punches: each strike throws extra short arcs from the fist (2 arcs from 5 strands, 4 from 8), at the same damage the coils deal now.
+   - **B:** keep them as they are.
+2. **When strand damage lands.**
+   - **A (recommended):** when the leader bolt reaches each enemy. That is at most about 0.1 s later than now; the total damage is the same.
+   - **B:** instant, as now. The travel is then only visual.
+3. **Ultimate numbers.**
+   - **Recommended:** a 7 s total.
+     - **Travel lashes:** 3 damage every 6 steps to each enemy within 220 units of the core. It erases bullets within 120 units.
+     - **Detonation:** 60 damage once to every enemy on the field, bosses included.
+   - An enemy near the core's path takes about 90–100 in total, the same as the 98 the old barrage dealt.
+   - Yes / adjust?
+4. **Focus spear burst.**
+   - **A (recommended):** cosmetic only, so the damage is unchanged.
+   - **B:** a small splash (2 damage within 30 units).
+5. **Special and bomb.** Keep their rules and damage, and only restructure the animation as above (hands, web, cloud). Yes / adjust?
+
+## Unchanged
+
+Strand growth, the stats, the speed, the bomb stock (5), the hitbox (3.0), the size (100 units), the bio, and the procedural fallback.
