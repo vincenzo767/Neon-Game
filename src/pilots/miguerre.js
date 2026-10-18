@@ -284,7 +284,7 @@ export default {
   // Procedural fallback, matched to pilot-portrait.jpg (white hair, orange shades, tattoos, black jacket).
   portrait: { skin: '#c89070', hair: '#eeeeee', style: 'spiky', eyes: 'goggles', accent: 'tattoo', suit: '#0c0a0e' },
   weapons: {
-    main: 'Void Beam — an instant straight beam, then a chain racing through every enemy at any range; one-hit kills (not bosses); erases attacks aimed at him',
+    main: 'Void Beam — instant beams from both horns, then a chain racing through every enemy at any range; one-hit kills (not bosses); erases attacks aimed at him',
     focus: 'Ghost Launch — a smoke ghost and five clones fire void beams that grow stronger the longer he holds focus; completely intangible',
   },
   art: miguerreArt,

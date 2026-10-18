@@ -271,6 +271,11 @@ It also writes `<id>_wings@2x.png` and `<id>_wings_outline@2x.png`: the sprite w
   - `wings.fillAll` / `fillGrow` fill every pixel under the `keep` weapons (from the mirror, else from neighbours) into `<id>_wings@2x.png`;
   - `src: 'under'` on a part and `bodySrc: 'under'` draw that layer or the body from it, so a weapon that moves away leaves no hole;
   - rig poses take an optional `sx` (horizontal squash toward the pivot).
+- **Two arms covering each other's mirror (Miguerre).** Opt-in, unused by the others:
+  - `wings.fillSmooth: n` relaxes the neighbour-filled pixels n times, so the fill's streaks become soft gradients;
+  - `wings.fillClear: [poly]` (mirrored too): pixels covered on both sides inside it become transparent (gaps between spikes) instead of a neighbour fill;
+  - `rig.bob(p)` sets the body's vertical bob (his wing beat lifts him);
+  - `renderMecha(p, b, x, y, a, { tint, add })` draws the rigged layers tinted, without FX hooks (his smoke ghosts and clones).
 - `bgPale: true` also clears pale, tinted checker squares (a glow halo painted over the checkerboard, e.g. Tess's blades). It can also take a white-hot glow core touching the halo; redraw that in code.
 
 ---

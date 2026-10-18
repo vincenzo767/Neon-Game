@@ -28,7 +28,7 @@
 | **Art: Tess v2** | Blade component mecha for Tess Kuro: new violet top-down art with swinging arm blades, unlimited-range crescents that erase bullets, glitch-clone focus, Shadow Form special, triple-crescent bomb with clones, void-cross ultimate with a nuclear-scale detonation; Miguerre Zo'Rajah's love interest (branch `art/tess-v2`, on top of `art/bruno-v2`, not merged) | 🔍 In review |
 | **Art: Oduya v2** | Thunder-god component mecha for Oduya Rex (current sprite): punching arms (every bolt leaves a fist), flaring lightning wings, every attack rebuilt as beginning → travel → detonation, new God Thunder ultimate (branch `art/oduya-v2`, on top of `art/tess-v2`, not merged) | 🔍 In review |
 | **Art: Lin v2** | Emerald crystal knight as a component mecha (current sprite): whip in front that throws the shards, thrusting spear, beating wings; wider Root Field, enhanced Spear Rain, redrawn Cosmic Spear (stronger charge, visible void with cracked-space edges) (branch `art/lin-v2`, on top of `art/oduya-v2`, not merged) | 🔍 In review |
-| **Art: Miguerre v2** | The void knight renamed **Miguerre Zo'Rajah** (id `miguerre`), with a new horned, winged sword knight as a component mecha: void beams from the horns, a real wing beat (no thrusters), the sword swing that launches the Crescent of Chaos with a fear-inducing vibration, and the Chaos Clone targeting fix; 100 units tall (branch `art/miguerre-v2`, on top of `art/lin-v2`, not merged) | 🛑 Step 1 checkpoint |
+| **Art: Miguerre v2** | The void knight renamed **Miguerre Zo'Rajah** (id `miguerre`), with a new horned, winged sword knight as a component mecha: void beams from the horns, a real wing beat (no thrusters), the sword swing that launches the Crescent of Chaos with a fear-inducing vibration, and the Chaos Clone targeting fix; 100 units tall (branch `art/miguerre-v2`, on top of `art/lin-v2`, not merged) | 🔍 In review |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -887,7 +887,24 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Miguerre%20Zo%27
 
 Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Miguerre%20Zo%27Rajah/ASSET_NOTES.md), "Rebuild v2".
 
-- **Step 1 (done):** the new art read; components and rig plan; baseline (boss T4: beam 131, focus 343); the Chaos Clone bug diagnosed (chains from far clones kill the enemies beside the other clones: 77 of 149 in a probe); proposed redesign; four decisions for the owner.
+- **Step 1:** the new art read; components and rig plan; baseline (boss T4: beam 131, focus 343); the Chaos Clone bug diagnosed (chains from far clones killed the enemies beside the other clones: 77 of 149 in a probe).
+- **Rename.** Id `miguerre` everywhere (files, assets, folder, atlas `mz_`); Tess's lover renamed too. The `art/dax-test` branch keeps its real name.
+- **Art.** `new-top-down-sprite.png` as a **component mecha**, 100 units tall:
+  - the sword arm swings;
+  - the claw reaches and clenches;
+  - the bat wings really beat (no thrusters), with gusts and void feathers.
+  - The body and wings draw from a weapon-free `under` image.
+- **Kit (approved 1 B, 2 A, 3 A, 4 A).**
+  - **Main:** beams from both horns, one hit.
+  - **Special:** the sword swing launches the crescent; its terrifying vibration freezes regular enemies in fear for 2 s.
+  - **Bomb:** each Chaos Clone guards its own side (bug fixed).
+  - **Ultimate:** the cannon pours from between the horns after a 0.4 s charge.
+  - Damage is unchanged.
+- **Checks.**
+  - All 8 headless checks pass. Clone fix: 150 of 150 enemies beside a clone are shot by that clone (was 72 of 149).
+  - DPS is unchanged (T4: beam 131, focus 343).
+  - Frame rate: storm 57 FPS, ultimate 47–53, 30 clones 60.
+  - The other six pilots are unchanged (identical DPS); all seven art pilots run with no errors.
 
 ## Art: Lin v2 (branch `art/lin-v2`)
 
@@ -1185,4 +1202,4 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
-6. Pilot art: review and merge `art/lin-v2` (it contains `art/oduya-v2`, `art/tess-v2`, `art/bruno-v2`, `art/mira-v2`, `art/kairo-v2`, `art/dax-test`, `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.
+6. Pilot art: review and merge `art/miguerre-v2` (it contains `art/lin-v2`, `art/oduya-v2`, `art/tess-v2`, `art/bruno-v2`, `art/mira-v2`, `art/kairo-v2`, `art/dax-test`, `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.

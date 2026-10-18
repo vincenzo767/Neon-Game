@@ -459,3 +459,131 @@ A headless probe placed enemies beside each clone:
 4. **Ultimate origin.**
    - **A (recommended):** the cannon pours from between the horns, after a 0.4 s horn charge. The 7 s duration starts after the charge, so the total is 7.4 s, and he is invulnerable through the charge too.
    - **B:** keep the chest origin (no charge), and only add the horn glow and wing motion.
+
+## Decisions at the Step 1 checkpoint (approved by the owner)
+
+1. **B:** both horns fire every strike, as two beams converging on the target, with the same total damage.
+2. **A:** the fear is real. Regular enemies freeze in fear for 2 s and back away; bosses only tremble.
+3. **A:** each Chaos Clone guards its own side.
+4. **A:** the cannon pours from between the horns after a 0.4 s horn charge (7.4 s in all, invulnerable throughout).
+
+## Steps 2–6: results
+
+### Rename
+
+- Every "Dax Morrow" is now "Miguerre Zo'Rajah" in code, data, docs, and file and folder names.
+- The new id is `miguerre`: `src/pilots/miguerre.js`, `miguerreArt.js`, `miguerreFx.js`, `public/assets/pilots/miguerre/`, `screenshots/miguerre/`, `tools/art-ref/miguerre/`, `npm run art:miguerre`, and this folder.
+- Atlas names use `mz_`.
+- Tess's bio and lore name him as the man she loves.
+- **Not renamed:** git history, and the `art/dax-test` branch name (still written that way in the docs, because that is the branch's real name).
+
+### Art and rig
+
+- **Processing.** `npm run art:miguerre`:
+  - the sprite is `new-top-down-sprite.png` (painted checkerboard removed, 6 enclosed pockets);
+  - the front view is `new-mecha.png`;
+  - the portrait is unchanged;
+  - the mirror axis is x 511 (measured).
+- **Parts.**
+  - `sword` (right, one-sided): the arm, hand and long pole-sword, turning about the shoulder.
+  - `claw` (left, one-sided).
+  - Mirrored `wing` layers.
+- **Weapon-free `under` image** (`miguerre_wings@2x.png`). Pixels under the sword and claw are filled from the mirrored side. The two arms cover each other's mirror in places:
+  - above the shoulders, that overlap is the gap between spikes, so it is made transparent (`fillClear`);
+  - round the shoulders it is a neighbour fill, softened (`fillSmooth`).
+  - See `screenshots/miguerre/v2/under_image.png`.
+- **Shared opt-in additions** (no other pilot uses them; their DPS is identical):
+  - process-art: `fillSmooth`, `fillClear`;
+  - mechaArt: a rig `bob(p)`, and `renderMecha(…, look)` for tinted rig drawing.
+- **Rig** (`src/pilots/miguerreRig.js`):
+  - **Wing beat** (no thrusters). A quick, strong downstroke (spread and swept forward) and a slower upstroke (raised, narrowing as seen from above).
+    - Idle 1 beat a second, faster when moving, fastest when flying up, a slow glide in focus, and held spread for the swing and the ultimate.
+    - The body lifts with each downstroke.
+    - Each downstroke throws a dark gust ring and black void feathers off the trailing edges, and the wing tips trail faint smoke and embers.
+  - **Sword swing** (64 steps): wind-up drawn back and out, trembling (14); slash across the front (to step 24, the crescent launching at 19); follow-through; return.
+  - **Claw:** it reaches through the swing and clenches, trembling, through the ultimate.
+  - **Horns:** a red charge bead runs from root to edge between strikes, and they flare as the beams leave. They blaze through the ultimate.
+- **Size: 100 units** (was 90).
+- **Draw order:** wings, body, claw, sword.
+
+### Kit
+
+- **Void Beam (main).** Every strike leaves **both horns**: two beams converge on the target for one hit (owner's 1B).
+  - The beams grow from thin to full as they reach the target, and the interception arcs leave the horns too.
+  - The ghost and clones fire from their own horns.
+  - Damage is unchanged.
+- **Ghost Launch (focus).**
+  - The wings snap into a downstroke as the ghost launches.
+  - The ghost and clones are now the rigged mecha in smoke: their wings beat out of step and their swords swing with his.
+  - Unchanged otherwise.
+- **Crescent of Chaos (special).**
+  - **The swing:**
+    - the blade charges, with red glow along it and black flame and sparks licking off;
+    - shock rings, chromatic shake and heat haze roll out;
+    - at the slash, a black-red arc trail follows the blade;
+    - at step 19 the crescent tears off the blade (black shards and sparks), growing from small to full size, then sweeps forward as before.
+  - **Terrifying vibration (owner's 2A).** At the end of the wind-up:
+    - a dark-red flash, a heavy shock ring and a hard screen shake;
+    - every regular enemy on screen freezes in fear for 2 s: stunned (no moving or shooting), backing away from him and trembling, with a dark-red dread aura, shaking rings, twitching red marks and wisps of dread;
+    - bosses only tremble (visual).
+  - **Unchanged:** the crescent's damage, shape, size, speed and cooldown (three in focus).
+- **Chaos Clone (bomb).**
+  - Each clone rises out of a swirling smoke vortex, and their beams leave their horns.
+  - **Fix (owner's 3A):** each clone guards its own side, meaning the enemies nearer to it than to any other clone.
+    - It fires as soon as one is there, on its own 6-step cooldown, and its chain stays on its side.
+    - Bosses are everyone's: with nothing on its side, a clone fires at the nearest boss, so boss damage is unchanged.
+- **Breathe of the Chaos (ultimate, owner's 4A).**
+  - *Charge, 0.4 s:* the horns blaze, black lightning and red motes gather between them, the wings spread and the claw clenches. It ends in a flash and a shock ring.
+  - *Cannon:* 7 s, pouring from between the horns (the clones' heads in focus).
+  - He is invulnerable throughout (7.4 s). Damage, width and duration are unchanged.
+
+### Tests
+
+**Headless gameplay checks** (the real World and Player; the script is kept in the session scratchpad). All passed:
+
+| Check | Result |
+|---|---|
+| Size | 100.0 units tall. |
+| Main | 2 beams per strike, from the two horns, both on the target, 1 hit. None leave the feet. |
+| Special timing | The crescent appears at step 19 (the launch). Fear starts at step 14 (end of the wind-up). |
+| Fear | The regular enemy was stunned and backed away 39 units; the boss was not stunned. |
+| Special damage | A regular enemy in the crescent's path is killed, as before. |
+| **Chaos Clone fix** | 150 enemies popping up beside the clones: **150 killed by the clone beside them, 0 by another clone, 0 by a chain from elsewhere** (before: 72 / 0 / 77 of 149). |
+| Chaos Clones on a boss | 600 clone strikes in 600 steps: all six clones still fire every 6 steps, so boss damage is unchanged. |
+| Ultimate | First beam at step 24 (after the charge), 420 cannon steps, from between the horns, invulnerable throughout. |
+
+**DPS** (`tools/dps.mjs miguerre`, boss dummies): unchanged.
+
+| Mode | T1 | T2 | T3 | T4 |
+|---|---|---|---|---|
+| Beam, boss | 58 | 82 | 107 | 131 |
+| Ghost focus, boss | 152 | 216 | 279 | 343 |
+
+**Frame rate** (headless):
+
+| Situation | With art | Procedural |
+|---|---|---|
+| 1,500-bullet storm, firing | 57.3 FPS | 57.0 |
+| Storm, focus | 53.1 | 60.0 |
+| Ultimate | 47–53 | 50–52 |
+| 30 Chaos Clones (+ focus ghosts firing) | 60 (59.6) | — |
+
+**Regressions:**
+- Oduya, Tess, Lin, Bruno, Mira and Kairo DPS are identical to before.
+- All seven art pilots load and play every tier, focus, special, bomb and ultimate with no errors.
+
+**Screenshots** in `screenshots/miguerre/v2/`:
+- `sheet_poses`: spread, raised, wind-up, launch, across, ultimate charge;
+- `sheet_special`: wind-up, fear, launch, across, after;
+- `special_fear`;
+- `sheet_kit`: main, ultimate charge, focus, bomb arrival, bomb, cannon;
+- `ult_pour`;
+- `under_image`.
+
+### Known limitations
+
+- The body itself doesn't move apart from the wing-beat bob; the sword arm, claw and wings do.
+- The sword arm is one rigid part (arm and sword together), turning about the shoulder.
+- Round the shoulders, where the two arms cover each other's mirror, the filled area is soft. It shows only while the sword is swung away.
+- The ghosts and Chaos Clones are still mostly smoke, so their beating wings show faintly.
+- His sounds are unchanged.
