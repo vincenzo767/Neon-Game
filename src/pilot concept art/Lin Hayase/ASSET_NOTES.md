@@ -308,3 +308,111 @@ This is a new opt-in `fill` step in `process-art`. The art test already filled t
 ## Unchanged
 
 The stats, the tiers, the size (90 units), the hitbox (2.4), the seeds, swarm turrets and option turrets, the bomb's damage, the bio and the procedural fallback.
+
+## Decisions at the Step 1 checkpoint (approved by the owner)
+
+1. **A:** the whip is swung out in front of the mecha.
+2. **Yes:** the shards leave the whip's crystals, with damage unchanged.
+3. **A:** Root Field radius 200 → 300.
+4. **A:** the ultimate charges for 1.2 s.
+5. **A:** the void is drawn 40% wider; its damaging width is unchanged.
+
+## Steps 2–6: results
+
+### Art and rig
+
+- **Processing.** `npm run art:lin` on the same sprite, now with `parts`:
+  - a one-sided `whip` (left), split into `whipRoot` (handle half, pivot at his hand) and `whipTip`;
+  - a one-sided `spear` (right);
+  - mirrored `wing` layers.
+- **Weapon-free image.** The `wings` fill now covers every pixel under the whip and spear (`fillAll`, grown 6 px by `fillGrow`), producing `lin_wings@2x.png`.
+  - The rig draws the body and wings from it (`bodySrc: 'under'`, `src: 'under'`), so the moved whip and spear leave no hole.
+  - The few pixels hidden on both sides (beside the whip handle and the spear guard) are filled from their neighbours.
+  - See `screenshots/lin/v2/under_image.png`.
+- **Shared opt-in additions** (no other pilot uses them; their DPS is identical and their rendering unchanged):
+  - `process-art`: `side` for one-sided parts, `src` / `bodySrc`, and `fillAll` / `fillGrow`;
+  - `mechaArt`: an `sx` horizontal scale on rig poses, and the `under` image for `src` / `bodySrc` layers.
+- **Rig** (`src/pilots/linRig.js`):
+  - **Whip:** turned 0.73 rad about his hand to stand in front of the mecha. Each volley lashes it 0.2 rad across the front, alternating, and the tip half lags and whips after the handle. A glow wave runs along its crystals from the handle to the tip.
+  - **Spear:** it thrusts with each focus throw. It is planted for the special, raised for the bomb, and drawn back and tilted through the ultimate's charge before it thrusts.
+  - **Wings:** they beat with the art test's flap (now through `sx`) and flare while charging.
+- **Draw order:** wings, then the body, then the spear, then the whip.
+
+### Kit
+
+- **Crystal Whip (main).**
+  - Each volley is a lash: 2 + tier shards leave the whip's crystals, from the handle half out to the tip, each with a flash.
+  - They are aimed through the old fan's lanes (from the waist spike, 200 units ahead).
+  - Speed and damage are unchanged. Seeds, swarm turrets and option turrets are unchanged.
+- **Emerald Spears (focus).** The spear thrusts and the spears leave its moving blade. Damage and splitting are unchanged.
+- **Root Field (special).**
+  - **Changed:** radius 200 → **300**.
+  - **New look:** he plants the spear, the whip coils and the wings flare. A double shockwave and a ring of crystal shards race to the rim. There are more roots, and crystal spikes rise round the rim inside a pulsing ring.
+  - **Unchanged:** the hold, crush and cooldown.
+- **Spear Rain (bomb).**
+  - He raises the spear and a portal of cracked emerald sky opens across the top: a black gap with stars, cracked rims, and cracks running down the sky.
+  - The spears fall out of it with long streaks and land in crystal blooms. The star seals are as before.
+  - At 2.7 s the portal shatters: a row of bursts, a flash and a shake.
+  - Damage is unchanged (the same spears and impacts).
+- **Cosmic Spear (ultimate).**
+  - **Charge:** now 1.2 s (was 0.83 s).
+    - The spear is drawn back and tilted, the wings flare, the whip coils and the screen shakes harder as it builds.
+    - The light dims and a black sphere opens round the blade, with nebula light inside and stars streaming in.
+    - Rings contract faster and faster, a crown of 8 crystals grows round the spear head, and space cracks round the sphere.
+    - It ends in a white flash.
+  - **Throw:** the spear thrusts and the giant spear launches.
+  - **Void:**
+    - It is drawn 40% wider than its damaging width: deep black with emerald light spilling round it, drifting nebula clouds and drifting stars.
+    - **Cracked space runs along both edges:** jagged fractures (black gap, emerald glow, white-hot edge) with branches spreading outward, pulsing.
+    - Shards of space flake off the edges, and the cracks fade as the void closes.
+  - **Damage is unchanged:** 120 once as the spear passes; the rift beam stays 110 wide.
+
+### Tests
+
+**Headless gameplay checks** (the real World and Player; the script is kept in the session scratchpad). All passed:
+
+| Check | Result |
+|---|---|
+| Main | A T4 lash throws 6 shards, all leaving the whip in front of him and ahead of the body. The lash alternates. |
+| Focus | The spears leave the thrusting spear's blade. |
+| Root Field | An enemy 280 away is held and crushed; one 330 away is untouched. |
+| Spear Rain | 334 impacts (16 big) versus 332 / 16 in the old code: the spears start at the portal, so two more land before the bomb ends. The portal closes. |
+| Cosmic Spear | Launches after exactly 72 steps (1.2 s). The two enemies in its path take one 120 hit each, the one off the path none, and the rift beam stays 110 wide. |
+
+**DPS** (`tools/dps.mjs lin`):
+
+| Mode | T1 | T2 | T3 | T4 |
+|---|---|---|---|---|
+| Shot, boss | 40 | 58 | 77 | 97 (unchanged) |
+| Focus, boss | 36 | 70 | 87 | 104 (unchanged) |
+| Shot, small | 23 → 23 | 39 → 29 | 36 → 46 | 53 → 64 |
+| Shot, line | 31 → 40 | 57 → 57 | 66 → 76 | 96 → 86 |
+
+The small and line targets shift because the fan now crosses its lanes from the whip.
+
+**Frame rate** (1,500-bullet storm, headless):
+
+| Situation | With art | Procedural |
+|---|---|---|
+| Firing | 52.4 FPS | 54.7 |
+| Focus | 49.2 | 50.9 |
+| Ultimate | 51–60 | 59–60 |
+
+**Regressions:**
+- Oduya, Tess, Bruno, Mira, Kairo and Dax DPS are identical to the baseline.
+- All seven art pilots load and play every tier, focus, special, bomb and ultimate with no errors.
+
+**Screenshots** in `screenshots/lin/v2/`:
+- `sheet_poses` (as painted, whip in front, lash with spear thrust, charge pose);
+- `sheet_fire`;
+- `sheet_special_bomb`;
+- `sheet_ult`;
+- `ult_charge`, `ult_void`;
+- `under_image`.
+
+### Known limitations
+
+- The body doesn't move; the whip, spear and wings do.
+- The whip is one rigid image in two halves, so its curve doesn't flex beyond the tip lag.
+- The pixels hidden on both sides (beside the whip handle and the spear guard) are a neighbour fill. They are soft-looking if the whip swings far.
+- The sounds are unchanged.
