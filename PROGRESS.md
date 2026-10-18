@@ -29,6 +29,7 @@
 | **Art: Oduya v2** | Thunder-god component mecha for Oduya Rex (current sprite): punching arms (every bolt leaves a fist), flaring lightning wings, every attack rebuilt as beginning → travel → detonation, new God Thunder ultimate (branch `art/oduya-v2`, on top of `art/tess-v2`, not merged) | 🔍 In review |
 | **Art: Lin v2** | Emerald crystal knight as a component mecha (current sprite): whip in front that throws the shards, thrusting spear, beating wings; wider Root Field, enhanced Spear Rain, redrawn Cosmic Spear (stronger charge, visible void with cracked-space edges) (branch `art/lin-v2`, on top of `art/oduya-v2`, not merged) | 🔍 In review |
 | **Art: Miguerre v2** | The void knight renamed **Miguerre Zo'Rajah** (id `miguerre`), with a new horned, winged sword knight as a component mecha (150 units tall): void beams from the horns, a real wing beat (no thrusters), the sword swing that launches the Crescent of Chaos with a fear-inducing vibration, and the Chaos Clone targeting fix (branch `art/miguerre-v2`, on top of `art/lin-v2`, not merged) | 🔍 In review |
+| **Art: Sera** | Hand-made art and a Legendary ice kit for Sera Voss (Glacier), wife of Vincenzo the Conqueror: Frost Shards from her bow (4–16 per volley) that freeze enemies over time, the Zero Field passive, Glacial Focus, Ice Storm Surge (7 s freeze), Frost Arrow Rain bomb, Absolute Zero (12 s screen freeze) (branch `art/sera`, on top of `art/miguerre-v2`, not merged) | 🛑 Step 1 checkpoint |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -882,6 +883,17 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Miguerre%20Zo%27
 - **Balance.** Boss DPS at T4: beam 131, ghost focus 137. Normal enemies don't matter: they die in one hit.
 - **FX.** Drawn live after the owner's references, with no cut-out images (polish round): straight eye-beam style void beams, real-smoke ghosts and clones spread wide, a starry black crescent at medium speed, and a cosmic void column for the cannon.
 - **Frame rate.** Storm: about 57 FPS with art versus 53 procedural.
+
+## Art: Sera (branch `art/sera`)
+
+Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Sera%20Voss/ASSET_NOTES.md).
+
+- **Step 1 (done):**
+  - the three images read (the sprite has six ice arrows painted in);
+  - components and rig plan (the drawing arm, flexing bow limbs, ice-blade wings, every shard from the nock);
+  - baseline (boss T4: shot 108, focus 75);
+  - the new kit proposed;
+  - four decisions for the owner.
 
 ## Art: Miguerre v2 (branch `art/miguerre-v2`)
 
