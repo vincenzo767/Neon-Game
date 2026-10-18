@@ -3,7 +3,7 @@
 Pilot: **Miguerre Zo'Rajah**, vehicle **OVERCLOCK**. Built the same way as Kairo,
 Mira, Bruno, Tess, Oduya and Lin (see `ART_PIPELINE.md` and their
 `ASSET_NOTES.md`). The source folder is read-only. Coordinates are source
-pixels, origin top-left. Branch: `art/miguerre-test` (based on `art/lin-test`,
+pixels, origin top-left. Branch: `art/dax-test` (based on `art/lin-test`,
 which has the latest pipeline: checkerboard cut-out, FX picks, wing layers).
 
 ## Images
@@ -317,7 +317,7 @@ The owner asked for no transparency and full light, following `enhance-ultimate.
 # Rebuild v2: Miguerre Zo'Rajah (Step 1)
 
 Branch `art/miguerre-v2` (on top of `art/lin-v2`). The owner renames the pilot
-**Miguerre Zo'Rajah → Miguerre Zo'Rajah** everywhere (code, data, docs, file and
+to **Miguerre Zo'Rajah** everywhere (code, data, docs, file and
 folder names) and supplies a new mecha: `new-top-down-sprite.png` (in-game
 sprite) and `new-mecha.png` (front view). He becomes a component mecha like
 Tess, Oduya and Lin. His powers, abilities and their effects stay; the motion
@@ -325,7 +325,7 @@ and animation are new, and the FX are enhanced.
 
 ## The owner's brief
 
-- **Rename** every "Miguerre Zo'Rajah" to "Miguerre Zo'Rajah", including file and folder names.
+- **Rename** the pilot to "Miguerre Zo'Rajah" everywhere, including file and folder names.
 - **Void Beam:** the beams now leave the **horns on his head** (owner's screenshot), not the chest.
 - **Wings:** no thrusters any more. He flies on his wings, with an improved wing-beat motion.
 - **Size:** 100 units tall, like Oduya Rex.
@@ -430,10 +430,10 @@ A headless probe placed enemies beside each clone:
   - files `miguerre.js`, `miguerreArt.js`, `miguerreFx.js` and the new `miguerreRig.js`;
   - assets `public/assets/pilots/miguerre/`, script `npm run art:miguerre`, screenshots `screenshots/miguerre/`;
   - source folder `src/pilot concept art/Miguerre Zo'Rajah`.
-  - Atlas names move from `miguerre`/`dx_` to `miguerre`/`mz_`.
+  - Atlas sprite names use the `miguerre` / `mz_` prefixes.
   - Tess's lore and bio name Miguerre Zo'Rajah as the man she loves.
   - Every document's mentions are updated too.
-  - **Not renamed:** git history and the old `art/miguerre-test` branch name. Old high-score entries keep the name they were saved with.
+  - **Not renamed:** git history and the old `art/dax-test` branch name. Old high-score entries keep the name they were saved with.
 - **Unchanged:**
   - the vehicle name **OVERCLOCK**;
   - his story (only the name changes);

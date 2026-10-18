@@ -21,14 +21,14 @@
 | **Art: Tess** | Hand-made art for Tess Kuro (Wireghost) on the shared art modules (branch `art/tess-test`, on top of `art/bruno-test`, not merged) | 🔍 In review |
 | **Art: Oduya** | Hand-made art and a redesigned kit for Oduya Rex (Thunderjaw), the god of thunder (branch `art/oduya-test`, on top of `art/tess-test`, not merged) | 🔍 In review |
 | **Art: Lin** | Hand-made art and a redesigned kit for Lin Hayase (Petal Engine), an emerald crystal knight on butterfly wings (branch `art/lin-test`, on top of `art/oduya-test`, not merged) | 🔍 In review |
-| **Art: Miguerre** | Hand-made art and a Legendary void kit for Miguerre Zo'Rajah (Overclock), a black-and-red void knight (branch `art/miguerre-test`, on top of `art/lin-test`, not merged) | 🔍 In review |
-| **Art: Kairo v2** | Component mecha rebuild for Kairo Vance: new top-down art, tier-deployed inner and outer wings, hand cannons, chest focus beam (branch `art/kairo-v2`, on top of `art/miguerre-test`, not merged) | 🔍 In review |
+| **Art: Miguerre** | Hand-made art and a Legendary void kit for Miguerre Zo'Rajah (Overclock), a black-and-red void knight (branch `art/dax-test`, on top of `art/lin-test`, not merged) | 🔍 In review |
+| **Art: Kairo v2** | Component mecha rebuild for Kairo Vance: new top-down art, tier-deployed inner and outer wings, hand cannons, chest focus beam (branch `art/kairo-v2`, on top of `art/dax-test`, not merged) | 🔍 In review |
 | **Art: Mira v2** | Component mecha rebuild for Mira Solenne: new gold-and-white top-down art, chest fire at T1, hand cannons from T2, tier-deployed inner and outer blades, chest focus attack (branch `art/mira-v2`, on top of `art/kairo-v2`, not merged) | 🔍 In review |
 | **Art: Bruno v2** | Heavy-artillery component mecha for Bruno Hagen: new purple-and-red top-down art, tier-expanding shoulder cannons and side cannons, unlimited-range explosive shells, shoulder-cannon focus barrage, reactive shield, wide bomb, carpet-bomb ultimate with a final nuke (branch `art/bruno-v2`, on top of `art/mira-v2`, not merged) | 🔍 In review |
 | **Art: Tess v2** | Blade component mecha for Tess Kuro: new violet top-down art with swinging arm blades, unlimited-range crescents that erase bullets, glitch-clone focus, Shadow Form special, triple-crescent bomb with clones, void-cross ultimate with a nuclear-scale detonation; Miguerre Zo'Rajah's love interest (branch `art/tess-v2`, on top of `art/bruno-v2`, not merged) | 🔍 In review |
 | **Art: Oduya v2** | Thunder-god component mecha for Oduya Rex (current sprite): punching arms (every bolt leaves a fist), flaring lightning wings, every attack rebuilt as beginning → travel → detonation, new God Thunder ultimate (branch `art/oduya-v2`, on top of `art/tess-v2`, not merged) | 🔍 In review |
 | **Art: Lin v2** | Emerald crystal knight as a component mecha (current sprite): whip in front that throws the shards, thrusting spear, beating wings; wider Root Field, enhanced Spear Rain, redrawn Cosmic Spear (stronger charge, visible void with cracked-space edges) (branch `art/lin-v2`, on top of `art/oduya-v2`, not merged) | 🔍 In review |
-| **Art: Miguerre v2** | Miguerre Zo'Rajah renamed **Miguerre Zo'Rajah** with a new horned, winged sword knight as a component mecha: void beams from the horns, a real wing beat (no thrusters), the sword swing that launches the Crescent of Chaos with a fear-inducing vibration, and the Chaos Clone targeting fix; 100 units tall (branch `art/miguerre-v2`, on top of `art/lin-v2`, not merged) | 🛑 Step 1 checkpoint |
+| **Art: Miguerre v2** | The void knight renamed **Miguerre Zo'Rajah** (id `miguerre`), with a new horned, winged sword knight as a component mecha: void beams from the horns, a real wing beat (no thrusters), the sword swing that launches the Crescent of Chaos with a fear-inducing vibration, and the Chaos Clone targeting fix; 100 units tall (branch `art/miguerre-v2`, on top of `art/lin-v2`, not merged) | 🛑 Step 1 checkpoint |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -868,7 +868,7 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Lin%20Hayase/ASS
 - **FX from the owner's picks** (`tools/art-ref/lin/`, un-blended by `process-art.mjs` `fx`): main-shot arrows, focus / split / rain spears, the star seal on every Spear Rain hit, and the Cosmic Spear. Its path is a black void of stars, drawn under the enemies (new World hook `renderUnder`).
 - **Frame rate.** In the 1,500-bullet storm, about 53 FPS with art versus 49 procedural (Intel HD 5500).
 
-## Art: Miguerre Zo'Rajah (branch `art/miguerre-test`)
+## Art: Miguerre Zo'Rajah (branch `art/dax-test`)
 
 Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Miguerre%20Zo%27Rajah/ASSET_NOTES.md).
 
@@ -1185,4 +1185,4 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
-6. Pilot art: review and merge `art/lin-v2` (it contains `art/oduya-v2`, `art/tess-v2`, `art/bruno-v2`, `art/mira-v2`, `art/kairo-v2`, `art/miguerre-test`, `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.
+6. Pilot art: review and merge `art/lin-v2` (it contains `art/oduya-v2`, `art/tess-v2`, `art/bruno-v2`, `art/mira-v2`, `art/kairo-v2`, `art/dax-test`, `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.

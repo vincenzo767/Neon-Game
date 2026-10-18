@@ -146,7 +146,7 @@ matches the brief's "wing-binder with rifle".
 
 # Rebuild v2 (owner's brief, 2026-10-14): component mecha, tier wings, cannon and chest-beam VFX
 
-Branch `art/kairo-v2`, made from `art/miguerre-test`, which holds every earlier art branch and the shared art code.
+Branch `art/kairo-v2`, made from `art/dax-test`, which holds every earlier art branch and the shared art code.
 
 ## Step 1: what the code does today and why it looks inconsistent
 
