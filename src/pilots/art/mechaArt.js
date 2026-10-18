@@ -34,9 +34,10 @@ import { FADE_OUT } from '../../fx/Particles.js';
 //               turret) packed into the same texture; frame via extra(name)
 //   rig         component mecha (layers.json `rig: true`, process-art `parts`):
 //               { order: [layer names incl. 'body'],
-//                 pose(p, name) → { rot, tx, ty, s, ox, oy, alpha, hide } per layer
+//                 pose(p, name) → { rot, tx, ty, s, sx, ox, oy, alpha, hide } per layer
 //                   (tx/ty slide in the layer's own frame, then rotate/scale
-//                   about its pivot, then ox/oy offset; @2x px),
+//                   about its pivot, then ox/oy offset; @2x px; optional sx
+//                   squashes it horizontally toward the pivot, e.g. Lin's wing beat),
 //                 attach: { anchorName: layerName } (anchors that ride a layer),
 //                 before(p, b, api, name): drawn just under a layer (keep it to the
 //                   layer's own texture, e.g. api.drawLayer halos: no batch flush;
@@ -211,7 +212,7 @@ function polyBox(poly, pad, w, h) {
  * @param imageW width of the @2x image the layer JSON is written for
  */
 export function splitLayers(img, layers, imageW, wingImg = img, outlinePx = 0) {
-  if (layers.rig) return splitRig(img, layers, imageW, outlinePx);
+  if (layers.rig) return splitRig(img, layers, imageW, outlinePx, wingImg);
   const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
   const sx = W / imageW; // layers.json is in @2x pixels; scale if a 1x image is passed
   const sc = (p) => p.map(([x, y]) => [x * sx, y * sx]);
@@ -270,8 +271,11 @@ export function splitLayers(img, layers, imageW, wingImg = img, outlinePx = 0) {
  * hard. At rest the layers cover their holes exactly; moved, they leave no
  * slivers of themselves behind on the body. `outlinePx`: the outline variant's
  * outline width (hole and layer grow by it, so the outline moves with the part).
+ * Opt-in `src: 'under'` on a layer / `bodySrc: 'under'` (Lin): take the pixels
+ * from `under` (the weapon-free image, wing and body pixels under held weapons
+ * filled in) instead of the sprite, so a weapon that moves away leaves no hole.
  */
-function splitRig(img, layers, imageW, outlinePx = 0) {
+function splitRig(img, layers, imageW, outlinePx = 0, under = img) {
   const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
   const sx = W / imageW, sc = (p) => p.map(([x, y]) => [x * sx, y * sx]);
   // hole: the body loses each polygon grown by `hole` px (+ the outline), so no sliver of a
@@ -295,7 +299,7 @@ function splitRig(img, layers, imageW, outlinePx = 0) {
   const out = {};
   // Body: every part polygon removed (antialiased edge only).
   const body = canvas(W, H), bc = body.getContext('2d');
-  bc.drawImage(img, 0, 0, W, H);
+  bc.drawImage(layers.bodySrc === 'under' ? under : img, 0, 0, W, H);
   bc.globalCompositeOperation = 'destination-out';
   for (const L of Object.values(layers.layers)) bc.drawImage(solid(sc(L.poly), hole), 0, 0);
   out.body = { canvas: body, box: { x: 0, y: 0, w: W, h: H } };
@@ -307,7 +311,7 @@ function splitRig(img, layers, imageW, outlinePx = 0) {
     cx.fillStyle = '#fff';
     for (const ex of L.exclude || []) cx.drawImage(solid(sc(ex), hole), -box.x, -box.y);
     cx.globalCompositeOperation = 'source-in';
-    cx.drawImage(img, -box.x, -box.y, W, H);
+    cx.drawImage(L.src === 'under' ? under : img, -box.x, -box.y, W, H);
     out[name] = { canvas: c, box, pivot: [L.pivot[0] * sx, L.pivot[1] * sx] };
   }
   return out;
@@ -462,7 +466,7 @@ export function createMechaArt(cfg) {
     if (!part || !part.pivot) return [lx, ly];
     const ps = cfg.rig.pose(p, name) || {};
     const px = part.pivot[0] - hb[0], py = part.pivot[1] - hb[1], sc = ps.s ?? 1;
-    const dx = lx + (ps.tx || 0) - px, dy = ly + (ps.ty || 0) - py, c = Math.cos(ps.rot || 0), sn = Math.sin(ps.rot || 0);
+    const dx = (lx + (ps.tx || 0) - px) * (ps.sx ?? 1), dy = ly + (ps.ty || 0) - py, c = Math.cos(ps.rot || 0), sn = Math.sin(ps.rot || 0);
     return [px + sc * (dx * c - dy * sn) + (ps.ox || 0), py + sc * (dx * sn + dy * c) + (ps.oy || 0)];
   }
 
@@ -544,7 +548,7 @@ export function createMechaArt(cfg) {
         const [cx, cy] = still ? [bx.x + bx.w / 2 - hb[0], bx.y + bx.h / 2 - hb[1]] : rigPoint(p, set, name, bx.x + bx.w / 2 - hb[0], bx.y + bx.h / 2 - hb[1]);
         const [wx, wy] = place(cx + (o.dx || 0), cy + (o.dy || 0));
         const t = o.tint || [1, 1, 1], sc = (ps.s ?? 1) * g;
-        b.draw(part.frame, wx, wy, bx.w * k * sq * sc, bx.h * k * sc, rot + (ps.rot || 0), t[0], t[1], t[2], (o.alpha ?? a) * (ps.alpha ?? 1), o.add ?? 0);
+        b.draw(part.frame, wx, wy, bx.w * k * sq * sc * (ps.sx ?? 1), bx.h * k * sc, rot + (ps.rot || 0), t[0], t[1], t[2], (o.alpha ?? a) * (ps.alpha ?? 1), o.add ?? 0);
       };
       const api = {
         place, k, rot, sq, hb, A, set, a, x, y: y + bob, drawLayer,
