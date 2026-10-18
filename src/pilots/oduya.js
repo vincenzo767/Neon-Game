@@ -1,16 +1,21 @@
 import { mirrorPath, chrome, neonLines, outline, canopy, glowDot, drawBolt } from '../fx/art.js';
 import { UP, W, H, ringPulse, chainTargets, nearestN, targets, stun, shipScale } from './common.js';
 import { oduyaArt, oduyaMechaFx } from './oduyaArt.js';
-import { renderLightning } from './oduyaFx.js';
+import { renderLightning, nodeBurst, fistFlash, spearBurst, clapFx, detonateGod, launchGod, godParticles } from './oduyaFx.js';
+import { rigState, step as rigStep, punch, hold, flare } from './oduyaRig.js';
+import { ODUYA } from './oduyaTuning.js';
 
 // ODUYA REX — THUNDERJAW (thunder god mecha)
 // Chain-lightning strands that evolve as he fights · Focus: thunder spears
-// Special: Thundershock (stun everything 2 s, then it explodes)
-// Bomb: Storm Cell (5 in stock) · Ultimate: God Thunder Barrage
+// Special: Thundershock (a lightning web stuns everything 2 s, then it explodes)
+// Bomb: Storm Cell (5 in stock) · Ultimate: God Thunder
 //
-// ODUYA ART TEST: the hand-made mecha art (oduyaArt.js) replaces drawShip()
-// when it loads; drawShip() stays as the automatic fallback. All lightning
-// leaves the two gold fists; the drill legs (feet) never fire.
+// ODUYA v2 (ASSET_NOTES.md "Rebuild v2"): the component mecha (oduyaArt.js +
+// oduyaRig.js + oduyaFx.js) replaces drawShip() when the art loads; drawShip()
+// stays as the automatic fallback. Every bolt is a punch: it leaves the
+// punching gold fist. Each attack has a beginning (punch / charge), a
+// traveling phase (a leader racing along the chain, a web, a storm cloud, a
+// thunder core) and a detonation. The drill legs (feet) never fire.
 
 const ELEC = [0.55, 0.68, 1.0];
 const WHITE = [0.9, 0.95, 1.0];
@@ -64,10 +69,12 @@ const boltSprite = (ctx, w, h) => drawBolt(ctx, w, h, 'rgba(140,170,255,0.9)');
 // fires is a bullet except the focus thunder spears.
 // - Strands do not follow power tiers: he starts with 3 and gains one every
 //   10 seconds alive (lightning hits speed this up), up to 10. Death costs 2.
-// - Main: every few steps a lightning strand leaves a fist and chains through
-//   up to `strands` targets; each hit also arcs to enemies around it.
-// - Focus: volleys of thunder spears, more with more strands.
-// - Coils (2 from 5 strands, 4 from 8) throw short arcs, no bullets.
+// - Main: every few steps a punch throws a lightning strand from that fist; its
+//   leader races through up to `strands` targets (the damage lands as it
+//   arrives), each hit arcing to enemies around it. From 5 strands each punch
+//   also throws short arcs from the fist (v2: they replace the tesla coils;
+//   2 arcs from 5 strands, 4 from 8).
+// - Focus: punches that throw volleys of thunder spears, more with more strands.
 
 const STRAND_MIN = 3, STRAND_MAX = 10;
 const EVO_STEP = 600;        // 10 s per strand
@@ -77,10 +84,11 @@ const HOP = 190;             // chain reach between targets
 const ARC_R = 55;            // arcs to enemies this close to a hit
 const SPEAR_CD = 7;
 
-/** Damage of one strand hit at a strand level (boss DPS ~42 at 3 strands, ~70 at 10, plus coils). */
+/** Damage of one strand hit at a strand level (boss DPS ~42 at 3 strands, ~70 at 10, plus fist arcs). */
 const strandDmg = (n) => 2.0 + 0.27 * n;
 const spearCount = (n) => 2 + Math.floor((n - 3) / 2);
-const coilCount = (n) => (n >= 8 ? 4 : n >= 5 ? 2 : 0);
+const arcCount = (n) => (n >= 8 ? 4 : n >= 5 ? 2 : 0);
+const onField = (e) => e.alive && !e.untargetable && e.x > -20 && e.x < W + 20 && e.y > -20 && e.y < H + 20;
 
 function evolve(p, w, amount) {
   const ps = p.ps;
@@ -93,72 +101,195 @@ function evolve(p, w, amount) {
   ringPulse(w, p.x, p.y, ELEC, 12, 120, 16);
 }
 
-/** A sky strike for the renderer (bomb, special detonation, ultimate). */
+/** A bolt for the renderer (the storm cloud's strikes, the ultimate's detonation). */
 function skyStrike(p, x0, y0, x1, y1, width, life = 7) {
   p.ps.strikes.push({ x0, y0, x1, y1, w: width, t: 0, life, s: p.w.fxRng.next() * 100 });
 }
 
-/** Main weapon: one strand from a fist through up to `strands` targets. */
-function strike(p, w) {
-  const ps = p.ps, n = ps.strands, d = strandDmg(n);
-  w.shotsFired++; // no projectile, but the audio director voices one crackle per strike
-  const name = (ps.side = -ps.side) < 0 ? 'fistL' : 'fistR';
-  const [fx, fy] = oduyaArt.anchor(name), x0 = p.x + fx, y0 = p.y + fy;
-  const chain = chainTargets(w, x0, y0, n, HOP);
-  const pts = [[x0, y0]], arcs = [], hit = new Set(chain);
-  let hits = 0;
-  chain.forEach((e, k) => {
-    w.damage(e, k === 0 ? d : d * 0.7);
-    pts.push([e.x, e.y]);
-    hits++;
-    // Arc to anything close to this hit (half damage, once per strike).
-    for (const o of targets(w)) {
-      if (hit.has(o) || (o.x - e.x) ** 2 + (o.y - e.y) ** 2 > (ARC_R + o.r) ** 2) continue;
-      hit.add(o);
-      w.damage(o, d * 0.5);
-      arcs.push([e.x, e.y, o.x, o.y]);
-      hits++;
-    }
+/** World point of the fist on `side`, posed (just after a punch: at full extension). */
+const fistAt = (p, side) => oduyaArt.animatedAnchor(p, side < 0 ? 'fistL' : 'fistR');
+
+/**
+ * A leader: a bolt that races from (x0, y0) through nodes at ODUYA.leader.speed;
+ * a node's damage lands when the leader arrives. es[k] is the enemy at node k
+ * (null for a bare point: the segment to it then damages what it crosses).
+ */
+function leader(p, x0, y0, es, pts, d, width, opts = {}) {
+  p.ps.leaders.push({
+    pts: [[x0, y0], ...pts], es: [null, ...es], k: 1, hx: x0, hy: y0, d, w: width,
+    hit: new Set(es.filter(Boolean)), arcs: [], t: 0, done: false, life: 5, s: p.w.fxRng.next() * 100, ...opts,
   });
-  if (!chain.length) {
-    // Nothing locked: the bolt cracks straight ahead and hurts what it crosses.
-    const tx = x0 + w.fxRng.range(-40, 40), ty = y0 - 280;
-    w.damageLine(x0, y0, tx, ty, 10, d);
-    pts.push([tx, ty]);
-  } else if ((p.t >> 2) & 1) {
-    oduyaMechaFx.hitSpark(w, chain[0].x, chain[0].y + chain[0].r * 0.4, Math.PI / 2);
-  }
-  ps.bolts.push({ pts, arcs, t: 0, life: 5, w: 9, s: w.fxRng.next() * 100 });
-  ps[name === 'fistL' ? 'kickL' : 'kickR'] = 0.35;
-  const [mx, my] = oduyaArt.animatedAnchor(p, name);
-  oduyaMechaFx.muzzleFlash(p, w, mx, my, 28);
-  evolve(p, w, hits * EVO_PER_HIT);
 }
 
-/** Focus: a volley of thunder spears from one fist. */
+/** Leaders race on; arriving at a node deals its damage, arcs to enemies around it and bursts. */
+function stepLeaders(p, w) {
+  const ps = p.ps, sp = ODUYA.leader.speed;
+  for (const L of ps.leaders) {
+    if (L.done) { L.t++; continue; }
+    let move = sp;
+    while (!L.done && move > 0) {
+      const e = L.es[L.k];
+      if (e && e.alive) L.pts[L.k] = [e.x, e.y]; // the node follows its enemy while the leader is on its way
+      const [tx, ty] = L.pts[L.k], dx = tx - L.hx, dy = ty - L.hy, dd = Math.hypot(dx, dy);
+      if (dd > move) { L.hx += dx / dd * move; L.hy += dy / dd * move; break; }
+      move -= dd; L.hx = tx; L.hy = ty;
+      let hits = 0;
+      if (e) {
+        if (e.alive) {
+          w.damage(e, L.k === 1 ? L.d : L.d * 0.7);
+          hits++;
+          if (L.arcR) for (const o of targets(w)) {
+            if (L.hit.has(o) || (o.x - e.x) ** 2 + (o.y - e.y) ** 2 > (L.arcR + o.r) ** 2) continue;
+            L.hit.add(o);
+            w.damage(o, L.d * 0.5);
+            L.arcs.push([e.x, e.y, o.x, o.y]);
+            hits++;
+          }
+          if (L.burst !== false) nodeBurst(p, w, tx, ty, L.w);
+        }
+      } else {
+        const [px, py] = L.pts[L.k - 1];
+        w.damageLine(px, py, tx, ty, 10, L.d);
+      }
+      if (L.evolve) evolve(p, w, hits * EVO_PER_HIT);
+      if (++L.k >= L.pts.length) L.done = true;
+    }
+  }
+  if (ps.leaders.length) ps.leaders = ps.leaders.filter((L) => !L.done || L.t < L.life);
+}
+
+/** From 5 strands: short arcs from the punching fist to the nearest enemies (they replace the coils). */
+function fistArcs(p, w, x0, y0, mul) {
+  const na = arcCount(p.ps.strands);
+  if (!na) return;
+  const near = nearestN(w, x0, y0, na, ODUYA.fistArcs.reach);
+  for (let k = 0; k < na && near.length; k++) {
+    const e = near[k % near.length];
+    leader(p, x0, y0, [e], [[e.x, e.y]], ODUYA.fistArcs.dmg * mul, 3.6, { burst: false, life: 4 });
+  }
+}
+
+/** Main weapon: a punch, and a strand from that fist through up to `strands` targets. */
+function strike(p, w) {
+  const ps = p.ps, n = ps.strands, d = strandDmg(n), side = rigState(p).next;
+  w.shotsFired++; // no projectile, but the audio director voices one crackle per strike
+  const [rx, ry] = oduyaArt.anchor(side < 0 ? 'fistL' : 'fistR');
+  const chain = chainTargets(w, p.x + rx, p.y + ry, n, HOP);
+  punch(p, side, chain.length ? Math.atan2(chain[0].y - p.y - ry, chain[0].x - p.x - rx) : null);
+  const [x0, y0] = fistAt(p, side);
+  if (chain.length) leader(p, x0, y0, chain, chain.map((e) => [e.x, e.y]), d, 9, { arcR: ARC_R, evolve: true });
+  else leader(p, x0, y0, [null], [[x0 + w.fxRng.range(-40, 40), y0 - 280]], d, 9); // nothing locked: it cracks straight ahead
+  fistArcs(p, w, x0, y0, 1);
+  fistFlash(p, w, x0, y0, 28);
+}
+
+/** Focus: a punch, and a volley of thunder spears from that fist. */
 function spears(p, w) {
-  const ps = p.ps, S = w.shots, c = spearCount(ps.strands);
-  const name = (ps.side = -ps.side) < 0 ? 'fistL' : 'fistR';
-  const [fx, fy] = oduyaArt.anchor(name);
+  const ps = p.ps, S = w.shots, c = spearCount(ps.strands), side = rigState(p).next;
+  punch(p, side, null);
+  const [fx] = oduyaArt.anchor(side < 0 ? 'fistL' : 'fistR');
+  const [x0, y0] = fistAt(p, side);
   for (let k = 0; k < c; k++) {
     const off = (k - (c - 1) / 2);
     // Aim inward so the volley converges ahead of the mecha's centre.
     const a = UP + Math.atan2(-fx + off * 6, 220) + off * 0.02;
-    const i = w.shot(p.x + fx + off * 5, p.y + fy, a, 30, ps.fBolt, 1.65, 6);
-    if (i >= 0) { S.behave(i, 1.65, 30, 1); S.aux[i] = 4; }
+    const i = w.shot(x0 + off * 5, y0, a, 30, ps.fBolt, 1.65, 6);
+    if (i >= 0) { S.behave(i, 1.65, 30, 1); S.aux[i] = 4; S.ref[i] = { hit: 0 }; }
   }
-  const [mx, my] = oduyaArt.animatedAnchor(p, name);
-  oduyaMechaFx.muzzleFlash(p, w, mx, my, 34);
-  ps[name === 'fistL' ? 'kickL' : 'kickR'] = 0.6;
+  fistArcs(p, w, x0, y0, SPEAR_CD / STRIKE_CD);
+  fistFlash(p, w, x0, y0, 34);
 }
 
-/** Coils: each throws a short arc at the nearest enemy (no bullets). */
-function coils(p, w) {
-  for (const o of p.options) {
-    const [e] = nearestN(w, o.x, o.y, 1, 230);
-    if (!e) continue;
-    w.damage(e, 1.2);
-    p.ps.bolts.push({ pts: [[o.x, o.y - 6], [e.x, e.y]], arcs: [], t: 0, life: 4, w: 3.6, s: w.fxRng.next() * 100 });
+/** Spears that just hit something burst there (cosmetic). */
+function spearHits(p, w) {
+  const S = w.shots;
+  for (let i = 0; i < S.count; i++) {
+    const r = S.ref[i];
+    if (S.aux[i] !== 4 || !r || !S.hitUid[i] || S.hitUid[i] === r.hit) continue;
+    r.hit = S.hitUid[i];
+    spearBurst(p, w, S.x[i], S.y[i]);
+  }
+}
+
+// ------------------------------------------------------------- special: the web
+
+/** Greedy nearest-neighbour order from (x, y): the path the web races along. */
+function webOrder(list, x, y) {
+  const left = list.slice(), out = [];
+  while (left.length) {
+    let bi = 0, bd = Infinity;
+    left.forEach((e, k) => { const d = (e.x - x) ** 2 + (e.y - y) ** 2; if (d < bd) { bd = d; bi = k; } });
+    const [e] = left.splice(bi, 1);
+    out.push(e); x = e.x; y = e.y;
+  }
+  return out;
+}
+
+/** The web races enemy to enemy; each one it reaches is stunned until the 2 s detonation. */
+function stepWeb(p, w, t) {
+  const sh = p.ps.shock;
+  if (!sh || sh.k >= sh.list.length) return;
+  let move = ODUYA.web.speed;
+  while (sh.k < sh.list.length && move > 0) {
+    const e = sh.list[sh.k], dx = e.x - sh.hx, dy = e.y - sh.hy, dd = Math.hypot(dx, dy);
+    if (dd > move) { sh.hx += dx / dd * move; sh.hy += dy / dd * move; break; }
+    move -= dd; sh.hx = e.x; sh.hy = e.y;
+    if (e.alive) { stun(e, Math.max(1, 120 - t)); nodeBurst(p, w, e.x, e.y, 6); }
+    sh.reached.push(e);
+    sh.k++;
+  }
+}
+
+// ------------------------------------------------------------- ultimate: God Thunder
+
+function stepGod(p, w, t) {
+  const G = p.ps.god, U = ODUYA.ult;
+  if (!G) return;
+  G.t = t;
+  if (G.ph === 'charge') {
+    // Both fists drawn back and raised, wings wide; lightning streams from the fists into the core.
+    G.x = p.x; G.y = p.y - 58;
+    hold(p, -1, 2); flare(p, 1);
+    if (t >= U.charge) {
+      G.ph = 'travel'; G.t0 = t; G.y0 = G.y;
+      G.speed = Math.max(0.5, (G.y - U.top) / U.travel);
+      hold(p, 1, 14); // both fists thrust: the core launches
+      launchGod(p, w, G);
+    }
+  } else if (G.ph === 'travel') {
+    flare(p, 0.5);
+    G.y = Math.max(U.top, G.y - G.speed);
+    w.cancelCircle(G.x, G.y, U.cancelR);
+    if ((t - G.t0) % U.lashEvery === 0) {
+      for (const e of targets(w)) {
+        if ((e.x - G.x) ** 2 + (e.y - G.y) ** 2 > U.lashR * U.lashR) continue;
+        w.damage(e, U.lashDmg);
+        p.ps.bolts.push({ pts: [[G.x, G.y], [e.x, e.y]], arcs: [], t: 0, life: 5, w: 6, s: w.fxRng.next() * 100 });
+        G.lashes++;
+      }
+    }
+    if (t - G.t0 >= U.travel) { G.ph = 'crit'; G.t0 = t; }
+  } else if (G.ph === 'crit') {
+    w.cancelCircle(G.x, G.y, U.cancelR);
+    if (t - G.t0 >= U.crit) {
+      G.ph = 'boom'; G.t0 = t;
+      if (!G.nuked) {
+        G.nuked = true;
+        for (const e of w.enemies.active) if (onField(e)) { w.damage(e, U.nukeDmg); G.nukeHits++; }
+        w.cancelAll();
+        detonateGod(p, w, G);
+      }
+    }
+  } else if (G.ph === 'boom') {
+    const bt = t - G.t0;
+    if (bt < 40) {
+      w.cancelAll();
+      // Bolts slam down across the whole width (cosmetic: the detonation already hit everything).
+      if (bt % 2 === 0) for (let k = 0; k < 3; k++) {
+        const x = w.fxRng.range(10, W - 10);
+        skyStrike(p, x + w.fxRng.range(-30, 30), -20, x, w.fxRng.range(H * 0.3, H + 10), 8, 8);
+      }
+    }
   }
 }
 
@@ -170,7 +301,7 @@ export default {
   bio: 'An immortal god of thunder who walked out of the storm the night the Furnace gates fell. Oduya rides the Thunderjaw, a black and gold mecha crackling with his lightning, and every strike he throws grows stronger the longer he fights.',
   color: ELEC,
   css: '#8aa6ff',
-  // Art test: the Thunderjaw's paint (black armour, gold trim) + blue-white lightning.
+  // The Thunderjaw's paint (black armour, gold trim) + blue-white lightning.
   palette: { armour: '#1a1c24', frame: '#0c0e14', trim: '#e8b830', energy: '#6aa8ff' },
   stats: { speed: 2, power: 5, range: 4, bomb: 5 },
   speed: { normal: 3.8, focus: 1.7 },
@@ -178,37 +309,39 @@ export default {
   bombStock: 5,
   engines: [[-12, 24], [12, 24]],
   engineColor: [0.5, 0.6, 1.0],
-  optionSprite: 'o_coil',
+  optionSprite: null,
   // Procedural fallback, matched to pilot-portrait.jpg (white hair and beard, laurel, glowing eyes).
   portrait: { skin: '#d8b48e', hair: '#ece6d8', style: 'long', eyes: 'cyber', accent: 'beard', iris: '#e8f4ff', suit: '#5a4a32' },
   weapons: {
-    main: 'Thunder Strand — lightning from both fists that chains through up to 10 targets and arcs to everything around them; gains strands as he fights',
-    focus: 'Thunder Spears — volleys of lightning-fast piercing spears',
+    main: 'Thunder Strand — every punch throws lightning from that fist; it races through up to 10 targets and arcs to everything around them; gains strands as he fights',
+    focus: 'Thunder Spears — punches that throw volleys of lightning-fast piercing spears',
   },
   art: oduyaArt,
   special: {
     name: 'THUNDERSHOCK',
-    desc: 'Electrify every enemy on screen: stunned for 2 s, then they explode',
+    desc: 'Clap the fists: a lightning web races through every enemy on screen, stuns them 2 s, then they explode',
     cooldown: 600,
     duration: 124,
     activate(p, w) {
       w.cancelCircle(p.x, p.y, 160);
-      const list = targets(w);
-      for (const e of list) stun(e, 120);
-      p.ps.shock = { list };
-      ringPulse(w, p.x, p.y, ELEC, 10, 260, 22);
-      w.r.post.flash(0.5, 0.7, 1, 0.25, 0.06);
-      w.r.post.shockwave(p.x, p.y, 0.04, 0.02, 0.6);
-      w.g.camera.addTrauma(0.3);
+      punch(p, -1); punch(p, 1); hold(p, 1, 16);
+      const [lx, ly] = oduyaArt.anchor('fistL'), [rx, ry] = oduyaArt.anchor('fistR');
+      const x0 = p.x + (lx + rx) / 2, y0 = p.y + (ly + ry) / 2 - 10;
+      p.ps.shock = { list: webOrder(targets(w), x0, y0), k: 0, hx: x0, hy: y0, x0, y0, reached: [] };
+      clapFx(p, w, x0, y0);
     },
     update(p, w, t) {
-      if (t !== 120 || !p.ps.shock) return;
-      for (const e of p.ps.shock.list) {
+      const sh = p.ps.shock;
+      if (!sh) return;
+      if (t < 30) flare(p, 1 - t / 30);
+      stepWeb(p, w, t);
+      if (t !== 120) return;
+      for (const e of sh.list) {
         if (!e.alive) continue;
         const x = e.x, y = e.y, boss = e.boss || e.ctrl || e.kind === 'bosspart';
         // Electrified enemies explode (lethal); bosses can't be stunned and take a heavy hit.
         w.damage(e, boss ? 30 : Math.max(30, e.hp * 4));
-        skyStrike(p, x + w.fxRng.range(-30, 30), -20, x, y, 7, 8);
+        nodeBurst(p, w, x, y, 14);
         w.explosions.blast(x, y, 0.7, [0.35, 0.6, 1.6]);
       }
       w.r.post.flash(0.6, 0.75, 1, 0.3, 0.06);
@@ -220,45 +353,49 @@ export default {
   bomb: {
     name: 'STORM CELL',
     duration: 120,
-    activate() {},
+    activate(p, w) {
+      p.ps.storm = { t: 0 };
+      punch(p, -1); punch(p, 1); hold(p, 1, 18); // both fists punch up into the sky
+      w.r.post.flash(0.5, 0.65, 1, 0.2, 0.06);
+    },
     update(p, w, t) {
+      const st = p.ps.storm, B = ODUYA.storm;
       w.cancelAll();
-      if (t % 4 === 0 && t < 108) {
+      if (!st) return;
+      st.t = t;
+      flare(p, t < 100 ? 0.8 : 0);
+      // Bolts climb from both fists into the cloud (feeding it), then it rains lightning.
+      if ((t < B.from && t % 2 === 0) || t % 10 === 0) for (const side of [-1, 1]) {
+        const [fx, fy] = fistAt(p, side);
+        p.ps.bolts.push({ pts: [[fx, fy], [fx + side * 40 + w.fxRng.range(-30, 30), B.cloudY]], arcs: [], t: 0, life: 4, w: 6, s: w.fxRng.next() * 100 });
+      }
+      if (t >= B.from && t <= B.to && (t - B.from) % B.every === 0) {
         const T = targets(w);
         const e = T.length && w.rng.chance(0.75) ? w.rng.pick(T) : { x: w.rng.range(30, W - 30), y: w.rng.range(40, H - 140) };
-        skyStrike(p, e.x + 20, -10, e.x, e.y, 7, 8);
+        skyStrike(p, e.x + w.fxRng.range(-30, 30), B.cloudY, e.x, e.y, 7, 8);
         w.damageCircle(e.x, e.y, 46, 9);
         w.explosions.sparks(e.x, e.y, 10, WHITE, 5, 16, 4);
         if (t % 12 === 0) w.r.post.flash(0.6, 0.7, 1, 0.12, 0.08);
       }
+      if (t === B.clap) {
+        // The closing thunderclap.
+        ringPulse(w, W / 2, H * 0.4, ELEC, 20, 420, 26);
+        w.r.post.flash(0.7, 0.85, 1, 0.45, 0.05);
+        w.r.post.shockwave(W / 2, H * 0.35, 0.05, 0.02, 0.9);
+        w.g.camera.addTrauma(0.5);
+      }
     },
+    end(p) { p.ps.storm = null; },
   },
   ultimate: {
-    name: 'GOD THUNDER BARRAGE',
-    duration: 420, // 7 s
-    activate(p, w) { w.r.post.flash(0.7, 0.85, 1, 0.5, 0.05); },
-    update(p, w, t) {
-      w.cancelAll();
-      if (t >= 400) return;
-      // Bolts from the sky across the whole width, top to bottom of the screen.
-      if (t % 3 === 0) {
-        for (let k = 0; k < 2; k++) {
-          const x = w.fxRng.range(10, W - 10), x0 = x + w.fxRng.range(-30, 30);
-          skyStrike(p, x0, -20, x, H + 10, 9, 6);
-          w.damageLine(x0, -20, x, H + 10, 26, 3);
-        }
-      }
-      // Every half second a bolt hits each enemy on screen.
-      if (t % 30 === 0) {
-        for (const e of targets(w)) {
-          skyStrike(p, e.x + w.fxRng.range(-24, 24), -20, e.x, e.y, 6, 7);
-          w.damage(e, 7);
-        }
-        w.r.post.flash(0.55, 0.7, 1, 0.22, 0.05);
-        w.r.post.shockwave(W / 2, H / 3, 0.02, 0.02, 0.5);
-        w.g.camera.addTrauma(0.25);
-      }
+    name: 'GOD THUNDER',
+    duration: ODUYA.ult.dur, // 7 s
+    activate(p, w) {
+      p.ps.god = { ph: 'charge', t: 0, t0: 0, x: p.x, y: p.y - 58, y0: 0, speed: 0, lashes: 0, nuked: false, nukeHits: 0 };
+      w.r.post.flash(0.5, 0.65, 1, 0.25, 0.05);
     },
+    update(p, w, t) { stepGod(p, w, t); },
+    end(p) { p.ps.god = null; },
   },
 
   sprites(atlas) {
@@ -276,13 +413,17 @@ export default {
   hitSpark: oduyaMechaFx.hitSpark,
 
   init(p, w) {
-    p.ps.fBolt = w.r.frame('o_bolt');
-    p.ps.side = 1;
-    p.ps.strands = STRAND_MIN;
-    p.ps.evo = 0;
-    p.ps.bolts = [];
-    p.ps.strikes = [];
-    p.ps.shock = null;
+    const ps = p.ps;
+    ps.fBolt = w.r.frame('o_bolt');
+    ps.strands = STRAND_MIN;
+    ps.evo = 0;
+    ps.bolts = [];
+    ps.strikes = [];
+    ps.leaders = [];
+    ps.shock = null;
+    ps.storm = null;
+    ps.god = null;
+    rigState(p);
   },
 
   // Death: lose two strands (never below the minimum).
@@ -297,22 +438,19 @@ export default {
 
   update(p, w) {
     oduyaArt.animate(p);
+    rigStep(p);
     const ps = p.ps;
-    ps.kickL = (ps.kickL || 0) * 0.75;
-    ps.kickR = (ps.kickR || 0) * 0.75;
     if (p.state === 'alive') evolve(p, w, 1);
+    stepLeaders(p, w);
+    spearHits(p, w);
+    if (ps.god) godParticles(p, w, ps.god);
     for (const s of ps.bolts) s.t++;
     if (ps.bolts.length) ps.bolts = ps.bolts.filter((s) => s.t < s.life);
     for (const s of ps.strikes) s.t++;
     if (ps.strikes.length) ps.strikes = ps.strikes.filter((s) => s.t < s.life);
   },
 
-  optionLayout(p) {
-    const n = coilCount(p.ps.strands);
-    if (!n) return [];
-    const base = p.focus ? [[-40, 14], [40, 14]] : [[-62, 20], [62, 20]];
-    return n >= 4 ? [...base, [-24, 44], [24, 44]] : base;
-  },
+  optionLayout: () => [],
 
   fire(p, w) {
     if (p.fireCd > 0) return;
@@ -323,7 +461,6 @@ export default {
       p.fireCd = STRIKE_CD;
       strike(p, w);
     }
-    if ((p.t % 10) < (p.focus ? SPEAR_CD : STRIKE_CD)) coils(p, w);
   },
 
   renderFx(p, b) { renderLightning(p, b); },
