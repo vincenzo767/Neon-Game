@@ -337,6 +337,8 @@ function partLayers(Pc, P) {
  * its body and wings from this image, so moving weapons leave no hole. Opt-in
  * `fillSmooth: n` relaxes the neighbour-filled pixels n times (each becomes the
  * mean of its 8 neighbours), turning the fill's streaks into soft gradients.
+ * Opt-in `fillMirror: false`: never copy the mirror (it holds a different part,
+ * e.g. Sera's other arm); every covered pixel is filled from its neighbours.
  * Opt-in `fillClear: [poly, …]`: pixels covered on both sides inside these
  * polygons (and their mirror) become transparent instead (gaps between spikes).
  */
@@ -356,7 +358,7 @@ function fillWings(img, cfg) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (!covered(x, y) || (!cfg.fillAll && !wings.some((wp) => inPoly(x, y, wp)))) continue;
     const mx = Math.round(2 * cfg.axis - x), p = (y * w + x) * 4;
-    if (mx >= 0 && mx < w && !covered(mx, y)) {
+    if (cfg.fillMirror !== false && mx >= 0 && mx < w && !covered(mx, y)) {
       const q = (y * w + mx) * 4;
       for (let c = 0; c < 4; c++) out[p + c] = data[q + c];
     } else left.add(y * w + x);
@@ -397,6 +399,67 @@ function fillWings(img, cfg) {
     fillIdx.forEach((p, i) => { for (let c = 0; c < 4; c++) out[p * 4 + c] = nv[i][c]; });
   }
   return { data: out, w, h, filled };
+}
+
+/**
+ * Opt-in `erase` (source px): remove FX painted into the sprite (e.g. Sera's
+ * nocked ice arrows). `clear` polygons become transparent; `strokes`
+ * ([x0, y0, x1, y1, width]) are filled from their neighbours (growing inward,
+ * or cleared where the strip crosses open background on both sides,
+ * then relaxed `smooth` times); `keep` polygons are never touched. `largest:
+ * true` then keeps only the largest connected piece (drops leftover fragments).
+ */
+function eraseArt(img, cfg) {
+  const { data, w, h } = img;
+  const keep = cfg.keep || [], kept = (x, y) => keep.some((k) => inPoly(x, y, k));
+  let cleared = 0;
+  for (const poly of cfg.clear || []) {
+    const xs = poly.map((p) => p[0]), ys = poly.map((p) => p[1]);
+    for (let y = Math.max(0, Math.min(...ys) | 0); y <= Math.min(h - 1, Math.max(...ys)); y++) for (let x = Math.max(0, Math.min(...xs) | 0); x <= Math.min(w - 1, Math.max(...xs)); x++) {
+      if (inPoly(x, y, poly) && !kept(x, y)) { data[(y * w + x) * 4 + 3] = 0; cleared++; }
+    }
+  }
+  const left = new Set();
+  for (const [x0, y0, x1, y1, wd] of cfg.strokes || []) {
+    const L = Math.hypot(x1 - x0, y1 - y0), ux = (x1 - x0) / L, uy = (y1 - y0) / L, r = wd / 2;
+    for (let y = Math.max(0, Math.floor(Math.min(y0, y1) - r)); y <= Math.min(h - 1, Math.max(y0, y1) + r); y++) for (let x = Math.max(0, Math.floor(Math.min(x0, x1) - r)); x <= Math.min(w - 1, Math.max(x0, x1) + r); x++) {
+      const t = (x - x0) * ux + (y - y0) * uy;
+      const o = (x - x0) * uy - (y - y0) * ux;
+      if (t < 0 || t > L || Math.abs(o) > r || kept(x, y)) continue;
+      // Over open background (transparent just past both edges of the strip): clear it, don't fill.
+      const side = (k) => { const xx = Math.round(x + uy * (k - o)), yy = Math.round(y - ux * (k - o)); return xx < 0 || yy < 0 || xx >= w || yy >= h || data[(yy * w + xx) * 4 + 3] < (cfg.bgAlpha ?? 40); };
+      if (side(r + 6) && side(-r - 6)) { data[(y * w + x) * 4 + 3] = 0; cleared++; continue; }
+      left.add(y * w + x);
+    }
+  }
+  const filled = [...left];
+  for (let pass = 0; pass < 400 && left.size; pass++) {
+    const done = [];
+    for (const p of left) {
+      let n = 0;
+      const acc = [0, 0, 0, 0];
+      for (const q of nbrs(p, w, h)) {
+        if (q < 0 || left.has(q)) continue;
+        for (let c = 0; c < 4; c++) acc[c] += data[q * 4 + c];
+        n++;
+      }
+      if (n) done.push([p, acc.map((v) => Math.round(v / n))]);
+    }
+    for (const [p, v] of done) { for (let c = 0; c < 4; c++) data[p * 4 + c] = v[c]; left.delete(p); }
+  }
+  for (let pass = 0; pass < (cfg.smooth || 0); pass++) {
+    const nv = filled.map((p) => {
+      const x = p % w, y = (p / w) | 0, acc = [0, 0, 0, 0];
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const xx = x + dx, yy = y + dy;
+        if ((dx || dy) && xx >= 0 && yy >= 0 && xx < w && yy < h) { const q = (yy * w + xx) * 4; for (let c = 0; c < 4; c++) acc[c] += data[q + c]; n++; }
+      }
+      return acc.map((v) => Math.round(v / n));
+    });
+    filled.forEach((p, i) => { for (let c = 0; c < 4; c++) data[p * 4 + c] = nv[i][c]; });
+  }
+  console.log(`[${ID}] erase: ${cleared} px cleared, ${filled.length} px filled from neighbours`);
 }
 
 function boxBlur(src, w, h, r) {
@@ -492,6 +555,7 @@ async function processBack(srcFile, label = 'back') {
   const before = await fromRaw({ ...img, data: Buffer.from(img.data) }).png().toBuffer();
   let removed = false;
   if (!hasRealAlpha(img)) { removeBackground(img, label === 'back' ? CFG.holes : [], undefined, undefined, undefined, undefined, CFG.bg, !!CFG.bgPale); removed = true; }
+  if (label === 'back' && CFG.erase) { eraseArt(img, CFG.erase); if (CFG.erase.largest) largestPiece(img); } // opt-in: drop leftover fragments
   cleanAlpha(img);
   const box = alphaBox(img);
   const out = await exportsOf(img, box);

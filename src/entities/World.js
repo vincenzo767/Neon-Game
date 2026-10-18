@@ -244,7 +244,12 @@ export class World {
       e.px = e.x; e.py = e.y;
       e.t++;
       if (e.flash > 0) e.flash--;
-      if (e.ai) { this.firing = e; e.ai(e, this); }
+      // Optional time stop (e.g. Sera's Absolute Zero): enemyHold(e) true = its AI (and a boss's
+      // controller) doesn't run this step and its clock stands still.
+      if (e.ai) {
+        if (this.enemyHold && this.enemyHold(e)) e.t--;
+        else { this.firing = e; e.ai(e, this); }
+      }
       if (e.faction && !e.boss && !e.ctrl) this._factionMotion(e);
       // Remove enemies that entered the field and then left it (or got stuck off-screen).
       const inside = e.x > -20 && e.x < WORLD_W + 20 && e.y > -20 && e.y < WORLD_H + 20;
@@ -408,6 +413,8 @@ export class World {
     // Optional pilot hook when a (non-piercing) shot lands: shotHit(world, i, enemy).
     // It must not spawn shots here (the loop is compacting the pool); queue them.
     const onShotHit = p && p.def.shotHit;
+    // Optional hook when a piercing shot hits: pierceHit(world, i, enemy) (e.g. Sera's frost).
+    const onPierceHit = p && p.def.pierceHit;
     let i = 0;
     while (i < S.count) {
       const sx = S.x[i], sy = S.y[i], sr = S.radius[i];
@@ -425,6 +432,7 @@ export class World {
         if (S.pierce[i] && S.hitUid[i] === en.uid && this.t - S.hitT[i] < PIERCE_REHIT) continue;
         if (S.pierce[i]) { S.hitUid[i] = en.uid; S.hitT[i] = this.t; }
         this.damage(en, S.damage[i], S.dflags[i]);
+        if (S.pierce[i] && onPierceHit) onPierceHit(this, i, en);
         if (!S.pierce[i]) {
           if (onShotHit) onShotHit(this, i, en);
           if (spark) spark(this, sx, sy - 4, Math.PI / 2);

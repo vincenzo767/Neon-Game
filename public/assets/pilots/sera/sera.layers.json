@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "pilot": "sera",
+  "space": "sera_back@2x.png pixels, origin top-left (same as sera.anchors.json); generated from tools/art.config.mjs",
+  "rig": true,
+  "feather": 0.8,
+  "grow": 1.5,
+  "hole": 3,
+  "bodySrc": "under",
+  "layers": {
+    "armR": {
+      "pivot": [284.8, 226],
+      "exclude": [],
+      "part": "arm",
+      "side": "R",
+      "poly": [
+        [268.9, 173.1],
+        [281.4, 171.8],
+        [290.7, 175.8],
+        [292.7, 186.3],
+        [293, 199.5],
+        [295.3, 212.8],
+        [291.4, 219.4],
+        [281.4, 220],
+        [273.2, 212.8],
+        [270.9, 202.8],
+        [267.6, 192.9],
+        [264.3, 183.7]
+      ]
+    }
+  }
+}

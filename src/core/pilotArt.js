@@ -83,6 +83,17 @@ export const ART_MANIFEST = {
     },
     json: { anchors: 'miguerre.anchors.json', layers: 'miguerre.layers.json' },
   },
+  sera: {
+    images: {
+      back2x: 'sera_back@2x.png',
+      outline2x: 'sera_back_outline@2x.png',
+      wings2x: 'sera_wings@2x.png',            // the drawing arm's footprint filled in
+      wingsOutline2x: 'sera_wings_outline@2x.png',
+      front: 'sera_front@2x.png',
+      portrait: 'sera_portrait.jpg',
+    },
+    json: { anchors: 'sera.anchors.json', layers: 'sera.layers.json' },
+  },
 };
 
 const base = () => {

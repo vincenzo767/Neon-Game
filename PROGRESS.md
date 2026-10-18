@@ -29,6 +29,7 @@
 | **Art: Oduya v2** | Thunder-god component mecha for Oduya Rex (current sprite): punching arms (every bolt leaves a fist), flaring lightning wings, every attack rebuilt as beginning → travel → detonation, new God Thunder ultimate (branch `art/oduya-v2`, on top of `art/tess-v2`, not merged) | 🔍 In review |
 | **Art: Lin v2** | Emerald crystal knight as a component mecha (current sprite): whip in front that throws the shards, thrusting spear, beating wings; wider Root Field, enhanced Spear Rain, redrawn Cosmic Spear (stronger charge, visible void with cracked-space edges) (branch `art/lin-v2`, on top of `art/oduya-v2`, not merged) | 🔍 In review |
 | **Art: Miguerre v2** | The void knight renamed **Miguerre Zo'Rajah** (id `miguerre`), with a new horned, winged sword knight as a component mecha (150 units tall): void beams from the horns, a real wing beat (no thrusters), the sword swing that launches the Crescent of Chaos with a fear-inducing vibration, and the Chaos Clone targeting fix (branch `art/miguerre-v2`, on top of `art/lin-v2`, not merged) | 🔍 In review |
+| **Art: Sera** | Hand-made art and a Legendary ice kit for Sera Voss (Glacier), wife of Vincenzo the Conqueror: Frost Shards from her bow (4–16 per volley) that freeze enemies over time, the Zero Field passive, Glacial Focus, Ice Storm Surge (7 s freeze), Frost Arrow Rain bomb, Absolute Zero (12 s screen freeze) (branch `art/sera`, on top of `art/miguerre-v2`, not merged) | 🔍 In review |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -883,6 +884,32 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Miguerre%20Zo%27
 - **FX.** Drawn live after the owner's references, with no cut-out images (polish round): straight eye-beam style void beams, real-smoke ghosts and clones spread wide, a starry black crescent at medium speed, and a cosmic void column for the cannon.
 - **Frame rate.** Storm: about 57 FPS with art versus 53 procedural.
 
+## Art: Sera (branch `art/sera`)
+
+Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Sera%20Voss/ASSET_NOTES.md).
+
+- **Art.**
+  - `top-down-sprite.png` with its five painted ice arrows removed (opt-in `erase`);
+  - the drawing arm draws and releases, with a cyan energy string from the limb tips to the nock;
+  - frost vapour off the wings (no thrusters);
+  - 100 units tall; front view `mecha.png`; the new portrait.
+- **Kit (approved 1 A, 2 B, 3 A, 4 A).** Legendary, Vincenzo the Conqueror's wife.
+  - **Frost Shards:** 4 / 8 / 12 / 16 piercing shards per volley from the nock. Hits build frost that slows enemies, then freezes them solid.
+  - **Zero Field:** unlimited; bullets shatter at its edge (60, or 95 in focus).
+  - **Glacial Focus:** faster volleys.
+  - **Ice Storm Surge:** 260, 7 s freeze.
+  - **Frost Arrow Rain:** freezes enemies and bullets.
+  - **Absolute Zero:** 12 s screen freeze, during which only she moves and fires.
+- **Checks.**
+  - All 8 headless checks pass.
+  - Boss T4: shot 131, focus 149 (was 108 / 75).
+  - Frame rate: storm 57 FPS (procedural 57).
+  - The other pilots are unchanged (identical DPS); all eight art pilots run with no errors.
+- **Feedback round 1 (Absolute Zero).**
+  - The whole screen is covered with ice: hoarfrost, glacier clusters, giant snowflakes, shards and glints, all growing in with the wave.
+  - Bosses freeze too: a new opt-in World `enemyHold` hook holds their AI and controller while they fight.
+  - All 9 checks pass, including a real boss frozen in place with its clock stopped.
+
 ## Art: Miguerre v2 (branch `art/miguerre-v2`)
 
 Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Miguerre%20Zo%27Rajah/ASSET_NOTES.md), "Rebuild v2".
@@ -1206,4 +1233,4 @@ All milestones M1–M7 are complete. In priority order:
 3. Tune pilot balance from play (data in [data/balance.js](src/data/balance.js)) and the scoring constants.
 4. Content: a redesigned mid-boss per faction; the planned second boss per faction (Rail Leviathan, Mantis Gunship, Abyss Stalker Sub, Seraph-Unit, Star-Eater Prism, The Drowned Choir).
 5. Gamepad remapping UI; remaining faction motion traits.
-6. Pilot art: review and merge `art/miguerre-v2` (it contains `art/lin-v2`, `art/oduya-v2`, `art/tess-v2`, `art/bruno-v2`, `art/mira-v2`, `art/kairo-v2`, `art/dax-test`, `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.
+6. Pilot art: review and merge `art/sera` (it contains `art/miguerre-v2`, `art/lin-v2`, `art/oduya-v2`, `art/tess-v2`, `art/bruno-v2`, `art/mira-v2`, `art/kairo-v2`, `art/dax-test`, `art/lin-test`, `art/oduya-test`, `art/tess-test`, `art/bruno-test`, `art/pilot-textures` and `art/mira-test`). Then follow [ART_PIPELINE.md](ART_PIPELINE.md) for the other 10 pilots.

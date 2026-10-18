@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "pilot": "sera",
+  "space": "sera_back@2x.png pixels, origin top-left (1x = half)",
+  "image": {
+    "w": 408,
+    "h": 372,
+    "artH": 360,
+    "pad": 6
+  },
+  "anchors": {
+    "hitbox": [201.8, 175.3],
+    "head": [202.1, 195.2],
+    "nock": [252.9, 188.5],
+    "grip": [143.4, 154.4],
+    "riser": [199.9, 163.6],
+    "stringL": [22.4, 164.2],
+    "stringR": [381.8, 162.6],
+    "limbL": [73.6, 213.2],
+    "limbR": [329.4, 194.2],
+    "footL": [190.4, 58.4],
+    "footR": [226.7, 72.6],
+    "bladeL": [7.3, 323.7],
+    "bladeR": [395.7, 323.7],
+    "lowL": [89.4, 367.9],
+    "lowR": [313.6, 367.9]
+  }
+}

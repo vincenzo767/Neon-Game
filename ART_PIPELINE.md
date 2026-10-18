@@ -276,6 +276,12 @@ It also writes `<id>_wings@2x.png` and `<id>_wings_outline@2x.png`: the sprite w
   - `wings.fillClear: [poly]` (mirrored too): pixels covered on both sides inside it become transparent (gaps between spikes) instead of a neighbour fill;
   - `rig.bob(p)` sets the body's vertical bob (his wing beat lifts him);
   - `renderMecha(p, b, x, y, a, { tint, add })` draws the rigged layers tinted, without FX hooks (his smoke ghosts and clones).
+- **FX painted into a sprite (Sera).** Opt-in `erase` removes them during processing:
+  - `clear` polygons become transparent;
+  - `strokes` (`[x0, y0, x1, y1, width]`) are filled from their neighbours, or cleared where they cross open background on both sides (`bgAlpha` sets what counts as background);
+  - `keep` polygons are never touched; `smooth` relaxes the fill; `largest` drops leftover fragments.
+  - `wings.fillMirror: false` fills a moving part's footprint from its neighbours only, when the mirror holds a different part.
+  - World `pierceHit(world, i, enemy)` reports piercing-shot hits (her frost).
 - `bgPale: true` also clears pale, tinted checker squares (a glow halo painted over the checkerboard, e.g. Tess's blades). It can also take a white-hot glow core touching the halo; redraw that in code.
 
 ---
