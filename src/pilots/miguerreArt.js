@@ -8,7 +8,8 @@ import { RIG, pose, bob } from './miguerreRig.js';
 // draw from the weapon-free `under` image (miguerre_wings@2x.png), so the
 // swinging sword leaves no hole. The FX around them come from miguerreFx.js
 // (RIG_FX). Flies feet-first: the legs (feet) never fire. Every void beam leaves
-// the horns on his head. No thrusters: he flies on his wings. 100 units tall.
+// the horns on his head. No thrusters: he flies on his wings. 150 units tall
+// (sword tip to wing tips; a wingspan of about 102, like Oduya's).
 
 // Owner's theme: void-cosmic red. Glowing red, black, and white-hot cores.
 export const PAL = {
@@ -54,5 +55,7 @@ export const miguerreArt = createMechaArt({
     before: (p, b, api, name) => RIG_FX.before && RIG_FX.before(p, b, api, name),
     overlay: (p, b, api) => RIG_FX.overlay && RIG_FX.overlay(p, b, api),
   },
-  size: 100,
+  // v2 owner's feedback: as big on screen as Oduya. The art's height includes the long
+  // sword held upright, so at 100 his wingspan was only 68 units (Oduya's: 113).
+  size: 150,
 });

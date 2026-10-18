@@ -587,3 +587,16 @@ A headless probe placed enemies beside each clone:
 - Round the shoulders, where the two arms cover each other's mirror, the filled area is soft. It shows only while the sword is swung away.
 - The ghosts and Chaos Clones are still mostly smoke, so their beating wings show faintly.
 - His sounds are unchanged.
+
+## Feedback round 1 (owner: "make it big like Oduya Rex", the select preview, the ultimate)
+
+- **In-game size: 150 units** (was 100). The art's height runs from the sword's tip (held upright) to the wing tips, so at 100 his wingspan was only 68 units against Oduya's 113. At 150 it is about 102, and he reads as big as Oduya (`screenshots/miguerre/v2/size_vs_oduya_and_ult.png`). Gameplay is unchanged: the hitbox, damage and DPS are the same, and the beams still leave the horns.
+- **Select card.** His front view is tall and narrow (wings and the long sword), so it was small in the preview box.
+  - It is now drawn 1.4× bigger (opt-in `previewScale` on the pilot; the other pilots are unchanged).
+  - The pilot name, the vehicle line, the bio and the abilities draw above the preview, so his long name ("MIGUERRE ZO'RAJAH", whose last letter the dark preview used to cover) and the "LEGENDARY" tag stay readable.
+  - See `screenshots/miguerre/v2/select_card.png`.
+- **Ultimate.** The Breathe of the Chaos is now drawn **over** the mecha (`renderAbove`). It pours from between the horns at the back of the body, so the immense beam covers his body ahead of them, and only the wings show at its sides.
+- **Checks.**
+  - All 8 headless checks pass. The size check is now 150, and the clone check attributes each beam to its nearest clone, since at the larger size the horns sit further from the clone's centre.
+  - DPS is unchanged.
+  - Frame rate (headless storm, the machine was busier during this run): art 41 FPS, procedural 36, Oduya 32. The art costs no more than the others.

@@ -178,13 +178,13 @@
 }
 .sel-portrait canvas { width: 100%; height: 100%; display: block; }
 .sel-info { flex: 1; background: rgba(3, 4, 12, 0.6); padding: calc(8 * var(--u)) calc(10 * var(--u)); border-left: 2px solid var(--pc); }
-.sel-name { font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: calc(18 * var(--u)); letter-spacing: 0.08em; text-shadow: 0 0 calc(8 * var(--u)) var(--pc); }
+.sel-name { position: relative; z-index: 1; /* above the mecha preview (long names reach it) */ font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: calc(18 * var(--u)); letter-spacing: 0.08em; text-shadow: 0 0 calc(8 * var(--u)) var(--pc); }
 .sel-name.deny { animation: deny 0.4s; color: #ff4060; }
 @keyframes deny {
   20%, 60% { transform: translateX(calc(-4 * var(--u))); }
   40%, 80% { transform: translateX(calc(4 * var(--u))); }
 }
-.sel-vehicle { font-size: calc(8 * var(--u)); letter-spacing: 0.2em; color: var(--pc); margin: calc(3 * var(--u)) 0 calc(10 * var(--u)); }
+.sel-vehicle { position: relative; z-index: 1; font-size: calc(8 * var(--u)); letter-spacing: 0.2em; color: var(--pc); margin: calc(3 * var(--u)) 0 calc(10 * var(--u)); }
 .stat { display: flex; align-items: center; margin: calc(5 * var(--u)) 0; font-size: calc(8 * var(--u)); letter-spacing: 0.15em; }
 .stat label { width: calc(56 * var(--u)); opacity: 0.8; }
 .pips { display: flex; gap: calc(3 * var(--u)); }
@@ -194,12 +194,12 @@
 @keyframes pip { from { opacity: 0; transform: skewX(-20deg) scaleY(0); } }
 
 .sel-bio {
-  position: absolute; top: calc(330 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u));
+  position: absolute; z-index: 1; /* text above a tall mecha preview (e.g. Miguerre's sword) */ top: calc(330 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u));
   font-size: calc(8 * var(--u)); line-height: 1.55; opacity: 0.9;
   background: rgba(3, 4, 12, 0.55); padding: calc(6 * var(--u)) calc(8 * var(--u));
 }
 .sel-abilities {
-  position: absolute; top: calc(398 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u));
+  position: absolute; z-index: 1; top: calc(398 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u));
   font-size: calc(7.2 * var(--u)); line-height: 1.6;
   background: rgba(3, 4, 12, 0.55); padding: calc(4 * var(--u)) calc(8 * var(--u));
 }

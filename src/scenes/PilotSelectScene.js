@@ -152,6 +152,7 @@ export class PilotSelectScene {
     const art = !p.locked && pilotArt(p.id);
     el.mecha.classList.toggle('show', !!(art && art.images.front));
     if (art && art.images.front) el.mecha.querySelector('img').src = art.images.front.src;
+    el.mecha.style.setProperty('--mscale', (!p.locked && p.previewScale) || 1); // opt-in: a tall, narrow front view drawn bigger
     el.bio.textContent = p.locked ? 'Personnel file sealed by order of the Commissioner.' : p.bio;
     // Update 02: precinct personnel file from the lore data (adds to the bio).
     const lore = !p.locked && pilotLore(p.id);

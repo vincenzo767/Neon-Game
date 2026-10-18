@@ -28,7 +28,7 @@
 | **Art: Tess v2** | Blade component mecha for Tess Kuro: new violet top-down art with swinging arm blades, unlimited-range crescents that erase bullets, glitch-clone focus, Shadow Form special, triple-crescent bomb with clones, void-cross ultimate with a nuclear-scale detonation; Miguerre Zo'Rajah's love interest (branch `art/tess-v2`, on top of `art/bruno-v2`, not merged) | 🔍 In review |
 | **Art: Oduya v2** | Thunder-god component mecha for Oduya Rex (current sprite): punching arms (every bolt leaves a fist), flaring lightning wings, every attack rebuilt as beginning → travel → detonation, new God Thunder ultimate (branch `art/oduya-v2`, on top of `art/tess-v2`, not merged) | 🔍 In review |
 | **Art: Lin v2** | Emerald crystal knight as a component mecha (current sprite): whip in front that throws the shards, thrusting spear, beating wings; wider Root Field, enhanced Spear Rain, redrawn Cosmic Spear (stronger charge, visible void with cracked-space edges) (branch `art/lin-v2`, on top of `art/oduya-v2`, not merged) | 🔍 In review |
-| **Art: Miguerre v2** | The void knight renamed **Miguerre Zo'Rajah** (id `miguerre`), with a new horned, winged sword knight as a component mecha: void beams from the horns, a real wing beat (no thrusters), the sword swing that launches the Crescent of Chaos with a fear-inducing vibration, and the Chaos Clone targeting fix; 100 units tall (branch `art/miguerre-v2`, on top of `art/lin-v2`, not merged) | 🔍 In review |
+| **Art: Miguerre v2** | The void knight renamed **Miguerre Zo'Rajah** (id `miguerre`), with a new horned, winged sword knight as a component mecha (150 units tall): void beams from the horns, a real wing beat (no thrusters), the sword swing that launches the Crescent of Chaos with a fear-inducing vibration, and the Chaos Clone targeting fix (branch `art/miguerre-v2`, on top of `art/lin-v2`, not merged) | 🔍 In review |
 
 > **Specs:** [docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md](docs/NEON_PRECINCT_OVERDRIVE_PROMPT.md) (v3), [docs/UPDATE_01_BEFORE_M4.md](docs/UPDATE_01_BEFORE_M4.md) and [docs/UPDATE_02_WORLD_LORE_ART.md](docs/UPDATE_02_WORLD_LORE_ART.md). Priority if they conflict: UPDATE_02 > UPDATE_01 > prompt.
 
@@ -889,7 +889,7 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Miguerre%20Zo%27
 
 - **Step 1:** the new art read; components and rig plan; baseline (boss T4: beam 131, focus 343); the Chaos Clone bug diagnosed (chains from far clones killed the enemies beside the other clones: 77 of 149 in a probe).
 - **Rename.** Id `miguerre` everywhere (files, assets, folder, atlas `mz_`); Tess's lover renamed too. The `art/dax-test` branch keeps its real name.
-- **Art.** `new-top-down-sprite.png` as a **component mecha**, 100 units tall:
+- **Art.** `new-top-down-sprite.png` as a **component mecha**, 150 units tall (feedback round 1):
   - the sword arm swings;
   - the claw reaches and clenches;
   - the bat wings really beat (no thrusters), with gusts and void feathers.
@@ -905,6 +905,10 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Miguerre%20Zo%27
   - DPS is unchanged (T4: beam 131, focus 343).
   - Frame rate: storm 57 FPS, ultimate 47–53, 30 clones 60.
   - The other six pilots are unchanged (identical DPS); all seven art pilots run with no errors.
+- **Feedback round 1.**
+  - In-game size 150 units: the art includes the upright sword, and his wingspan now about matches Oduya's.
+  - Select preview 1.4× (`previewScale`), with the text drawn above it.
+  - The ultimate is drawn over his body.
 
 ## Art: Lin v2 (branch `art/lin-v2`)
 

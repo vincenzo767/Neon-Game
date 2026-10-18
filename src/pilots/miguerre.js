@@ -276,6 +276,7 @@ export default {
   // Art test: the Overclock's paint (black armour, red light).
   palette: { armour: '#141016', frame: '#060406', trim: '#ff2a3a', energy: '#ff3040' },
   stats: { speed: 5, power: 5, range: 5, bomb: 4 },
+  previewScale: 1.4, // select card: his front view is tall and narrow (wings and the long sword), so it is drawn bigger
   speed: { normal: 5.4, focus: 2.3 },
   hitbox: 2.3,
   bombStock: 3,
@@ -548,7 +549,9 @@ export default {
     nullify(p, w, p.x, p.y, from);
   },
 
-  renderBelow(p, b, x, y) {
+  // v2 owner's feedback: the cannon is drawn over the mecha. It pours from between the
+  // horns (at the back of the body), so the immense beam covers the body ahead of them.
+  renderAbove(p, b, x, y) {
     const u = p.ps.cannon;
     if (!u || u.fade <= 0) return;
     // From between the horns (the clones' heads in focus).

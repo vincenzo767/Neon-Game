@@ -10,7 +10,8 @@
 }
 .sel-mecha.show { display: block; }
 .sel-mecha img {
-  height: 100%; width: auto; display: block;
+  /* height: the box; opt-in per pilot (def.previewScale) bigger, growing down and to the right like the wide views. */
+  height: calc(100% * var(--mscale, 1)); width: auto; display: block;
   filter: drop-shadow(0 0 calc(6 * var(--u)) rgba(80, 200, 255, 0.55));
   animation: mechaBob 3.2s ease-in-out infinite;
 }
