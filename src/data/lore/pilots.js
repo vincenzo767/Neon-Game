@@ -14,7 +14,7 @@ export const PILOT_LORE = {
   oduya: { origin: 'The Furnace', rival: 'ironclad', file: 'Immortal. When the Brotherhood stormed the foundries, he came down with the storm and held the Furnace gates for three days. The Precinct still cannot say where he came from.' },
   lin: { origin: 'The Crown', rival: 'outerstar', file: 'Bio-tech botanist. His emerald crystal is the only thing the Choir\'s crystal growths cannot overgrow.' },
   miguerre: { origin: 'The Grid', rival: 'ironclad', file: 'Street racer who crashed through the edge of the Grid into the void. What came back with him answers only to him, and its beams never stop.' },
-  sera: { origin: 'The Spindle', rival: 'outerstar', file: 'Cryo-systems officer from the ring station. She was in orbit when the Upper Breach opened.' },
+  sera: { origin: 'The Upper Breach', rival: 'outerstar', file: 'Queen of a frozen court beyond the Breach and wife of Vincenzo the Conqueror. She followed the Herald through; the deep still feels the cold where she passed.' },
   nova7: { origin: 'The Crown', rival: 'helix', file: 'A Helix security android that refused a kill order. Its own source code is classified evidence.' },
   rufus: { origin: 'The Docks', rival: 'blacktide', file: 'Scrapyard preacher who builds his ship from whatever the Black Tide sinks.' },
   aiko: { origin: 'The Crown', rival: 'stratos', file: 'Storm-chaser rotor pilot. She flies the Storm Ring weather that grounds the Cartel.' },
@@ -23,7 +23,7 @@ export const PILOT_LORE = {
   cass: { origin: 'The Grid', rival: 'drowned', file: 'Underground DJ whose sonic rigs drive the Covenant\'s whispers out of the Undercity vents.' },
   holt: { origin: 'The Docks', rival: 'blacktide', file: 'Twin salvage divers who mapped the drowned streets before the Covenant sealed them.' },
   warden: { origin: 'Unknown', rival: 'drowned', file: 'The masked Commissioner. Authorises every Precinct operation; no officer has seen the face behind the visor.' },
-  vincenzo: { origin: 'The Upper Breach', rival: 'drowned', file: 'No record exists. The Undercrown calls him the Herald. The deep remembers what he is.' },
+  vincenzo: { origin: 'The Upper Breach', rival: 'drowned', file: 'No record exists. The Undercrown calls him the Herald. The deep remembers what he is. His wife, Sera Voss, followed him through.' },
 };
 
 export const pilotLore = (id) => PILOT_LORE[id] || null;

@@ -408,6 +408,8 @@ export class World {
     // Optional pilot hook when a (non-piercing) shot lands: shotHit(world, i, enemy).
     // It must not spawn shots here (the loop is compacting the pool); queue them.
     const onShotHit = p && p.def.shotHit;
+    // Optional hook when a piercing shot hits: pierceHit(world, i, enemy) (e.g. Sera's frost).
+    const onPierceHit = p && p.def.pierceHit;
     let i = 0;
     while (i < S.count) {
       const sx = S.x[i], sy = S.y[i], sr = S.radius[i];
@@ -425,6 +427,7 @@ export class World {
         if (S.pierce[i] && S.hitUid[i] === en.uid && this.t - S.hitT[i] < PIERCE_REHIT) continue;
         if (S.pierce[i]) { S.hitUid[i] = en.uid; S.hitT[i] = this.t; }
         this.damage(en, S.damage[i], S.dflags[i]);
+        if (S.pierce[i] && onPierceHit) onPierceHit(this, i, en);
         if (!S.pierce[i]) {
           if (onShotHit) onShotHit(this, i, en);
           if (spark) spark(this, sx, sy - 4, Math.PI / 2);
