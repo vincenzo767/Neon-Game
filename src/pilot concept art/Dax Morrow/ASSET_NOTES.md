@@ -311,3 +311,151 @@ The owner asked for no transparency and full light, following `enhance-ultimate.
 - **DPS** (`tools/dps.mjs dax`, boss dummies). Beam T4: 131 (unchanged). Ghost focus T4: 343 averaged over the test window (was 137), because the ramp builds up.
 - **Frame rate (headless, noisy).** 60 idle; about 50–57 with 6 clones and enemies; about 41–49 with 12; 37–58 with 30.
 - **Screenshot:** `screenshots/dax/27_chaos_clones.png`.
+
+---
+
+# Rebuild v2: Miguerre Zo'Rajah (Step 1)
+
+Branch `art/miguerre-v2` (on top of `art/lin-v2`). The owner renames the pilot
+**Dax Morrow → Miguerre Zo'Rajah** everywhere (code, data, docs, file and
+folder names) and supplies a new mecha: `new-top-down-sprite.png` (in-game
+sprite) and `new-mecha.png` (front view). He becomes a component mecha like
+Tess, Oduya and Lin. His powers, abilities and their effects stay; the motion
+and animation are new, and the FX are enhanced.
+
+## The owner's brief
+
+- **Rename** every "Dax Morrow" to "Miguerre Zo'Rajah", including file and folder names.
+- **Void Beam:** the beams now leave the **horns on his head** (owner's screenshot), not the chest.
+- **Wings:** no thrusters any more. He flies on his wings, with an improved wing-beat motion.
+- **Size:** 100 units tall, like Oduya Rex.
+- **Crescent of Chaos (special):** the crescent launches as the long sword swings, with the arm moving through the swing. During the swing a terrifying vibration distorts the enemies, and they begin to fear him.
+- **Chaos Clone (bomb), bug:** some clones don't shoot enemies on their own side; the far side shoots instead. Each clone must shoot whatever comes nearest to it.
+- **Everything else is preserved**, apart from the new motion and animation, the enhanced FX and bug fixes.
+
+## Images
+
+| File | Size | Transparency | What it shows |
+|---|---|---|---|
+| `new-top-down-sprite.png` | 1024×1536 PNG RGB | **No**: painted checkerboard (`bg: 'checker'`, as before) | **In-game sprite**, flying up feet-first. A black armoured knight with copper-orange light lines. From top to bottom: the two **legs** (feet at the top, y ≈ 270–560) with a central spike between them and outer hip spikes; the chest; the **head** at the bottom of the body (≈ 512, 850–955) with **two swept horns** (white-edged blades running back and out to about (405, 1010) and (620, 1010)); the **left arm** ending in an open claw (≈ 235, 610); the **right arm** holding a **long sword** upright (hilt ≈ 775, 760; tip ≈ 855, 10); two huge **bat wings** from the shoulders down to the bottom corners. Mirror-symmetric about x ≈ 512 apart from the arms. |
+| `new-mecha.png` | 1024×1536 PNG RGB | No: painted checkerboard | Front view, upright: wings spread, horned head, sword in his right hand (pointing down), claw on the left. **Select card and cut-in.** |
+| `pilot-portrait.jpg` | (unchanged) | No | Still the pilot portrait unless a new one is supplied. |
+
+The old `top-down-main.jpg` and `top-down-front.jpg` stay in the folder but are no longer used.
+
+**The feet (the two legs at the top) never fire.**
+
+## Components and rig plan (`new-top-down-sprite.png` pixels, estimates; checked in Step 2)
+
+| Part | Where | Motion |
+|---|---|---|
+| **Body** | Legs, hip spikes, chest, head and horns | Fixed; the head's horns glow and charge. |
+| **Hitbox** | Chest, ≈ (512, 760) | Lands on `player.x/y`. |
+| **Horns** (`hornL/R`) | White-edged horn blades, ≈ (455, 930) and (570, 930) midway along them; tips ≈ (405, 1010) / (620, 1010) | **Every void beam leaves a horn.** A red charge runs along the horn and flares as the beam leaves. |
+| **Sword arm** (one-sided part, right) | Right arm from the shoulder ≈ (690, 800) to the hand ≈ (775, 760), and the sword (tip ≈ 855, 10) | Split at the hand: the arm turns about the shoulder and the sword about the wrist, with the elbow formula used by Tess, Oduya and Lin. At rest it holds the sword up and sways; it swings for the special. |
+| **Claw arm** (one-sided part, left) | Left arm, shoulder ≈ (330, 790), claw ≈ (235, 610) | Small motion: the claw opens and reaches during the swing and clenches through the ultimate. |
+| **Wings** (mirrored layers) | Root ≈ (380, 900) / (645, 900), spanning to the bottom corners | **A real wing beat** (below). |
+
+**Hidden art.** The sword is painted over the right wing and the right hip spike. A weapon-free `under` image (as for Lin) fills that area from the mirrored left side, so the swinging sword leaves no hole. The mirrored area on the left also contains the claw arm, so that small overlap is filled from neighbouring pixels instead. It may look a little soft while the sword is swung away.
+
+**Size: 100 units** for the whole art height (sword tip to wing tips), the same measure as Oduya (was 90).
+
+### Wing beat (no thrusters)
+
+- The thrusters and their plumes are removed.
+- **Beat cycle:** a strong downstroke (wings spread and sweep forward, foreshortened through the rig's `sx`), then a slower upstroke (they fold back and in). Idle about 1 beat a second, faster when moving, a slow glide while focused (the parked body), and wide-spread holds for the swing and the ultimate.
+- **Wing FX:** each downstroke pushes a dark gust ripple and sheds black-red void feathers and smoke from the trailing edges. The copper light lines on the wings pulse with the beat.
+- The body bobs slightly with each stroke.
+
+## Today's kit (baseline, preserved)
+
+`tools/dps.mjs dax` (boss-flagged dummies, since normal enemies die in one hit):
+
+| Mode | T1 | T2 | T3 | T4 |
+|---|---|---|---|---|
+| Beam, boss | 58 | 82 | 107 | 131 |
+| Ghost focus, boss (ramp ×1 → ×3) | 152 | 216 | 279 | 343 |
+
+- **Void Beam:** an instant beam to the nearest enemy, then a chain racing enemy to enemy; one-hit kills (not bosses); erases attacks around him.
+- **Ghost Launch (focus):** a smoke ghost and five clones fire beams that grow stronger the longer he holds focus; he is intangible.
+- **Crescent of Chaos (special):** the giant Getsuga-style crescent sweeps forward, erasing attacks and killing regular enemies outright (three in focus).
+- **Chaos Clone (bomb):** six smoke clones far from him, firing until the stage is cleared.
+- **Breathe of the Chaos (ultimate):** the 7 s crimson-and-black cannon (three in focus).
+
+## The Chaos Clone bug (diagnosed)
+
+A headless probe placed enemies beside each clone:
+
+- **Targeting is correct.** With one tough enemy beside each clone, every clone struck its own neighbour (6 × 10 strikes, no strays).
+- **The chains are the problem.** With normal enemies popping up beside the clones, 149 were killed: **72 by the clone beside them and 77 by a chain arriving from elsewhere.** One clone's strike kills its nearest enemy, then its chain races across the whole screen (18 units a step, up to 64 hops) and kills the enemies beside the other clones before those clones fire. The clones also fire in two locked groups (even and odd), so the late group finds its side already cleared. What you see is beams from the far side killing things right next to a clone.
+- **Planned fix (decision 3).** Each Chaos Clone guards **its own side**, meaning every enemy closer to it than to any other clone:
+  - it fires as soon as an enemy is on its side, on its own cooldown (still every 6 steps, so boss damage is unchanged);
+  - its chain only hops to enemies on its side.
+
+  So every enemy is shot by the clone nearest to it. His own beam (from the horns) still chains anywhere.
+
+## Proposed redesign (motion and FX; damage unchanged unless noted)
+
+- **Void Beam (main).**
+  - Strikes alternate between the left and right horn.
+  - Each strike: a red charge runs from the horn's root to its edge, the horn flares, and the beam leaves it, starting thin and widening as it reaches the target. Black shards spray off the horn, and there is a star burst on impact.
+  - The racing chain head gets a brighter streak and black smoke trailing behind it.
+  - The interception arcs also leave the horns.
+- **Ghost Launch (focus).**
+  - The launch: wings snap down in one big stroke and the ghost tears forward out of a smoke burst.
+  - The ghost and clones are the new mecha in smoke, with their wings beating out of step. Their beams leave their own horns.
+  - The parked body glides with its wings half spread.
+- **Crescent of Chaos (special).**
+  - **The swing (about 0.6 s):**
+    - *Wind-up:* the sword arm draws back and up, the claw reaches forward, the wings flare, and the blade charges along its length (red veins, black flame licking off it).
+    - *Slash:* the arm swings the sword across the front (right to left), with a black-red arc trail following the blade.
+    - *Launch:* at the middle of the swing the crescent tears off the blade and travels forward as today: same shape, speed, size and damage.
+    - *Follow-through:* the arm settles back.
+  - **Terrifying vibration**, during the swing: shock rings and a heat-haze screen distortion roll out from him, the screen trembles, and every enemy on screen **shakes and is drawn distorted**, with a red "dread" glow and twitching.
+  - **Fear (decision 2).** Regular enemies on screen freeze in fear for 2 s: they stop shooting, tremble and back away from him. Bosses tremble visually but keep attacking.
+  - In focus, the two outermost clones swing their own swords and cast theirs too (as today).
+- **Chaos Clone (bomb).**
+  - Each clone rises out of a smoke vortex with a wing beat. Their beams leave their horns.
+  - The bug is fixed as above.
+- **Breathe of the Chaos (ultimate).**
+  - The cannon is the same (crimson-and-black column, rings, blades, spheres), but it now pours **from between the horns**.
+  - *Charge, 0.4 s:* the wings spread wide, the horns blaze and black lightning gathers between them. The beam then erupts.
+  - Through the ultimate: the claw clenches, the wings hold spread with slow heavy beats, and heat haze rolls off the horns. Duration and damage are unchanged.
+- **Hits and explosions.** The same red and black style, with more motion: a brief red flash, shards spinning out and a fading ring.
+
+## Settled (no answer needed)
+
+- **New name:** "MIGUERRE ZO'RAJAH" in the game, "Miguerre Zo'Rajah" in text.
+- **New id `miguerre`:**
+  - files `miguerre.js`, `miguerreArt.js`, `miguerreFx.js` and the new `miguerreRig.js`;
+  - assets `public/assets/pilots/miguerre/`, script `npm run art:miguerre`, screenshots `screenshots/miguerre/`;
+  - source folder `src/pilot concept art/Miguerre Zo'Rajah`.
+  - Atlas names move from `dax`/`dx_` to `miguerre`/`mz_`.
+  - Tess's lore and bio name Miguerre Zo'Rajah as the man she loves.
+  - Every document's mentions are updated too.
+  - **Not renamed:** git history and the old `art/dax-test` branch name. Old high-score entries keep the name they were saved with.
+- **Unchanged:**
+  - the vehicle name **OVERCLOCK**;
+  - his story (only the name changes);
+  - the portrait;
+  - colours and stats;
+  - Legendary status;
+  - 3 bombs;
+  - every damage number, cooldown and duration (the crescent's damage, size and speed included).
+- **Feet never fire.** The beams leave the horns; the crescent leaves the sword.
+- **The procedural fallback stays**, renamed.
+
+## Decisions needed
+
+1. **How the horns fire.**
+   - **A (recommended):** strikes alternate between the left and right horn.
+   - **B:** both horns fire together every strike, as two beams converging on the target, with the same total damage.
+2. **The fear.**
+   - **A (recommended):** a real effect. During the swing every regular enemy on screen is frozen in fear for 2 s (no shooting; they tremble and back away from him). Bosses only tremble visually.
+   - **B:** visual only. They tremble and distort, but keep moving and shooting.
+3. **Chaos Clone fix.**
+   - **A (recommended):** each clone guards its side, as above: it fires as soon as an enemy is on its side, and its chain stays on its side.
+   - **B:** Chaos Clones stop chaining; each strike hits only the clone's nearest enemy.
+4. **Ultimate origin.**
+   - **A (recommended):** the cannon pours from between the horns, after a 0.4 s horn charge. The 7 s duration starts after the charge, so the total is 7.4 s, and he is invulnerable through the charge too.
+   - **B:** keep the chest origin (no charge), and only add the horn glow and wing motion.
