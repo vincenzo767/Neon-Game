@@ -233,7 +233,7 @@ It also writes `<id>_wings@2x.png` and `<id>_wings_outline@2x.png`: the sprite w
 - On the 4096 atlas, Kairo takes about 7 % of the space.
 - `main` already falls back to 0.85 texel scale on the 2048 atlas.
 
-**Component mecha (`parts` in `art.config.mjs` → `rig: true`; Kairo v2, Mira v2, Bruno v2, Tess v2).** For art whose parts move far: wings that fold away, cannons that recoil, articulated sections.
+**Component mecha (`parts` in `art.config.mjs` → `rig: true`; Kairo v2, Mira v2, Bruno v2, Tess v2, Oduya v2).** For art whose parts move far: wings that fold away, cannons that recoil, articulated sections.
 - **Config.** In source pixels, a mirror `axis` and a `list` of parts `{ name, poly, pivot, split?, exclude?, overlap? }` (left side). Optional `hole` and `grow` (@2x px).
   - `split: [a, b]` cuts a part in two along a line: `<name>Root<L|R>` holds the pivot; `<name>Tip<L|R>` gets an `overlap` tab (8 px) under the root.
   - `exclude` names parts drawn over this one; their pixels never go into it.
@@ -255,7 +255,8 @@ It also writes `<id>_wings@2x.png` and `<id>_wings_outline@2x.png`: the sprite w
   - Mira (`miraRig.js`): a visual focus cycle around her unchanged needle stream.
   - Bruno (`brunoRig.js`): the shoulder-cannon focus cycle and the shoulder recoil.
   - Tess (`tessRig.js`, her own rig, without `createRig`): two arms split at the elbow, one slash per volley, alternating. A blade turns about the elbow as a rotation about the shared pivot plus the offset that keeps the elbow in place.
-  - Each pilot keeps its rig state in its own `p.ps` key (`kr`, `mr`, `br`, `tr`).
+  - Oduya (`oduyaRig.js`, his own rig, on the unchanged sprite): the arms are split at the elbow, and the gauntlet punches along its own axis (a `tx`/`ty` slide in the layer frame plus an aim turn about the elbow). The wings flare and fold.
+  - Each pilot keeps its rig state in its own `p.ps` key (`kr`, `mr`, `br`, `tr`, `or`).
 - **Opt-in rig options** (Bruno's artillery; Kairo and Mira use none, and their rig output is byte-identical):
   - `names`: the two arrays' layer and anchor prefixes (`shoulder` / `side`);
   - `levels`: the deployment target per tier, so an array can stop part-way;

@@ -290,3 +290,115 @@ Damage by strand level (3 / 5 / 7 / 10 strands):
 ## Unchanged
 
 Strand growth, the stats, the speed, the bomb stock (5), the hitbox (3.0), the size (100 units), the bio, and the procedural fallback.
+
+## Decisions at the Step 1 checkpoint (approved by the owner)
+
+1. **A:** the coils are removed; their damage moves into arcs thrown from the punching fist.
+2. **A:** strand damage lands when the leader bolt arrives.
+3. **Yes:** the ultimate numbers as proposed.
+4. **A:** the spear burst is cosmetic.
+5. **Yes:** the special and bomb keep their rules and damage, with new animation.
+
+## Steps 2–6: results
+
+### Art and rig
+
+- **Processing.** `npm run art:oduya` on the same sprite, now with `parts`:
+  - `arm`, split at the elbow: `armRoot` is the elbow joint and upper arm (pivot at the shoulder); `armTip` is the gauntlet and gold fist;
+  - `wing`, the lightning wing (it excludes the arm).
+  - Sprite size (421×372 @2x), portrait and front view are unchanged.
+- **Rig** (`src/pilots/oduyaRig.js`, his own):
+  - **Punch:** every bolt is a punch by one arm, alternating. The next gauntlet draws back down its axis while the other strikes. On release it shoots 30 @2x px out along its axis, turned up to 0.22 rad toward the target, kicks back and settles.
+  - **Both arms at once:** `hold()` drives both arms together: the clap, the upward punch, and the ultimate's raise and thrust.
+  - **Wings:** they flare while charging, in focus and during the special, bomb and ultimate; they fold back a little with each punch.
+- **Draw order:** wings, then upper arms, then the body, then the gauntlets.
+- **Rig FX:**
+  - the fist crackles while drawn back;
+  - the knuckles flare on the strike;
+  - a lightning link bridges the wrist while the gauntlet is thrust out, covering the gap the slide opens;
+  - the wings' painted lightning flickers with every strike and while flaring.
+
+### Kit (each attack: beginning → travel → detonation; numbers in `src/pilots/oduyaTuning.js`)
+
+- **Thunder Strand:**
+  - **Beginning:** the punch and a fist flash.
+  - **Travel:** a leader bolt races from the posed fist along the chain at 60 units per step. Each node follows its enemy while the leader is on its way, and the bolt stays lit behind it.
+  - **Detonation:** a node burst at each enemy, where the damage lands, and the arcs to enemies nearby.
+  - Strand rules and damage are unchanged.
+  - From 5 strands each punch also throws 2 short arcs from the fist (4 from 8 strands), at 0.48 damage each. That equals the old coils' 7.2 DPS per coil.
+- **Thunder Spears (focus):**
+  - **Beginning:** a punch.
+  - **Travel:** the spears fly from the extended fist.
+  - **Detonation:** a cosmetic burst where a spear hits.
+- **Thundershock:**
+  - **Beginning:** both fists clap together and a shock ring bursts out.
+  - **Travel:** a lightning web races from the clap through every enemy on screen (nearest-neighbour path, 40 units per step). Each one is stunned when the web reaches it, until the shared 2 s mark.
+  - **Detonation:** each explodes in a node burst; bosses take 30, as before. The old sky bolts are gone, since all the lightning now comes from him.
+- **Storm Cell:**
+  - **Beginning:** both fists punch up and bolts climb from the knuckles into a storm cloud that forms over the screen (dark billows lit by a blue underglow and inner flashes). The fists keep feeding it.
+  - **Travel:** the same 27 strikes as before rain from the cloud.
+  - **Detonation:** a closing thunderclap (ring, flash, shockwave, shake), then the cloud clears.
+- **God Thunder (ultimate, 7 s):**
+  1. **Charge** (1 s): both fists draw back and the wings flare wide. Lightning streams from both fists into a thunder core growing between them, with rings spinning faster and sparks drawn in.
+  2. **Launch:** both fists thrust out (flash, pressure rings, shockwave, shake).
+  3. **Travel** (3 s up to y = 150):
+     - every 6 steps it lashes 3 damage at each enemy within 220 units;
+     - it erases bullets within 120;
+     - it leaves a crackling wake.
+  4. **Critical charge** (0.6 s): the core swells and shakes, white cracks spread from it, and lightning is pulled in from the sky. It turns white.
+  5. **Detonation:** 60 damage once to every enemy on the field (bosses included), and every bullet cleared. Effects:
+     - a flash that overpowers the screen;
+     - a shock front and a ground ring;
+     - a dome of lightning;
+     - bolts slamming down across the whole width for 0.7 s.
+  6. **Aftermath:** residual arcs crackle over the field and fade.
+- **Removed:** the coil options (`optionLayout` is empty), the old sky bolts of the special and ultimate, and the art-test `kickL` / `kickR` wing kick.
+- **Kept:** the procedural fallback (`&noart` works).
+
+### Tests
+
+**Headless gameplay checks** (the real World and Player; the script is kept in the session scratchpad). All passed:
+
+| Check | Result |
+|---|---|
+| Strand | The leader starts at the posed punching fist. Damage on an enemy 400 units ahead lands 8 steps (0.13 s) after the punch. The fists alternate. |
+| Fist arcs | 0 / 2 / 4 per punch at 3 / 5 / 8 strands; no coil options. |
+| Thundershock | The web reached all 6 enemies in 36 steps. All 5 regular enemies were stunned and exploded together at 2 s; the boss took 30. |
+| Storm Cell | 27 cloud strikes, the same as before. |
+| God Thunder | Phases ran charge → travel → crit → boom → end. The detonation hit each of 4 enemies (including a boss) exactly once. Lashes hit only enemies within 220 of the core, and no bullets were left. |
+
+- **Ultimate totals** (measured): an enemy near the path took **135**, a boss beside it 114, enemies out of reach 60.
+  - That is above the 90–100 estimated at Step 1; the old barrage dealt 98.
+  - If wanted, `lashEvery` 6 → 10 brings the near-path total to about 105.
+
+**DPS** (`tools/dps.mjs oduya`, boss target, by strand level 3 / 5 / 7 / 10):
+- Strand: 42 / 65 / 73 / 99, unchanged.
+- Focus: 28 / 57 / 71 / 99 (was 28 / 56 / 71 / 99).
+- Wave clear (line): 132 / 229 / 275 / 343 (was 133 / 230 / 277 / 346).
+
+**Frame rate** (1,500-bullet storm, headless):
+
+| Situation | With art | Procedural |
+|---|---|---|
+| Firing | 51.3 FPS | 47.9 |
+| Focus | 51.5 | 50.3 |
+| Ultimate, first 3 s | 51.0 | 53.7 |
+| Ultimate, next 3 s | 59.0 | 51.5 |
+
+**Regressions:**
+- Tess, Bruno, Mira, Kairo and Dax DPS are identical to the baseline.
+- All seven art pilots load and play every tier, focus, special, bomb and ultimate with no errors.
+
+**Screenshots** in `screenshots/oduya/v2/`:
+- `sheet_poses` (rest, left punch, both punches, wings flared and fists drawn back);
+- `sheet_fire` (strands and focus);
+- `sheet_special_bomb`;
+- `sheet_ult` (every phase);
+- `ult_detonation`.
+
+### Known limitations
+
+- The body, drill legs and head don't move; the arms and wings do.
+- At high strand counts the screen fills with bright bolts (unchanged from the art test).
+- The storm cloud is subtle on very dark stages.
+- The sounds are unchanged.
