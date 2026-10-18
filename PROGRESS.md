@@ -905,6 +905,10 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Sera%20Voss/ASSE
   - Boss T4: shot 131, focus 149 (was 108 / 75).
   - Frame rate: storm 57 FPS (procedural 57).
   - The other pilots are unchanged (identical DPS); all eight art pilots run with no errors.
+- **Feedback round 1 (Absolute Zero).**
+  - The whole screen is covered with ice: hoarfrost, glacier clusters, giant snowflakes, shards and glints, all growing in with the wave.
+  - Bosses freeze too: a new opt-in World `enemyHold` hook holds their AI and controller while they fight.
+  - All 9 checks pass, including a real boss frozen in place with its clock stopped.
 
 ## Art: Miguerre v2 (branch `art/miguerre-v2`)
 

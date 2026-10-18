@@ -87,6 +87,70 @@ function spikeTex(ctx, w, h) {
   ctx.beginPath(); ctx.moveTo(w * 0.5, 0); ctx.lineTo(w * 0.62, h); ctx.lineTo(w * 0.42, h); ctx.closePath(); ctx.fillStyle = '#fff'; ctx.fill();
 }
 
+/** A big dendrite snowflake: six arms with layered side branches, a hexagonal plate at its heart. */
+function bigFlakeTex(ctx, w, h) {
+  const cx = w / 2, cy = h / 2, R = w * 0.48;
+  ctx.lineCap = 'round'; ctx.strokeStyle = '#fff';
+  const arm = (a, len, wd, depth) => {
+    const ex = cx + Math.cos(a) * len, ey = cy + Math.sin(a) * len;
+    ctx.lineWidth = wd; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke();
+    for (const f of [0.28, 0.46, 0.62, 0.78, 0.9]) {
+      const bx = cx + Math.cos(a) * len * f, by = cy + Math.sin(a) * len * f, L = len * 0.36 * (1.05 - f) * (depth ? 1 : 0.6);
+      for (const sd of [-1, 1]) {
+        const ba = a + sd * 1.05, tx = bx + Math.cos(ba) * L, ty = by + Math.sin(ba) * L;
+        ctx.lineWidth = wd * 0.6; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(tx, ty); ctx.stroke();
+        for (const g of [0.45, 0.75]) { // twigs on the branches
+          const gx = bx + Math.cos(ba) * L * g, gy = by + Math.sin(ba) * L * g, l2 = L * 0.3;
+          ctx.lineWidth = wd * 0.35; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + Math.cos(a) * l2, gy + Math.sin(a) * l2); ctx.stroke();
+        }
+      }
+    }
+    // A diamond tip.
+    ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex - Math.cos(a - 0.35) * len * 0.1, ey - Math.sin(a - 0.35) * len * 0.1);
+    ctx.lineTo(ex - Math.cos(a) * len * 0.16, ey - Math.sin(a) * len * 0.16); ctx.lineTo(ex - Math.cos(a + 0.35) * len * 0.1, ey - Math.sin(a + 0.35) * len * 0.1); ctx.closePath();
+    ctx.fillStyle = '#fff'; ctx.fill();
+  };
+  for (let k = 0; k < 6; k++) arm(k / 6 * TAU, R, w * 0.022, 1);
+  for (let k = 0; k < 6; k++) arm((k + 0.5) / 6 * TAU, R * 0.42, w * 0.012, 0);
+  ctx.beginPath();
+  for (let k = 0; k < 6; k++) { const a = k / 6 * TAU, x = cx + Math.cos(a) * R * 0.16, y = cy + Math.sin(a) * R * 0.16; k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.closePath(); ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill(); ctx.lineWidth = w * 0.01; ctx.stroke();
+}
+/** A glacier crystal cluster: tall faceted prisms fanning up from a common root. */
+function clusterTex(ctx, w, h) {
+  const prisms = [[0, 1, 0.12], [-0.32, 0.72, 0.1], [0.3, 0.8, 0.1], [-0.6, 0.5, 0.08], [0.58, 0.55, 0.08], [-0.14, 0.6, 0.07], [0.15, 0.46, 0.07]];
+  const bx = w / 2, by = h * 0.97;
+  for (const [a, L, wd] of prisms) {
+    const ux = Math.sin(a), uy = -Math.cos(a), len = h * 0.92 * L, half = w * wd;
+    const tx = bx + ux * len, ty = by + uy * len, nx = -uy, ny = ux;
+    ctx.beginPath();
+    ctx.moveTo(bx + nx * half, by + ny * half); ctx.lineTo(bx + ux * len * 0.82 + nx * half, by + uy * len * 0.82 + ny * half);
+    ctx.lineTo(tx, ty); ctx.lineTo(bx + ux * len * 0.82 - nx * half, by + uy * len * 0.82 - ny * half); ctx.lineTo(bx - nx * half, by - ny * half); ctx.closePath();
+    const g = ctx.createLinearGradient(bx - nx * half, by - ny * half, bx + nx * half, by + ny * half);
+    g.addColorStop(0, 'rgba(255,255,255,0.35)'); g.addColorStop(0.5, 'rgba(255,255,255,0.9)'); g.addColorStop(1, 'rgba(255,255,255,0.45)');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(tx, ty); ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 0.7; ctx.stroke();
+  }
+}
+/** Feathery frost (hoarfrost veins branching across a tile), for covering the screen. */
+function frostTex(ctx, w, h) {
+  let seed = 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  ctx.strokeStyle = '#fff'; ctx.lineCap = 'round';
+  const vein = (x, y, a, len, wd, depth) => {
+    const ex = x + Math.cos(a) * len, ey = y + Math.sin(a) * len;
+    ctx.globalAlpha = 0.35 + 0.4 * rnd(); ctx.lineWidth = wd; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
+    if (depth <= 0) return;
+    for (let k = 1; k <= 3; k++) {
+      const u = k / 4, px = x + (ex - x) * u, py = y + (ey - y) * u;
+      vein(px, py, a + (rnd() < 0.5 ? -1 : 1) * (0.6 + 0.4 * rnd()), len * 0.45, wd * 0.6, depth - 1);
+    }
+  };
+  for (let k = 0; k < 9; k++) vein(rnd() * w, rnd() * h, rnd() * TAU, w * (0.25 + 0.25 * rnd()), 1.2, 2);
+  ctx.globalAlpha = 1;
+}
+
 /** Atlas textures (part of sera.js `sprites`). */
 export function seraFxSprites(atlas) {
   atlas.add('sv_shard', 30, 8, shardTex, { scale: 3 });
@@ -96,6 +160,9 @@ export function seraFxSprites(atlas) {
   atlas.add('sv_casing', 26, 30, casingTex, { scale: 3 });
   atlas.add('sv_arrow', 14, 52, arrowTex, { scale: 3 });
   atlas.add('sv_spike', 10, 30, spikeTex, { scale: 3 });
+  atlas.add('sv_bigflake', 96, 96, bigFlakeTex, { scale: 3 });
+  atlas.add('sv_cluster', 64, 96, clusterTex, { scale: 3 });
+  atlas.add('sv_frost', 96, 96, frostTex, { scale: 3 });
 }
 
 const fr = (p) => p.ps.fr;
@@ -262,13 +329,13 @@ export function renderFrost(p, b) {
       }
     }
     if (fz > 0) {
-      const life = e.frozenMax || fz, grow = Math.min(1, (life - fz) / 8 + 0.2), pulse = 0.8 + 0.2 * Math.sin(t * 0.08 + s);
+      const grow = Math.min(1, (e.iceAge || 0) / 8 + 0.2), pulse = 0.8 + 0.2 * Math.sin(t * 0.08 + s);
       const cw = r * 2.7 * grow, ch = r * 3.0 * grow;
       b.draw(F.glow, e.x, e.y, cw * 1.2, ch * 1.2, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.5 * pulse, 1);
       b.draw(f.casing, e.x, e.y, cw, ch, hash(s) * 0.6 - 0.3, 0.7, 0.88, 1.0, 0.6, 0);
       b.draw(f.casing, e.x, e.y, cw, ch, hash(s) * 0.6 - 0.3, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.35, 1);
       b.draw(f.flake, e.x + r * 0.2, e.y - r * 0.2, r * 1.1, r * 1.1, t * 0.01 + s, PAL.core[0], PAL.core[1], PAL.core[2], 0.5 * pulse, 1);
-      if (fz < 24) { // cracks before the casing breaks
+      if (fz < 24 && !e.held) { // cracks before the casing breaks
         const c = 1 - fz / 24;
         for (let j = 0; j < 3; j++) {
           const a = hash(s + j * 7) * TAU;
@@ -451,16 +518,15 @@ export function arrowImpact(w, x, y, big) {
 
 // ------------------------------------------------------------ frozen bullets, Absolute Zero
 
-/** Frozen enemy bullets (bomb, ultimate): each held in a small ice shell (up to 400 drawn). */
+/** Frozen enemy bullets (bomb, ultimate): each held in a small ice shell (up to 250 drawn). */
 export function renderFrozenBullets(p, b, crack = 0) {
   const B = p.w.bullets, F = p.F, f = fr(p);
   let n = 0;
-  for (let i = 0; i < B.count && n < 400; i++) {
+  for (let i = 0; i < B.count && n < 250; i++) {
     if (B.spd[i] !== 0) continue;
     n++;
     const x = B.x[i], y = B.y[i], s = 9 + B.radius[i] * 1.6;
-    b.draw(f.crystal, x, y, s, s * 1.15, (i * 0.7) % TAU, 0.7, 0.88, 1.0, 0.5, 0);
-    b.draw(f.crystal, x, y, s * 0.8, s * 0.9, (i * 0.7) % TAU, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.35, 1);
+    b.draw(f.crystal, x, y, s, s * 1.15, (i * 0.7) % TAU, 0.45, 0.8, 1.0, 0.7, 1);
     if (crack > 0 && (i & 1)) jag(b, F, x - s * 0.4, y - s * 0.4, x + s * 0.4, y + s * 0.4, 3, 3, 1, PALE, crack, i);
   }
 }
@@ -491,18 +557,52 @@ export function renderAbsolute(p, b) {
     }
     b.draw(F.white, W / 2, H / 2, W, H, 0, 0.6, 0.8, 1.0, 0.1 * k, 1);
   }
-  // Phase C: a cold atmosphere, faint crystal geometry and frost veins over the grid.
-  const g = Math.min(1, tc / 30) * (rel < 20 ? rel / 20 : 1), pulse = 0.85 + 0.15 * Math.sin(t * 0.04);
-  b.draw(F.white, W / 2, H / 2, W, H, 0, 0.25, 0.45, 0.8, 0.08 * g, 1);
+  // Phase C: the battlefield glazes over: hoarfrost across the whole screen, glacier crystal
+  // clusters thrusting in from every edge, giant snowflakes, scattered ice shards and glints,
+  // all growing in as the wave passes them (a clear pocket stays round her), plus faint crystal
+  // geometry and frost veins over the grid.
+  const g = Math.min(1, tc / 30) * (rel < az.REL ? Math.max(0, rel / az.REL) : 1), pulse = 0.85 + 0.15 * Math.sin(t * 0.04);
+  const R = tc * 32, ice = az.ice, f = fr(p);
+  const grow = (d) => { const u = Math.max(0, Math.min(1, (R - d) / 70)); return u * u * (3 - 2 * u); };
+  const clear = (x, y) => { const d = Math.hypot(x - p.x, y - p.y), u = Math.max(0, Math.min(1, (d - 55) / 85)); return u * u * (3 - 2 * u); };
+  b.draw(F.white, W / 2, H / 2, W, H, 0, 0.05, 0.16, 0.42, 0.28 * g, 0);   // deep glacial blue
+  b.draw(F.white, W / 2, H / 2, W, H, 0, 0.1, 0.3, 0.75, 0.08 * g, 1);
+  for (const q of ice.frost) {
+    const k = grow(q.d) * g * clear(q.x, q.y) * q.v;
+    if (k <= 0.01) continue;
+    b.draw(f.frost, q.x, q.y, q.s, q.s, q.rot, 0.3, 0.68, 1.0, 0.55 * k, 1);
+  }
+  for (const c of ice.clusters) {
+    const u = grow(c.d), k = u * g * clear(c.x, c.y);
+    if (k <= 0.01) continue;
+    const sc = 0.35 + 0.65 * u, hh = c.s * sc, ww = hh * 0.67, ux = Math.sin(c.ang), uy = -Math.cos(c.ang);
+    const mx = c.x + ux * hh * 0.47, my = c.y + uy * hh * 0.47;
+    b.draw(F.glow, c.x, c.y, ww * 1.6, ww * 1.6, 0, 0.1, 0.45, 1.0, 0.45 * k, 1);
+    b.draw(f.cluster, mx, my, ww, hh, c.ang, 0.38, 0.62, 0.95, 0.85 * k, 0);
+    b.draw(f.cluster, mx, my, ww, hh, c.ang, 0.3, 0.7, 1.0, 0.8 * k * pulse, 1);
+  }
+  for (const q of ice.flakes) {
+    const u = grow(q.d), k = u * g * clear(q.x, q.y);
+    if (k <= 0.01) continue;
+    const sz = q.s * (0.4 + 0.6 * u), rot = q.rot + t * q.spin;
+    b.draw(F.glow, q.x, q.y, sz * 0.9, sz * 0.9, 0, 0.05, 0.35, 1.0, 0.35 * k, 1);
+    b.draw(f.bigflake, q.x, q.y, sz, sz, rot, 0.55, 0.8, 1.0, 0.55 * k, 0);
+    b.draw(f.bigflake, q.x, q.y, sz, sz, rot, 0.25, 0.7, 1.0, 0.75 * k * pulse, 1);
+    b.draw(F.glow, q.x, q.y, sz * 0.15, sz * 0.15, 0, 0.6, 0.85, 1.0, 0.5 * k, 1);
+  }
+  for (const q of ice.shards) {
+    const k = grow(q.d) * g * clear(q.x, q.y);
+    if (k <= 0.01) continue;
+    b.draw(q.spike ? f.spike : f.crystal, q.x, q.y, q.s * 0.5, q.s, q.ang, 0.45, 0.7, 1.0, 0.75 * k, 0);
+    b.draw(q.spike ? f.spike : f.crystal, q.x, q.y, q.s * 0.45, q.s * 0.92, q.ang, 0.2, 0.65, 1.0, 0.6 * k, 1);
+  }
+  for (const q of ice.glints) {
+    const tw = Math.max(0, Math.sin(t * q.w + q.ph)), k = grow(q.d) * g * clear(q.x, q.y) * tw * tw;
+    if (k > 0.05) star(b, q.x, q.y, q.s, k, q.ph, PALE);
+  }
   for (let j = 0; j < 6; j++) {
     const an = j / 6 * Math.PI + 0.26;
     seg(b, F, cx - Math.cos(an) * 520, cy - Math.sin(an) * 520, cx + Math.cos(an) * 520, cy + Math.sin(an) * 520, 1, SOFT, 0.1 * g * pulse);
-  }
-  for (const rad of [90, 190, 300]) {
-    for (let j = 0; j < 6; j++) {
-      const a0 = j / 6 * TAU + 0.26, a1 = (j + 1) / 6 * TAU + 0.26;
-      seg(b, F, cx + Math.cos(a0) * rad, cy + Math.sin(a0) * rad, cx + Math.cos(a1) * rad, cy + Math.sin(a1) * rad, 1.2, SOFT, 0.12 * g * pulse);
-    }
   }
   for (const v of az.veins) jag(b, F, v[0], v[1], v[2], v[3], 6, 22, 1, PALE, 0.15 * g, v[4]);
   // Phase D: cracks spread through everything frozen before it breaks.
@@ -513,6 +613,40 @@ export function renderAbsolute(p, b) {
       jag(b, F, cx, cy, cx + Math.cos(an) * 500 * k, cy + Math.sin(an) * 500 * k, 8, 26, 1.4, PALE, 0.6 * k, j * 5.3 + 99);
     }
   }
+}
+
+/**
+ * Absolute Zero's ice field (laid out once when it starts; R: an RNG with
+ * range / next): hoarfrost tiles over the whole screen (denser toward the
+ * edges), glacier clusters thrusting in from every edge and a few mid-screen,
+ * giant and small snowflakes, ice shards and glints. Each element knows its
+ * distance from the centre, so it grows in as the freezing wave passes it.
+ */
+export function makeIceField(R) {
+  const cx = W / 2, cy = H / 2, d = (x, y) => Math.hypot(x - cx, y - cy);
+  const frost = [], clusters = [], flakes = [], shards = [], glints = [];
+  for (let gy = 0; gy < 8; gy++) for (let gx = 0; gx < 6; gx++) {
+    const x = (gx + 0.5) * W / 6 + R.range(-12, 12), y = (gy + 0.5) * H / 8 + R.range(-12, 12);
+    const edge = Math.max(Math.abs(x - cx) / cx, Math.abs(y - cy) / cy);
+    frost.push({ x, y, s: R.range(105, 135), rot: R.range(0, TAU), d: d(x, y), v: 0.45 + 0.55 * edge });
+  }
+  const edgeCluster = (x, y, ang) => clusters.push({ x, y, ang: ang + R.range(-0.45, 0.45), s: R.range(70, 140), d: d(x, y) });
+  for (let k = 0; k < 7; k++) { edgeCluster(-6, (k + R.range(0.2, 0.8)) * H / 7, Math.PI / 2); edgeCluster(W + 6, (k + R.range(0.2, 0.8)) * H / 7, -Math.PI / 2); }
+  for (let k = 0; k < 6; k++) edgeCluster((k + R.range(0.2, 0.8)) * W / 6, -6, Math.PI);
+  for (let k = 0; k < 5; k++) edgeCluster((k + R.range(0.2, 0.8)) * W / 5, H + 6, 0);
+  for (let k = 0; k < 9; k++) { const x = R.range(40, W - 40), y = R.range(40, H - 120); clusters.push({ x, y, ang: R.range(-0.9, 0.9), s: R.range(45, 85), d: d(x, y) }); }
+  flakes.push({ x: cx, y: H * 0.36, s: 330, rot: R.range(0, 1), spin: 0.0015, d: 0 });
+  for (let k = 0; k < 6; k++) { const x = R.range(50, W - 50), y = R.range(50, H - 140); flakes.push({ x, y, s: R.range(110, 190), rot: R.range(0, 1), spin: R.range(-0.003, 0.003), d: d(x, y) }); }
+  for (let k = 0; k < 16; k++) { const x = R.range(10, W - 10), y = R.range(10, H - 10); flakes.push({ x, y, s: R.range(28, 70), rot: R.range(0, 1), spin: R.range(-0.006, 0.006), d: d(x, y) }); }
+  for (let k = 0; k < 60; k++) { const x = R.range(0, W), y = R.range(0, H); shards.push({ x, y, s: R.range(8, 22), ang: R.range(0, TAU), spike: R.next() < 0.4, d: d(x, y) }); }
+  for (let k = 0; k < 40; k++) { const x = R.range(0, W), y = R.range(0, H); glints.push({ x, y, s: R.range(14, 34), w: R.range(0.03, 0.08), ph: R.range(0, TAU), d: d(x, y) }); }
+  return { frost, clusters, flakes, shards, glints };
+}
+
+/** The ice field breaks at the release: crystal fragments burst from its clusters and snowflakes. */
+export function iceFieldShatter(w, ice) {
+  for (const c of ice.clusters) shatter(w, c.x, c.y, 1.4, false);
+  for (const q of ice.flakes) if (q.s > 100) shatter(w, q.x, q.y, 2, true);
 }
 
 /** Absolute Zero's particles each step: light converging to the centre in the activation, then slow drifting snow. */
@@ -526,7 +660,7 @@ export function absoluteParticles(p, w) {
       if (i < 0) return;
       Hp.size(i, 4); Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.hot[0], PAL.hot[1], PAL.hot[2]); Hp.look(i, 1, 1, FADE_OUT, 0.5);
     }
-  } else if (R.next() < 0.5) snow(w, R.range(0, W), R.range(-10, H * 0.9), 1, 2, 0.5);
+  } else if (az.t < az.life - 12) for (let k = 0; k < 2; k++) snow(w, R.range(0, W), R.range(-10, H * 0.9), 1, 2, 0.6);
 }
 
 /** The frost-tinted sprite frames, looked up once (sera.js init). */
@@ -534,5 +668,6 @@ export function frames(w) {
   return {
     crystal: w.r.frame('sv_crystal'), flake: w.r.frame('sv_flake'), blade: w.r.frame('sv_blade'),
     casing: w.r.frame('sv_casing'), arrow: w.r.frame('sv_arrow'), spike: w.r.frame('sv_spike'), shard: w.r.frame('sv_shard'),
+    bigflake: w.r.frame('sv_bigflake'), cluster: w.r.frame('sv_cluster'), frost: w.r.frame('sv_frost'),
   };
 }

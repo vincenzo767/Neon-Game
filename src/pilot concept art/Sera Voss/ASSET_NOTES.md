@@ -286,3 +286,28 @@ There are **no thrusters**: she hovers on the ice-blade wings, which trail frost
 - The bow stays across her body as painted, not vertical (see Step 1).
 - Enemy lasers and beams aren't stopped by the Zero Field.
 - Her sounds are the old cryo set.
+
+## Feedback round 1: Absolute Zero (owner: "too bland", "the entire screen covered with ice", "all bosses frozen")
+
+- **The frozen battlefield.** As the freezing wave passes, the whole screen glazes over in deep glacial blue:
+  - feathery hoarfrost across every part of the screen, denser toward the edges;
+  - 31 glacier crystal clusters thrusting in from every edge, plus 9 mid-screen;
+  - one giant dendrite snowflake (330 units) with 6 large and 16 small ones turning slowly;
+  - 60 scattered ice shards and spikes, and 40 twinkling glints;
+  - denser drifting snow;
+  - faint crystal geometry and frost veins.
+  - Each element grows in as the wave reaches it. A clear pocket stays round her, so she remains visible and readable.
+  - Three new atlas textures: `sv_bigflake` (a six-armed dendrite with layered branches and twigs), `sv_cluster` (faceted prisms fanning from a root) and `sv_frost` (branching hoarfrost veins).
+- **Release.** Every casing cracks for 20 steps, then all break together. Crystal fragments burst from the clusters and the big snowflakes, the frozen bullets shatter, and the ice fades away.
+- **Bosses freeze too.** New opt-in World hook `enemyHold(e)`: while it returns true, an enemy's AI does not run and its clock stands still.
+  - A main boss is updated through its enemy's AI, so this holds its controller (movement, patterns, phase timer) and its parts.
+  - Absolute Zero holds every enemy, bosses included, but only while a boss is in its `fight` state. Its fly-in, phase transitions and death sequence are never stopped half-way.
+  - Every enemy, the boss too, sits in an ice casing throughout.
+  - Frozen bullets' clocks are held as well, so a timed bullet (one that splits or expires) can't go off mid-freeze.
+- **Checks.**
+  - All 9 headless checks pass, including a new one with a real main boss (Hive Sovereign) in its fight:
+    - it moved 0.00 units through the freeze, its phase clock stayed at 139 steps, and 0 enemy bullets moved;
+    - it was in its casing, and it resumed after the release.
+  - DPS is unchanged for every pilot.
+  - Frame rate (headless, 1,500-bullet storm still firing into the freeze, the worst case): 42–49 FPS during the ultimate. Firing and focus are unchanged at 58 / 53.
+- **Screenshots:** `screenshots/sera/art/sheet_ult_frozen_battlefield.png` and `ult_frozen_battlefield.png` (with the Hive Sovereign frozen in its casing).

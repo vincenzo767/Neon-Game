@@ -244,7 +244,12 @@ export class World {
       e.px = e.x; e.py = e.y;
       e.t++;
       if (e.flash > 0) e.flash--;
-      if (e.ai) { this.firing = e; e.ai(e, this); }
+      // Optional time stop (e.g. Sera's Absolute Zero): enemyHold(e) true = its AI (and a boss's
+      // controller) doesn't run this step and its clock stands still.
+      if (e.ai) {
+        if (this.enemyHold && this.enemyHold(e)) e.t--;
+        else { this.firing = e; e.ai(e, this); }
+      }
       if (e.faction && !e.boss && !e.ctrl) this._factionMotion(e);
       // Remove enemies that entered the field and then left it (or got stuck off-screen).
       const inside = e.x > -20 && e.x < WORLD_W + 20 && e.y > -20 && e.y < WORLD_H + 20;

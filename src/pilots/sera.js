@@ -5,7 +5,7 @@ import { rigState, step as rigStep, release, flare, charge } from './seraRig.js'
 import {
   seraFxSprites, frames as fxFrames, hitSpark, volleyFx, shatter, snow, bladeVapour,
   renderShots, renderFrost, renderField, fieldSnow, renderStorm, stormParticles, freezeBurst,
-  renderRain, arrowImpact, renderFrozenBullets, renderAbsolute, absoluteParticles,
+  renderRain, arrowImpact, renderFrozenBullets, renderAbsolute, absoluteParticles, makeIceField, iceFieldShatter,
 } from './seraFx.js';
 
 // SERA VOSS — GLACIER (frost archer) · LEGENDARY (ASSET_NOTES.md, the owner's
@@ -17,7 +17,7 @@ import {
 // Special: Ice Storm Surge (a storm expands from her; every enemy it reaches
 // freezes for 7 s) · Bomb: Frost Arrow Rain (countless ice arrows from the sky
 // freeze anything they touch, bullets too) · Ultimate: Absolute Zero (the whole
-// screen freezes for 12 s; only she moves and attacks)
+// screen freezes for 12 s, bosses too; only she moves and attacks)
 //
 // The hand-made mecha art (seraArt.js + seraRig.js + seraFx.js) replaces
 // drawShip() when it loads; drawShip() stays as the automatic fallback. Every
@@ -93,7 +93,7 @@ function freeze(p, e, steps) {
   track(p, e);
   if (isBoss(e)) { e.frost = Math.max(e.frost || 0, 0.6); return; }
   stun(e, steps);
-  if (!(e.frozenT > 0)) e.frozenMax = steps;
+  if (!(e.frozenT > 0)) { e.frozenMax = steps; e.iceAge = 0; }
   e.frozenT = Math.max(e.frozenT || 0, steps);
 }
 
@@ -102,6 +102,7 @@ function stepFrost(p, w) {
   const ps = p.ps;
   for (const e of ps.frosty) {
     if (!e.alive) { e.frostTracked = false; continue; }
+    if (e.frozenT > 0) e.iceAge = (e.iceAge || 0) + 1;
     if (e.frozenT > 0 && --e.frozenT === 0) {
       // The casing fractures and breaks away; it thaws back to half frost.
       shatter(w, e.x, e.y, 1.5);
@@ -112,6 +113,20 @@ function stepFrost(p, w) {
     if (!(e.frost > 0) && !(e.frozenT > 0)) e.frostTracked = false;
   }
   if (ps.frosty.length) ps.frosty = ps.frosty.filter((e) => e.frostTracked);
+}
+
+/** An enemy held in an ice casing for `steps` (visual; Absolute Zero holds its AI through World.enemyHold). */
+function encase(p, e, steps) {
+  track(p, e);
+  if (!(e.frozenT > 0)) { e.frozenMax = steps; e.iceAge = 0; }
+  e.frozenT = Math.max(e.frozenT || 0, steps);
+  e.held = true;
+  if (isBoss(e)) e.frost = Math.max(e.frost || 0, 0.6);
+}
+
+/** Absolute Zero holds every enemy (bosses included, while they fight) through World.enemyHold. */
+function holdAll(p, w) {
+  w.enemyHold = (e) => !!(p.ps.az && p.ps.az.frozen) && (!e.ctrl || e.ctrl.state === 'fight');
 }
 
 /** Stop enemy bullet i dead, in ice. */
@@ -302,7 +317,8 @@ export default {
         const an = R.range(0, TAU), x0 = W / 2 + Math.cos(an) * 360, y0 = H / 2 + Math.sin(an) * 420;
         veins.push([x0, y0, x0 + R.range(-160, 160), y0 + R.range(-160, 160), k * 7.7]);
       }
-      p.ps.az = { t: 0, life: ABS_T, ACT: ABS_ACT, veins };
+      p.ps.az = { t: 0, life: ABS_T, ACT: ABS_ACT, REL: ABS_REL, veins, ice: makeIceField(R), frozen: false };
+      holdAll(p, w);
       w.r.post.aberrate(0.02);
     },
     update(p, w, t) {
@@ -319,19 +335,27 @@ export default {
         w.g.hitStop(4);
       }
       if (t < ABS_T - ABS_REL) {
-        // The battlefield holds still: every enemy bullet (new ones too) stops in ice; regular
-        // enemies freeze solid; bosses can't be frozen, but every shot they fire freezes at once.
+        // The battlefield holds still (owner's feedback: bosses too): every enemy, bosses and
+        // their parts included, stops in an ice casing (its AI and a boss's controller are held,
+        // its clock stands still); every enemy bullet, new ones too, stops in ice.
+        az.frozen = true;
+        if (!w.enemyHold) holdAll(p, w);
         const B = w.bullets;
-        for (let i = 0; i < B.count; i++) freezeBullet(B, i);
-        for (const e of targets(w)) freeze(p, e, 6);
+        // Their clocks stop too: a timed bullet (one that splits or expires) can't go off while frozen.
+        for (let i = 0; i < B.count; i++) { if (B.spd[i] === 0 && B.age[i] > 0) B.age[i]--; freezeBullet(B, i); }
+        for (const e of w.enemies.active) if (e.alive) encase(p, e, 8);
       } else if (t === ABS_T - ABS_REL) {
         // Release: everything frozen cracks and breaks; frozen bullets are gone, enemies resume.
+        az.frozen = false;
+        // Every casing cracks for a moment, then they all break together (stepFrost).
+        for (const e of p.ps.frosty) if (e.held) { e.held = false; e.frozenT = 20; }
         shatterFrozen(w);
+        iceFieldShatter(w, az.ice);
         w.r.post.flash(0.7, 0.9, 1, 0.35, 0.05);
         w.r.post.shockwave(W / 2, H / 2, 0.04, 0.03, 1);
       }
     },
-    end(p) { p.ps.az = null; },
+    end(p, w) { p.ps.az = null; if (w) w.enemyHold = null; },
   },
 
   sprites(atlas) {
@@ -371,7 +395,7 @@ export default {
     rigState(p);
   },
 
-  reset(p) { p.ps.storm = null; p.ps.az = null; p.ps.rain = null; },
+  reset(p) { p.ps.storm = null; p.ps.az = null; p.ps.rain = null; if (p.w) p.w.enemyHold = null; },
 
   update(p, w) {
     seraArt.animate(p);
