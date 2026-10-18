@@ -7,7 +7,9 @@ import {
   linFxSprites, renderShots, hitSpark, burst, wingGlitter, renderTurrets,
   renderFieldGround, renderFieldRoots, renderRain, renderUlt, renderVoid,
   T_SHARD, T_SPEAR, T_SPLIT, T_NEEDLE,
+  whipRelease, fieldWave, crystalBloom, voidFlakes, along, PORTAL_Y,
 } from './linFx.js';
+import { rigState, step as rigStep, lash, thrust, drawBack, flare, coil } from './linRig.js';
 
 // LIN HAYASE — PETAL ENGINE (emerald crystal knight)
 // Crystal shards, seeds that grow into swarm turrets · Focus: splitting
@@ -15,17 +17,21 @@ import {
 // hold 1.5 s, crush) · Bomb: Spear Rain (3 s, through shields)
 // Ultimate: Cosmic Spear (a giant spear and the starry rift it leaves)
 //
-// LIN ART TEST: the hand-made mecha art (linArt.js) replaces drawShip() when it
-// loads; drawShip() stays as the automatic fallback. Shards leave the waist
-// spike, spears leave the blade of his spear; the crystal legs (feet) never
-// fire. No thrusters: the butterfly wings beat.
+// LIN v2 (ASSET_NOTES.md "Rebuild v2"): the component mecha (linArt.js +
+// linRig.js + linFx.js) replaces drawShip() when the art loads; drawShip()
+// stays as the automatic fallback. The whip is swung out in front of him and
+// lashes with every volley: the shards leave its glowing crystals. Spears
+// leave the blade of his thrusting spear. The crystal legs (feet) never fire.
+// No thrusters: the butterfly wings beat.
 
 const LEAF = [0.25, 1.0, 0.45];
 const MAX_TURRETS = [3, 4, 6, 8];
 const SPEAR_CD = 8;
 const REF = 150;          // focus spears cross his centre line this far ahead
 const SPLIT_R = 160;      // a split shard looks this far for another enemy
-const FIELD_R = 200, FIELD_HOLD = 90;
+const FIELD_R = 300, FIELD_HOLD = 90; // v2: the field reaches 300 (was 200)
+const SHARD_REF = 200;    // whip shards cross the old fan's lanes (from the waist spike) this far ahead
+const ULT_CHARGE = 72;    // v2: the Cosmic Spear charges 1.2 s (was 0.83 s)
 
 /** Focus spear damage per tier; split shards deal half. */
 const spearDmg = (t) => 2.3 + 0.32 * t;
@@ -91,14 +97,37 @@ const at = (p, name) => { const [x, y] = linArt.anchor(name); return [p.x + x, p
 /** Focus: spears from the blade, aimed to cross the centre line REF ahead. */
 function throwSpears(p, w) {
   const ps = p.ps, S = w.shots, t = p.tier, n = spearCount(t), d = spearDmg(t);
-  const [bx, by] = linArt.anchor('blade');
-  const a0 = Math.atan2(-REF - by, -bx);
+  thrust(p, 3);
+  const [bx, by] = linArt.animatedAnchor(p, 'blade');
+  const a0 = Math.atan2(p.y - REF - by, p.x - bx);
   for (let k = 0; k < n; k++) {
     const off = k - (n - 1) / 2;
-    const i = w.shot(p.x + bx + off * 6, p.y + by, a0 + off * 0.05, 22, ps.fShard, d, 6);
+    const i = w.shot(bx + off * 6, by, a0 + off * 0.05, 22, ps.fShard, d, 6);
     if (i >= 0) S.behave(i, d, 40, 0, 0, 0, T_SPEAR);
   }
-  linArt.frames().fx && spearFlash(p, w, p.x + bx, p.y + by);
+  linArt.frames().fx && spearFlash(p, w, bx, by);
+}
+
+/** World points along the whip (handle, crystals of the handle half, the joint, the tip), posed. */
+const whipPts = (p) => ['whipHand', 'whipMid', 'whipJoint', 'whipTip'].map((n) => linArt.animatedAnchor(p, n));
+
+/**
+ * Main: a lash, and a fan of shards leaving the whip's crystals (from the
+ * handle half out to the tip), each aimed through the old fan's lane.
+ */
+function whipShards(p, w) {
+  const t = p.tier, S = w.shots, ps = p.ps;
+  lash(p);
+  const pts = whipPts(p), [cx, cy] = at(p, 'core');
+  const n = 2 + t, d = 0.8 + t * 0.075;
+  for (let k = 0; k < n; k++) {
+    const a = UP + (k / (n - 1) - 0.5) * 0.5;
+    const [sx, sy] = along(pts, 0.3 + 0.7 * k / (n - 1));
+    const ang = Math.atan2(cy + Math.sin(a) * SHARD_REF - sy, cx + Math.cos(a) * SHARD_REF - sx);
+    const i = w.shot(sx, sy, ang, 13, ps.fShard, d, 5, 0.9 + t * 0.08);
+    if (i >= 0) S.behave(i, d, 0, 0, 0, 0, T_SHARD);
+    whipRelease(w, sx, sy, ang);
+  }
 }
 
 function spearFlash(p, w, x, y) {
@@ -162,20 +191,21 @@ export default {
   // Procedural fallback, matched to pilot-portrait.jpg (short auburn hair, amber eyes).
   portrait: { skin: '#f2d4b8', hair: '#c0703a', style: 'spiky', eyes: 'eyes', iris: '#d8a030', suit: '#e0b020' },
   weapons: {
-    main: 'Crystal Seed — a fan of emerald shards; seeds grow into swarm turrets',
+    main: 'Crystal Whip — every lash throws a fan of emerald shards off the whip; seeds grow into swarm turrets',
     focus: 'Emerald Spears — spears split on every enemy they hit; the swarm throws them too',
   },
   art: linArt,
   special: {
     name: 'ROOT FIELD',
-    desc: 'Roots wrap every enemy around you, hold them 1.5 s, then crush them; the field eats bullets',
+    desc: 'Plant the spear: roots wrap every enemy in a wide field, hold them 1.5 s, then crush them; the field eats bullets',
     cooldown: 600,
     duration: FIELD_HOLD + 22,
     activate(p, w) {
       p.ps.field = { x: p.x, y: p.y, R: FIELD_R, t: 0, crush: FIELD_HOLD, held: [], seen: new Set() };
       grab(p, w);
       w.cancelCircle(p.x, p.y, 90);
-      ringPulse(w, p.x, p.y, LEAF, 10, FIELD_R, 22);
+      thrust(p, 20); // the spear is planted
+      fieldWave(w, p.x, p.y, FIELD_R);
       w.r.post.flash(0.3, 1, 0.5, 0.2, 0.06);
       w.g.camera.addTrauma(0.25);
     },
@@ -183,6 +213,7 @@ export default {
       const fd = p.ps.field;
       if (!fd) return;
       fd.t = t;
+      if (t < 40) { coil(p, 1 - t / 40); flare(p, 1 - t / 40); }
       if (t < fd.crush) {
         w.cancelCircle(fd.x, fd.y, fd.R * Math.min(1, t / 18));
         if (t % 6 === 0) grab(p, w);
@@ -203,17 +234,35 @@ export default {
   bomb: {
     name: 'SPEAR RAIN',
     duration: 180, // 3 s
-    activate(p, w) { p.ps.rain = []; w.r.post.flash(0.3, 1, 0.5, 0.25, 0.06); },
+    activate(p, w) {
+      p.ps.rain = [];
+      p.ps.portal = { t: 0, closeT: 0 };
+      thrust(p, 160); // the spear raised to the sky
+      w.r.post.flash(0.3, 1, 0.5, 0.25, 0.06);
+      w.r.post.shockwave(W / 2, PORTAL_Y, 0.03, 0.02, 0.6);
+    },
     update(p, w, t) {
       w.cancelAll();
       const ps = p.ps, R = w.rng;
+      if (ps.portal) {
+        ps.portal.t = t;
+        flare(p, t < 160 ? 0.6 : 0);
+        if (t === 164) {
+          // The portal shatters.
+          ps.portal.closeT = t;
+          for (let k = 0; k < 6; k++) burst(w, (k + 0.5) / 6 * W, PORTAL_Y, 1.1);
+          w.r.post.flash(0.4, 1, 0.6, 0.35, 0.05);
+          w.g.camera.addTrauma(0.4);
+        }
+      }
       // Countless spears: two a step (a big one every 10), half of them aimed at enemies.
       if (t <= 168) for (let k = 0; k < 2; k++) {
         const T = targets(w);
         const e = T.length && R.chance(0.5) ? R.pick(T) : null;
         const tx = e ? e.x + R.range(-12, 12) : R.range(10, W - 10), ty = e ? e.y : R.range(30, H - 110);
         const big = k === 0 && t % 10 === 0;
-        ps.rain.push({ x: tx - 3 * (ty + 60) / 26, y: -40 - R.range(0, 60), tx, ty, vx: 3, vy: 26, big, n: ps.rainN = (ps.rainN || 0) + 1 });
+        const y0 = PORTAL_Y + R.range(-8, 8) - R.range(0, 60); // out of the portal (staggered)
+        ps.rain.push({ x: tx - 3 * (ty - y0) / 26, y: y0, tx, ty, vx: 3, vy: 26, big, n: ps.rainN = (ps.rainN || 0) + 1 });
       }
       for (const s of ps.rain) {
         s.x += s.vx; s.y += s.vy;
@@ -224,16 +273,17 @@ export default {
         if (s.big || (s.n & 1)) ps.stars.push({ x: s.tx, y: s.ty, t: 0, life: s.big ? 24 : 15, size: s.big ? 96 : 50, rot: w.fxRng.range(-0.4, 0.4) });
         else hitSpark(w, s.tx, s.ty, -Math.PI / 2);
         if (s.big) { burst(w, s.tx, s.ty, 1.2); w.g.camera.addTrauma(0.08); }
+        crystalBloom(w, s.tx, s.ty, s.big);
       }
       ps.rain = ps.rain.filter((s) => !s.dead);
     },
-    end(p) { p.ps.rain = []; },
+    end(p) { p.ps.rain = []; p.ps.portal = null; },
   },
   ultimate: {
     name: 'COSMIC SPEAR',
     duration: 240, // 4 s
     activate(p, w) {
-      p.ps.ult = { phase: 'charge', t: 0, hit: new Set(), fade: 1 };
+      p.ps.ult = { phase: 'charge', t: 0, hit: new Set(), fade: 1, charge: ULT_CHARGE };
       w.r.post.flash(0.4, 1, 0.6, 0.35, 0.05);
     },
     update(p, w, t) {
@@ -242,15 +292,18 @@ export default {
       u.t = t;
       if (u.phase === 'charge') {
         w.cancelAll();
-        // Stars gather at the spear.
-        const [bx, by] = at(p, 'blade'), fx = linArt.frames().fx, R = w.fxRng;
+        // The spear is drawn back and tilted, the wings flare, the whip coils; stars gather at the spear.
+        drawBack(p, Math.min(1, t / 20)); flare(p, 1); coil(p, 0.6);
+        if (t % 12 === 0) w.g.camera.addTrauma(0.05 + 0.15 * t / ULT_CHARGE);
+        const [bx, by] = linArt.animatedAnchor(p, 'blade'), fx = linArt.frames().fx, R = w.fxRng;
         if (fx && t % 2 === 0) {
           const a = R.range(0, TAU), d = R.range(80, 160);
           const i = w.fxHigh.spawn(fx.flare, bx + Math.cos(a) * d, by + Math.sin(a) * d, -Math.cos(a) * d / 18, -Math.sin(a) * d / 18, 18);
           if (i >= 0) { w.fxHigh.size(i, R.range(6, 12), 3); w.fxHigh.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.hot[0], PAL.hot[1], PAL.hot[2]); w.fxHigh.look(i, 0.9, 1, FADE_OUT); }
         }
-        if (t < 50) return;
-        // Launch: the giant spear leaves from in front of him, straight up.
+        if (t < ULT_CHARGE) return;
+        // Launch: the spear thrusts and the giant spear leaves from in front of him, straight up.
+        thrust(p, 12);
         Object.assign(u, { phase: 'fly', x: p.x, y0: p.y - 30, headY: p.y - 30, w: 110 });
         w.r.post.flash(0.5, 1, 0.7, 0.45, 0.05);
         w.r.post.shockwave(p.x, p.y - 40, 0.05, 0.02, 0.6);
@@ -260,6 +313,7 @@ export default {
       u.headY -= 22;
       const top = Math.max(-10, u.headY);
       u.fade = t > 210 ? Math.max(0, (240 - t) / 30) : 1;
+      voidFlakes(w, u, u.w * 1.4);
       // The head hits everything it passes once, massively.
       for (const e of targets(w)) {
         if (u.hit.has(e) || Math.abs(e.x - u.x) > u.w / 2 + e.r || e.y < u.headY - 20 || e.y > u.headY + 90) continue;
@@ -314,12 +368,15 @@ export default {
     ps.stars = [];
     ps.field = null;
     ps.ult = null;
+    ps.portal = null;
+    rigState(p);
   },
 
   reset(p) { p.ps.seeds = []; p.ps.splits = []; },
 
   update(p, w) {
     linArt.animate(p);
+    rigStep(p);
     const ps = p.ps, S = w.shots;
     if (ps.splits.length) splitShards(p, w);
     for (const h of ps.stars) h.t++;
@@ -376,13 +433,7 @@ export default {
       }
     } else {
       p.fireCd = 6;
-      const [cx, cy] = at(p, 'core');
-      const n = 2 + t, d = 0.8 + t * 0.075;
-      for (let k = 0; k < n; k++) {
-        const a = UP + (k / (n - 1) - 0.5) * 0.5;
-        const i = w.shot(cx, cy, a, 13, ps.fShard, d, 5, 0.9 + t * 0.08);
-        if (i >= 0) S.behave(i, d, 0, 0, 0, 0, T_SHARD);
-      }
+      whipShards(p, w);
       for (const o of p.options) {
         const i = w.shot(o.x, o.y - 6, UP, 12, ps.fNeedle, 0.5, 4);
         if (i >= 0) S.behave(i, 0.5, 90, 0, 0.06, 0, T_NEEDLE);

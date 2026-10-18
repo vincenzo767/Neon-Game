@@ -1,6 +1,7 @@
 import { FADE_OUT, FADE_INOUT } from '../fx/Particles.js';
 import { crowdFactor } from './art/mechaFx.js';
-import { linArt, PAL, DARK } from './linArt.js';
+import { linArt, PAL, DARK, RIG_FX } from './linArt.js';
+import { rigState } from './linRig.js';
 import { pilotArt } from '../core/pilotArt.js';
 
 // Lin's effects, after fx-reference.png and swarm-turrets.png: crystal spears
@@ -8,6 +9,12 @@ import { pilotArt } from '../core/pilotArt.js';
 // halos, crystal debris, star sparkles. The black parts are alpha-blended
 // (add = 0); everything else is additive and feeds the bloom. Render-time
 // only: hit areas and damage live in lin.js.
+//
+// v2 (ASSET_NOTES.md "Rebuild v2"): the whip's crystals glow in a wave as the
+// shards leave them (RIG_FX.overlay), the spear flashes as it thrusts; Root
+// Field roots race out with crystal spikes at the rim; Spear Rain falls out of a
+// cracked emerald portal; the Cosmic Spear's charge and its void (deep black,
+// nebula, cracked-space edges) are redrawn. crack() draws the cracked space.
 
 const LOOK = linArt.LOOK;
 const fxOf = () => linArt.frames().fx;
@@ -297,9 +304,18 @@ export function renderFieldGround(p, b) {
   b.draw(F.glow, fd.x, fd.y, R * 2.4 * grow, R * 2.4 * grow, 0, DARK[0], DARK[1], DARK[2], 0.6 * out, 0);
   b.draw(F.glow, fd.x, fd.y, R * 2 * grow, R * 2 * grow, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.12 * out, 1);
   b.draw(F.ring, fd.x, fd.y, R * 2 * grow, R * 2 * grow, fd.t * 0.004, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.1 * out, 1);
+  // Crystal spikes rising round the rim as the field reaches it.
+  const rim = Math.max(0, (fd.t - 8) / 14);
+  if (rim > 0) for (let k = 0; k < 26; k++) {
+    const a = k / 26 * Math.PI * 2 + hash(k * 2.1) * 0.2, h = (14 + 16 * hash(k * 4.3)) * Math.min(1, rim) * out;
+    const x = fd.x + Math.cos(a) * R, y = fd.y + Math.sin(a) * R;
+    b.draw(Fr.crystal, x, y - h / 2, h, 8, -Math.PI / 2 + (hash(k) - 0.5) * 0.5, DARK[0], DARK[1], DARK[2], 0.8 * out, 0);
+    b.draw(Fr.crystal, x, y - h / 2, h * 0.85, 5, -Math.PI / 2 + (hash(k) - 0.5) * 0.5, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.8 * out, 1);
+  }
+  b.draw(F.ring, fd.x, fd.y, R * 2 / 0.86, R * 2 / 0.86, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.35 * grow * out * (0.7 + 0.3 * Math.sin(fd.t * 0.3)), 1);
   // Roots creeping out from the centre: crooked, thorny, forking.
-  for (let k = 0; k < 14; k++) {
-    let a = k / 14 * Math.PI * 2 + hash(k * 7.3) * 0.4, x = fd.x, y = fd.y;
+  for (let k = 0; k < 20; k++) {
+    let a = k / 20 * Math.PI * 2 + hash(k * 7.3) * 0.4, x = fd.x, y = fd.y;
     const L = R * (0.75 + 0.3 * hash(k * 3.1)) * grow / 4;
     for (let s = 0; s < 4; s++) {
       a += (hash(k * 5.7 + s * 2.3) - 0.5) * 0.9;
@@ -347,9 +363,15 @@ export function renderFieldRoots(p, b) {
 /** Spear Rain: falling spears with long light trails. */
 export function renderRain(p, b) {
   const F = p.F, Fr = frames(p), glowA = crowdFactor(p.w), spr = pick('spear'), st = pick('star');
+  renderPortal(p, b);
   for (const s of p.ps.rain) {
     const L = s.big ? 64 : 42, wd = s.big ? 19 : 13, ang = Math.atan2(s.vy, s.vx);
-    b.draw(F.laser, s.x - s.vx * 3, s.y - 60, 4, 110, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.3 * glowA, 1);
+    // A long emerald streak back toward the portal, with a white core.
+    const tl = Math.min(170, s.y - PORTAL_Y + 10);
+    if (tl > 0) {
+      b.draw(F.laser, s.x - s.vx * tl / 52, s.y - tl / 2, tl, s.big ? 12 : 7, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.35 * glowA, 1);
+      b.draw(F.laser, s.x - s.vx * tl / 52, s.y - tl / 2, tl, s.big ? 3 : 2, ang, PAL.core[0], PAL.core[1], PAL.core[2], 0.5, 1);
+    }
     if (spr) painted(b, F, spr, s.x, s.y, ang, L, wd, 1, glowA);
     else spear(b, F, Fr, s.x, s.y, ang, L * 0.75, wd * 0.7, 1, glowA);
   }
@@ -373,24 +395,49 @@ export function renderUlt(p, b) {
   if (!u) return;
   const F = p.F, Fr = frames(p), fx = fxOf(), t = p.t;
   if (u.phase === 'charge') {
-    const k = Math.min(1, 0.3 + u.t / 40);
-    const [bx, by] = linArt.anchor('blade');
-    const x = p.x + bx, y = p.y + by;
-    // A pocket of black space opening at the spear, stars falling into it.
-    b.draw(F.glow, x, y, 70 + 90 * k, 70 + 90 * k, 0, DARK[0], DARK[1], DARK[2], 0.75 * k, 0);
-    b.draw(F.glow, x, y, 40 + 70 * k, 40 + 70 * k, 0, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.6 * k, 1);
-    for (const [r, sp] of [[1, 0.05], [0.6, -0.08]]) {
-      const R = (110 * (1 - (u.t % 25) / 25) + 24) * r;
-      b.draw(F.ring, x, y, R, R, t * sp, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.8 * k, 1);
+    // v2: a longer, stronger charge at the drawn-back spear. The light dims; a
+    // sphere of black space opens round the blade with nebula light inside and
+    // stars streaming in; rings contract faster and faster; a crown of crystals
+    // grows round the spear head; space cracks round the sphere; then a flash.
+    const k = Math.min(1, u.t / u.charge), e = Math.min(1, u.t / 8);
+    const [x, y] = linArt.animatedAnchor(p, 'blade');
+    const Rs = 30 + 70 * k;
+    b.draw(F.glow, x, y, 900, 900, 0, DARK[0], DARK[1], DARK[2], 0.35 * k * e, 0);                // the light dims
+    b.draw(F.glow, x, y, Rs * 3.4, Rs * 3.4, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.5 * e, 1);
+    b.draw(F.glow, x, y, Rs * 2.2, Rs * 2.2, 0, DARK[0], DARK[1], DARK[2], 0.92 * e, 0);         // the black sphere
+    for (let i = 0; i < 4; i++) {                                                               // nebula light inside
+      const a = t * 0.03 + i * 1.6, o = Rs * 0.35;
+      b.draw(F.glow, x + Math.cos(a) * o, y + Math.sin(a) * o, Rs * 1.1, Rs * 0.7, a, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.25 * e, 1);
     }
-    for (let i = 0; i < 10; i++) {
-      const a = i * 2.4 + t * 0.07, d = 70 * (1 - ((t * 0.04 + hash(i)) % 1));
-      star(b, x + Math.cos(a) * d, y + Math.sin(a) * d, 6 + 6 * hash(i * 3), k, a);
+    const per = 25 - 15 * k;                                                                    // rings, faster and faster
+    for (let r = 0; r < 3; r++) {
+      const ph = ((u.t / per) + r / 3) % 1, R = (Rs * 2.6) * (1 - ph) + 16;
+      b.draw(F.ring, x, y, R, R, t * 0.06, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.75 * ph * e, 1);
+    }
+    for (let i = 0; i < 18; i++) {                                                              // stars streaming in
+      const a = i * 2.4 + t * 0.07, ph = (t * (0.03 + 0.03 * k) + hash(i)) % 1, d = Rs * 2.2 * (1 - ph);
+      const sx = x + Math.cos(a) * d, sy = y + Math.sin(a) * d;
+      b.draw(F.laser, sx + Math.cos(a) * 6, sy + Math.sin(a) * 6, 14 * (1 - ph) + 2, 1.6, a, PAL.core[0], PAL.core[1], PAL.core[2], 0.5 * ph * e, 1);
+      star(b, sx, sy, 5 + 6 * hash(i * 3), ph * e, a);
+    }
+    for (let i = 0; i < 8; i++) {                                                               // the crystal crown
+      const a = i / 8 * Math.PI * 2 + t * 0.02, L = 24 * k, r0 = 18 + 10 * k;
+      const cx = x + Math.cos(a) * (r0 + L / 2), cy = y - 18 * k + Math.sin(a) * (r0 + L / 2);
+      b.draw(Fr.crystal, cx, cy, L + 1, 7, a, DARK[0], DARK[1], DARK[2], 0.8 * k, 0);
+      b.draw(Fr.crystal, cx, cy, L * 0.85 + 1, 4.5, a, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.9 * k, 1);
+    }
+    if (k > 0.35) {                                                                             // space cracking round the sphere
+      const ck = (k - 0.35) / 0.65;
+      for (let i = 0; i < 7; i++) {
+        const a = i / 7 * Math.PI * 2 + hash(i * 3.3) * 0.5, r1 = Rs * 1.05, r2 = r1 + (20 + 70 * hash(i)) * ck;
+        crack(b, F, x + Math.cos(a) * r1, y + Math.sin(a) * r1, x + Math.cos(a) * r2, y + Math.sin(a) * r2, 300 + i, ck * (0.7 + 0.3 * Math.sin(t * 0.4 + i)), 1.8);
+      }
     }
     const cs = pick('cosmic');
-    if (cs) painted(b, F, cs, x, y - 30 * k, -Math.PI / 2, 60 + 50 * k, (60 + 50 * k) * (cs.w / cs.h), k, 1, 0.6);
-    else spear(b, F, Fr, x, y - 20 * k, -Math.PI / 2, 40 + 30 * k, 12 + 8 * k, k);
-    star(b, x, y - 20 * k, 40 + 40 * k, k, t * 0.04);
+    if (cs) painted(b, F, cs, x, y - 30 * k, -Math.PI / 2, 60 + 60 * k, (60 + 60 * k) * (cs.w / cs.h), e, 1, 0.6);
+    else spear(b, F, Fr, x, y - 20 * k, -Math.PI / 2, 40 + 40 * k, 12 + 10 * k, e);
+    star(b, x, y - 20 * k, 40 + 60 * k, e, t * 0.04);
+    if (k > 0.88) { const f = (k - 0.88) / 0.12; b.draw(F.glow, x, y, 80 + 260 * f, 80 + 260 * f, 0, PAL.core[0], PAL.core[1], PAL.core[2], f, 1); }
     return;
   }
   if (u.headY > -340) {
@@ -411,14 +458,30 @@ export function renderVoid(p, b) {
   const u = p.ps.ult;
   if (!u || u.phase !== 'fly') return;
   const F = p.F, fx = fxOf(), t = p.t;
-  const a = u.fade, x = u.x, wd = u.w, top = Math.max(-40, u.headY), y0 = u.y0, len = y0 - top, my = (y0 + top) / 2;
+  // v2: drawn 40 % wider than its damaging width (decision 5 A), deep black with
+  // nebula light and a slow swirl inside, and cracked space along both edges.
+  const a = u.fade, x = u.x, wd = u.w * 1.4, top = Math.max(-40, u.headY), y0 = u.y0, len = y0 - top, my = (y0 + top) / 2;
   if (len > 0 && fx) {
-    // The path: a void of empty space with stars. A soft black edge, the
-    // black void, a hair-thin emerald rim; nothing else lit but the stars.
-    b.draw(fx.beam, x, my, len, wd * 1.7, -Math.PI / 2, DARK[0], DARK[1], DARK[2], 0.45 * a, 0);
-    b.draw(fx.beam, x, my, len, wd * 1.25, -Math.PI / 2, 0, 0, 0, 0.97 * a, 0);
-    b.draw(fx.beam, x, my, len, wd * 1.05, -Math.PI / 2, 0, 0, 0, 0.8 * a, 0);
-    for (const s of [-1, 1]) b.draw(F.laser, x + s * wd * 0.6, my, len, 3, -Math.PI / 2, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.4 * a, 1);
+    b.draw(F.glow, x, my, wd * 2.6, len + wd, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.4 * a, 1);   // emerald light spilling round it
+    b.draw(fx.beam, x, my, len, wd * 1.7, -Math.PI / 2, DARK[0], DARK[1], DARK[2], 0.6 * a, 0);
+    b.draw(fx.beam, x, my, len, wd * 1.25, -Math.PI / 2, 0, 0, 0, 0.98 * a, 0);
+    b.draw(fx.beam, x, my, len, wd * 1.05, -Math.PI / 2, 0, 0, 0, 0.9 * a, 0);
+    // Nebula clouds drifting inside, and a slow swirl.
+    for (let k = 0; k < 7; k++) {
+      const ny = y0 - ((hash(k * 2.3) * 700 + t * 0.4) % 700), sw = Math.sin(t * 0.02 + k) * wd * 0.2;
+      if (ny < top || ny > y0) continue;
+      const c = k % 3 ? PAL.mid : PAL.edge;
+      b.draw(F.glow, x + sw, ny, wd * 0.9, 90, t * 0.01 + k, c[0], c[1], c[2], 0.16 * a, 1);
+    }
+    // Cracked space along both edges: jagged fractures with branches spreading outward, pulsing.
+    const seg = 90, pulse = 0.75 + 0.25 * Math.sin(t * 0.25);
+    for (const s of [-1, 1]) {
+      const ex = x + s * wd * 0.5;
+      for (let yy = y0, i = 0; yy > top; yy -= seg, i++) {
+        const y1 = Math.max(top, yy - seg);
+        crack(b, F, ex, yy, ex, y1, 500 + i * 7 + (s > 0 ? 100 : 0), a * pulse * (0.75 + 0.25 * hash(i + t * 0.01)), 2.4, s);
+      }
+    }
     // Stars: many faint pin-points, fewer bright four-point stars, a few
     // emerald ones; they drift slowly and twinkle.
     for (let k = 0; k < 120; k++) {
@@ -433,3 +496,131 @@ export function renderVoid(p, b) {
   }
 }
 
+
+// ------------------------------------------------------------ v2: cracked space
+
+/**
+ * A crack in space from (x0, y0) to (x1, y1): a jagged fracture (black gap,
+ * emerald glow, white-hot edge) with branches spreading out to side `side`
+ * (+1 / -1 relative to the direction, 0 = either). `seed` fixes its shape;
+ * `a` its brightness.
+ */
+export function crack(b, F, x0, y0, x1, y1, seed, a, wd = 2, side = 0, branches = true) {
+  const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1, nx = -dy / len, ny = dx / len;
+  const n = Math.max(3, Math.min(30, Math.round(len / 14)));
+  let px = x0, py = y0;
+  for (let k = 1; k <= n; k++) {
+    const t = k / n, j = k === n ? 0 : (hash(seed * 7.1 + k * 3.3) - 0.5) * 14;
+    const qx = x0 + dx * t + nx * j, qy = y0 + dy * t + ny * j;
+    const L = Math.hypot(qx - px, qy - py) + 1, ang = Math.atan2(qy - py, qx - px), mx = (px + qx) / 2, my = (py + qy) / 2;
+    b.draw(F.laser, mx, my, L, wd * 4, ang, PAL.mid[0], PAL.mid[1], PAL.mid[2], 0.4 * a, 1);
+    b.draw(F.laser, mx, my, L, wd * 1.6, ang, DARK[0], DARK[1], DARK[2], 0.9 * a, 0);
+    b.draw(F.laser, mx, my, L, wd * 0.7, ang, PAL.core[0], PAL.core[1], PAL.core[2], 0.85 * a, 1);
+    if (branches && k < n && hash(seed * 2.9 + k * 1.7) > 0.55) {
+      const sd = side || (hash(seed + k) > 0.5 ? 1 : -1), bl = 8 + 26 * hash(seed * 5.3 + k);
+      const ba = ang + sd * (0.6 + 0.7 * hash(seed * 4.1 + k));
+      crack(b, F, qx, qy, qx + Math.cos(ba) * bl, qy + Math.sin(ba) * bl, seed * 1.9 + k, a * 0.8, wd * 0.55, sd, false);
+    }
+    px = qx; py = qy;
+  }
+}
+
+// ------------------------------------------------------------ v2: rig FX
+
+/** Point at u (0..1) along a polyline (by segment count). */
+export function along(pts, u) {
+  const n = pts.length - 1, f = Math.min(n - 1e-6, Math.max(0, u * n)), k = Math.floor(f), t = f - k;
+  return [pts[k][0] + (pts[k + 1][0] - pts[k][0]) * t, pts[k][1] + (pts[k + 1][1] - pts[k][1]) * t];
+}
+
+RIG_FX.overlay = (p, b, api) => {
+  const F = p.F, r = rigState(p), a = api.a, fx = fxOf();
+  // The whip's crystals light up in a wave from the handle to the tip (6 steps), then fade.
+  const pts = [api.at('whipHand'), api.at('whipMid'), api.at('whipJoint'), api.at('whipTip')];
+  const wave = r.glow / 6;
+  for (let k = 0; k <= 12; k++) {
+    const u = k / 12, [x, y] = along(pts, u);
+    const lit = Math.max(0, 1 - Math.abs(wave - u) * 3) + Math.max(0, 0.35 - r.glow * 0.03);
+    const g = Math.min(1, lit + 0.12 + 0.06 * Math.sin(p.t * 0.12 + k));
+    b.draw(F.glow, x, y, 10 + 16 * lit, 10 + 16 * lit, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], 0.55 * g * a, 1);
+    if (lit > 0.4 && fx) b.draw(fx.flare, x, y, 12 * lit, 12 * lit, p.t * 0.1 + k, PAL.core[0], PAL.core[1], PAL.core[2], lit * a, 1);
+  }
+  // The spear blade flashes as it thrusts; it glows while drawn back (charging).
+  const [bx, by] = api.at('blade');
+  if (r.ext > 0.3) b.draw(F.glow, bx, by, 34 * r.ext, 34 * r.ext, 0, PAL.core[0], PAL.core[1], PAL.core[2], 0.6 * r.ext * a, 1);
+  if (r.ext < -0.2) b.draw(F.glow, bx, by, 40, 40, 0, PAL.hot[0], PAL.hot[1], PAL.hot[2], -0.5 * r.ext * a, 1);
+};
+
+/** A shard leaves a whip crystal: an emerald flash and a glint. */
+export function whipRelease(w, x, y, ang) {
+  const Hp = w.fxHigh, R = w.fxRng, F = w.F;
+  let i = Hp.spawn(F.glow, x, y, 0, 0, 5);
+  if (i >= 0) { Hp.size(i, 22, 8); Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.hot[0], PAL.hot[1], PAL.hot[2]); Hp.look(i, 0.6, 1, FADE_OUT); }
+  const a = ang + R.range(-0.5, 0.5);
+  i = Hp.spawn(F.spark, x, y, Math.cos(a) * 3, Math.sin(a) * 3, 8);
+  if (i >= 0) { Hp.size(i, 5); Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.mid[0], PAL.mid[1], PAL.mid[2]); Hp.phys(i, 0.86); Hp.look(i, 1, 1, FADE_OUT, 0.5); }
+}
+
+/** Root Field: the planted spear's shockwave and crystal shards racing out to the rim. */
+export function fieldWave(w, x, y, R) {
+  const Hp = w.fxHigh, F = w.F, cr = w.r.frame('l_crystal'), Rn = w.fxRng;
+  for (const [r0, r1, life, a] of [[10, R * 2, 24, 0.8], [10, R * 1.2, 16, 0.9]]) {
+    const i = Hp.spawn(F.ring, x, y, 0, 0, life);
+    if (i >= 0) { Hp.size(i, r0, r1); Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.mid[0], PAL.mid[1], PAL.mid[2]); Hp.look(i, a, 1, FADE_OUT); }
+  }
+  for (let k = 0; k < 28; k++) {
+    const a = (k / 28) * Math.PI * 2, sp = R / 22 * Rn.range(0.8, 1.1);
+    const i = Hp.spawn(cr, x, y, Math.cos(a) * sp, Math.sin(a) * sp, 22);
+    if (i < 0) break;
+    Hp.size(i, 9, 4); Hp.spin(i, a, 0); Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.mid[0], PAL.mid[1], PAL.mid[2]); Hp.look(i, 1, 1, FADE_OUT);
+  }
+}
+
+/** A Spear Rain impact: a crystal bloom (shards springing up and out). */
+export function crystalBloom(w, x, y, big) {
+  const Hp = w.fxHigh, R = w.fxRng, cr = w.r.frame('l_crystal'), s = big ? 1.6 : 1;
+  for (let k = 0; k < (big ? 9 : 5); k++) {
+    const a = -Math.PI / 2 + R.range(-1.2, 1.2), sp = R.range(2, 5) * s;
+    const i = Hp.spawn(cr, x, y, Math.cos(a) * sp, Math.sin(a) * sp, R.range(12, 20));
+    if (i < 0) break;
+    Hp.size(i, R.range(6, 11) * s, 3); Hp.spin(i, a, 0); Hp.phys(i, 0.9, 0.1);
+    Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.mid[0], PAL.mid[1], PAL.mid[2]); Hp.look(i, 1, 1, FADE_OUT);
+  }
+}
+
+/** Shards of space flaking off the void's cracked edges (each step while the rift is open). */
+export function voidFlakes(w, u, wd) {
+  const Hp = w.fxHigh, R = w.fxRng, cr = w.r.frame('l_crystal'), top = Math.max(-40, u.headY);
+  if (u.y0 - top < 20 || R.next() > 0.8 * u.fade) return;
+  for (let k = 0; k < 2; k++) {
+    const s = R.next() < 0.5 ? -1 : 1, y = R.range(top, u.y0), x = u.x + s * wd * 0.5;
+    const i = Hp.spawn(cr, x, y, s * R.range(0.5, 1.8), R.range(-0.6, 0.6), R.range(20, 34));
+    if (i < 0) return;
+    Hp.size(i, R.range(4, 8), 2); Hp.spin(i, R.range(0, 6), R.range(-0.2, 0.2));
+    Hp.color(i, PAL.core[0], PAL.core[1], PAL.core[2], PAL.mid[0], PAL.mid[1], PAL.mid[2]); Hp.look(i, 0.9, 1, FADE_OUT);
+  }
+}
+
+export const PORTAL_Y = 34;
+
+/** Spear Rain's portal: a band of cracked emerald sky across the top that opens, pours, and shatters. */
+function renderPortal(p, b) {
+  const pt = p.ps.portal;
+  if (!pt) return;
+  const F = p.F, t = pt.t, open = Math.min(1, t / 14), close = pt.closeT ? Math.max(0, 1 - (t - pt.closeT) / 16) : 1;
+  const a = open * close, Wd = 480, hgt = 34 + 10 * Math.sin(p.t * 0.1);
+  b.draw(F.glow, Wd / 2, PORTAL_Y, Wd * 1.3, hgt * 3.2, 0, PAL.edge[0], PAL.edge[1], PAL.edge[2], 0.5 * a, 1);
+  b.draw(F.glow, Wd / 2, PORTAL_Y, Wd * 1.2, hgt * 2 * open, 0, DARK[0], DARK[1], DARK[2], 0.9 * a, 0);
+  for (let k = 0; k < 30; k++) { // stars inside the gap
+    const x = hash(k * 3.7) * Wd, y = PORTAL_Y + (hash(k * 5.1) - 0.5) * hgt * open, tw = 0.5 + 0.5 * Math.sin(p.t * 0.2 + k);
+    b.draw(F.core, x, y, 2 + 2 * hash(k), 2 + 2 * hash(k), 0, PAL.core[0], PAL.core[1], PAL.core[2], a * tw, 1);
+  }
+  // The cracked rims (above and below), and cracks spreading down the sky.
+  const pulse = 0.75 + 0.25 * Math.sin(p.t * 0.3);
+  crack(b, F, -10, PORTAL_Y - hgt * 0.5 * open, Wd + 10, PORTAL_Y - hgt * 0.5 * open, 11, a * pulse, 2.2, -1);
+  crack(b, F, -10, PORTAL_Y + hgt * 0.5 * open, Wd + 10, PORTAL_Y + hgt * 0.5 * open, 23, a * pulse, 2.2, 1);
+  for (let k = 0; k < 5; k++) {
+    const x = (k + 0.5) / 5 * Wd + (hash(k) - 0.5) * 40;
+    crack(b, F, x, PORTAL_Y + hgt * 0.5, x + (hash(k * 2) - 0.5) * 60, PORTAL_Y + hgt * 0.5 + 40 + 60 * hash(k * 3) * open, 40 + k, a * 0.7, 1.4, 0);
+  }
+}

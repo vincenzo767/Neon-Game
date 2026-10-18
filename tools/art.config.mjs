@@ -308,6 +308,9 @@ export const PILOT_ART = {
   },
   lin: {
     folder: 'Lin Hayase',
+    // v2 (owner's brief, ASSET_NOTES.md "Rebuild v2"): a component mecha on the same
+    // sprite. The whip swings out in front and throws the shards; the spear thrusts;
+    // the butterfly wings beat. Flies feet-first (the crystal legs never fire).
     back: 'top-down-main.jpg',
     front: 'top-down-front.jpg',
     portrait: 'pilot-portrait.jpg',
@@ -319,13 +322,38 @@ export const PILOT_ART = {
     // under them come from the mirrored wing. Source pixels; mirror axis x 660.
     wings: {
       axis: 660,
+      fillAll: true,           // v2: fill every pixel under the whip / spear (body too) → lin_wings@2x.png, the rig's `under` image
+      fillGrow: 6,             // and the weapons' outline / glow round them
       pivotL: [490, 700],
       wingL: [[-120, 370], [120, 370], [260, 470], [400, 560], [470, 640], [500, 700], [470, 760], [420, 880], [370, 1000], [340, 1100], [290, 1320], [-120, 1320]],
       keep: [
         // spear: shaft, guard and blade
         [[935, 0], [995, 0], [995, 330], [1003, 420], [1018, 500], [1022, 560], [1014, 700], [992, 800], [966, 905], [944, 905], [918, 800], [896, 700], [890, 560], [902, 500], [922, 420], [928, 330]],
-        // whip: from its tip down to his hand
-        [[20, 300], [170, 300], [300, 380], [430, 430], [500, 500], [505, 620], [497, 632], [393, 670], [341, 650], [272, 603], [202, 540], [150, 476], [104, 416], [40, 395]],
+        // whip: from its tip down to his hand (v2: the whole whip, as its rig part)
+        [[138, 2], [162, 40], [152, 110], [170, 180], [205, 212], [236, 262], [276, 298], [306, 330], [344, 368], [386, 406], [424, 436], [458, 466], [496, 500], [510, 560], [504, 632], [470, 664], [420, 674], [376, 646], [326, 606], [276, 596], [236, 568], [196, 538], [146, 486], [98, 426], [56, 376], [34, 330], [24, 280], [22, 230], [32, 180], [42, 140], [62, 98], [98, 48]],
+      ],
+    },
+    // v2 rigged components (source px; the whip and spear are one-sided). The body and
+    // the wings draw from the weapon-free `under` image, so moving weapons leave no hole.
+    // Draw order and motion live in src/pilots/linRig.js.
+    parts: {
+      axis: 660,
+      hole: 3,
+      bodySrc: 'under',
+      list: [
+        { // butterfly wing (beats; under everything)
+          name: 'wing', pivot: [490, 700], src: 'under',
+          poly: [[-120, 370], [120, 370], [260, 470], [400, 560], [470, 640], [500, 700], [470, 760], [420, 880], [370, 1000], [340, 1100], [290, 1320], [-120, 1320]],
+        },
+        { // whip (left hand): handle half (root, pivot at the hand) and tip half (tip, lags behind as it lashes)
+          name: 'whip', side: 'L', pivot: [470, 600],
+          split: [[70, 372], [252, 250]],
+          poly: [[138, 2], [162, 40], [152, 110], [170, 180], [205, 212], [236, 262], [276, 298], [306, 330], [344, 368], [386, 406], [424, 436], [458, 466], [496, 500], [510, 560], [504, 632], [470, 664], [420, 674], [376, 646], [326, 606], [276, 596], [236, 568], [196, 538], [146, 486], [98, 426], [56, 376], [34, 330], [24, 280], [22, 230], [32, 180], [42, 140], [62, 98], [98, 48]],
+        },
+        { // spear (right hand): shaft, guard and blade; thrusts along its axis
+          name: 'spear', side: 'R', pivot: [955, 600],
+          poly: [[935, 0], [995, 0], [995, 330], [1003, 420], [1018, 500], [1022, 560], [1014, 700], [992, 800], [966, 905], [944, 905], [918, 800], [896, 700], [890, 560], [902, 500], [922, 420], [928, 330]],
+        },
       ],
     },
     // Owner's FX picks (tools/art-ref/lin/, over a checkerboard) → lin_fx_<name>.png.
@@ -343,8 +371,16 @@ export const PILOT_ART = {
       blade: [957, 260],       // spear blade, ~30 units ahead: focus-spear origin
       spear: [965, 30],        // spear tip (reference, ultimate launch)
       whip: [125, 40],         // whip tip (reference)
+      whipHand: [470, 600],    // v2: whip handle (left hand, the whip's pivot)
+      whipJoint: [160, 312],   // whip split: handle half / tip half
+      whipMid: [300, 470],     // crystals along the handle half
+      whipTip: [140, 12],      // whip tip
+      spearHand: [955, 600],   // spear grip (its pivot)
+      spearTip: [965, 30],     // spear tip
       wingL: [540, 700],       // wing roots: glitter, no thrusters
       wingR: [780, 700],
+      wingPivotL: [490, 700],  // v2: wing-beat pivots
+      wingPivotR: [830, 700],
     },
   },
   dax: {

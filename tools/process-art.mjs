@@ -299,20 +299,23 @@ function clipPoly(poly, a, b, keep, off = 0) {
  * with `split: [a, b]` becomes two sections across that line: `<name>Root`
  * (the side holding the pivot) and `<name>Tip` (with an `overlap` px tab under
  * the root, so the joint is seamless at rest). `exclude` names parts drawn
- * over this one: their pixels never go into it.
+ * over this one: their pixels never go into it. Opt-in: `side: 'L' | 'R'` makes
+ * a one-sided part (its poly is used as given, not mirrored; e.g. Lin's whip and
+ * spear); `src: 'under'` takes the layer's pixels from the weapon-free image
+ * (the `wings` fill, see fillWings).
  */
 function partLayers(Pc, P) {
   const layers = {}, polys = {};
   for (const part of Pc.list) {
-    polys[part.name] = { L: part.poly, R: mirrorPoly(part.poly, Pc.axis) };
+    polys[part.name] = part.side ? { [part.side]: part.poly } : { L: part.poly, R: mirrorPoly(part.poly, Pc.axis) };
   }
   for (const part of Pc.list) {
-    for (const s of ['L', 'R']) {
-      const mir = s === 'R';
+    for (const s of part.side ? [part.side] : ['L', 'R']) {
+      const mir = s === 'R' && !part.side;
       const m = ([x, y]) => (mir ? [2 * Pc.axis - x, y] : [x, y]);
       const poly = polys[part.name][s], pivot = m(part.pivot);
-      const exclude = (part.exclude || []).map((n) => polys[n][s].map(P));
-      const base = { pivot: P(pivot), exclude, part: part.name, side: s };
+      const exclude = (part.exclude || []).filter((n) => polys[n][s]).map((n) => polys[n][s].map(P));
+      const base = { pivot: P(pivot), exclude, part: part.name, side: s, ...(part.src ? { src: part.src } : {}) };
       if (!part.split) { layers[part.name + s] = { ...base, poly: poly.map(P) }; continue; }
       const a = m(part.split[0]), b = m(part.split[1]);
       // Which side of a→b holds the pivot (the root)?
@@ -328,16 +331,26 @@ function partLayers(Pc, P) {
  * Wing source for the layer split (config `wings`, source pixels): inside a
  * wing polygon, pixels covered by a held weapon (`keep` polygons) take the
  * mirrored wing's pixel; where the mirror is covered too, they are filled
- * from their neighbours, growing inward.
+ * from their neighbours, growing inward. Opt-in `fillAll` fills every covered
+ * pixel (body too, not only the wings) and `fillGrow` grows the covered area by
+ * that many px (the weapon's outline and glow go too): the rigged Lin v2 draws
+ * its body and wings from this image, so moving weapons leave no hole.
  */
 function fillWings(img, cfg) {
   const { data, w, h } = img;
   const out = Buffer.from(data);
   const wings = [cfg.wingL, mirrorPoly(cfg.wingL, cfg.axis)];
-  const covered = (x, y) => cfg.keep.some((k) => inPoly(x, y, k));
+  const inKeep = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (cfg.keep.some((k) => inPoly(x, y, k))) inKeep[y * w + x] = 1;
+  const g = cfg.fillGrow || 0, cov = g ? new Uint8Array(w * h) : inKeep;
+  if (g) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (!inKeep[y * w + x]) continue;
+    for (let yy = Math.max(0, y - g); yy <= Math.min(h - 1, y + g); yy++) for (let xx = Math.max(0, x - g); xx <= Math.min(w - 1, x + g); xx++) cov[yy * w + xx] = 1;
+  }
+  const covered = (x, y) => cov[y * w + x] === 1;
   const left = new Set();
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    if (!covered(x, y) || !wings.some((wp) => inPoly(x, y, wp))) continue;
+    if (!covered(x, y) || (!cfg.fillAll && !wings.some((wp) => inPoly(x, y, wp)))) continue;
     const mx = Math.round(2 * cfg.axis - x), p = (y * w + x) * 4;
     if (mx >= 0 && mx < w && !covered(mx, y)) {
       const q = (y * w + mx) * 4;
@@ -546,6 +559,7 @@ async function main() {
       feather: Pc.feather ?? 0.8,
       grow: Pc.grow ?? 1.5,
       hole: Pc.hole ?? 0,
+      ...(Pc.bodySrc ? { bodySrc: Pc.bodySrc } : {}),
       layers: partLayers(Pc, P),
     };
     fs.writeFileSync(path.join(OUT, `${ID}.layers.json`), anchorsJson(layers));
