@@ -1,10 +1,14 @@
 import { createMechaArt } from './art/mechaArt.js';
 import { createMechaFx } from './art/mechaFx.js';
+import { RIG, pose } from './oduyaRig.js';
 
-// ODUYA ART TEST: the hand-made Thunderjaw mecha (src/pilot concept art/Oduya
-// Rex, ASSET_NOTES.md), built on the shared mecha-art module. The sprite flies
-// feet-first; the gold drill legs (feet) never fire. All lightning leaves the
-// two gold fists. The biggest mecha: 100 units tall.
+// ODUYA v2 (ASSET_NOTES.md "Rebuild v2"): the Thunderjaw as a component mecha
+// on the same sprite, built on the shared mecha-art module's rig path. The arms
+// (upper arm + gauntlet and fist, split at the elbow) and the lightning wings
+// move as oduyaRig.js says; the FX drawn around them come from oduyaFx.js
+// (RIG_FX). Everything is visual except `anchor()` / `animatedAnchor()`, which
+// also place Oduya's real lightning origins (the gold fists). The drill legs
+// (top of the sprite: he flies feet-first) never fire. 100 units tall.
 
 // Owner's choice for every effect: blue outside, white inside.
 export const PAL = {
@@ -13,6 +17,9 @@ export const PAL = {
   mid: [0.35, 0.75, 2.4],
   edge: [0.15, 0.3, 1.4],
 };
+
+/** FX hooks around the rig's layers; filled in by oduyaFx.js (avoids an import cycle). */
+export const RIG_FX = { before: null, overlay: null };
 
 export const oduyaArt = createMechaArt({
   id: 'oduya',
@@ -23,6 +30,12 @@ export const oduyaArt = createMechaArt({
     anchors: {
       hitbox: [210.5, 152.9], head: [210.5, 201.9], crown: [210.5, 58],
       fistL: [99.4, 137.6], fistR: [321.6, 137.6],
+      wristL: [126.9, 195.8], wristR: [294.1, 195.8],
+      elbowL: [137.6, 212.6], elbowR: [283.3, 212.6],
+      shoulderL: [149.9, 238.7], shoulderR: [271.1, 238.7],
+      wingRootL: [140.7, 260.1], wingRootR: [280.3, 260.1],
+      wingTipL: [12.1, 128.4], wingTipR: [408.9, 128.4],
+      wingLowL: [24.4, 342.7], wingLowR: [396.6, 342.7],
       ventL: [122.3, 281.5], ventR: [298.7, 281.5],
       maneL: [201.9, 330.5], maneR: [219.1, 330.5],
     },
@@ -36,7 +49,13 @@ export const oduyaArt = createMechaArt({
   ],
   nozzles: ['ventL', 'ventR'],
   exhaust: ['ventL', 'ventR', 'maneL', 'maneR'],
-  wingAnchors: ['fist', 'vent'],
+  rig: {
+    order: RIG.order,
+    attach: RIG.attach,
+    pose: (p, name) => pose(p, name, oduyaArt.anchorData().anchors),
+    before: (p, b, api, name) => RIG_FX.before && RIG_FX.before(p, b, api, name),
+    overlay: (p, b, api) => RIG_FX.overlay && RIG_FX.overlay(p, b, api),
+  },
   size: 100,
 });
 

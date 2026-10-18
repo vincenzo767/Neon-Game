@@ -257,20 +257,52 @@ export const PILOT_ART = {
   },
   oduya: {
     folder: 'Oduya Rex',
+    // v2 (owner's brief, ASSET_NOTES.md "Rebuild v2"): the thunder-god component
+    // mecha on the same sprite. Flies feet-first (the gold drill legs never fire);
+    // every bolt leaves a gold fist.
     back: 'top-down-main.jpg',
     front: 'top-down-front.png',
     portrait: 'pilot-portrait.jpg',
     portraitCrop: { left: 150, top: 60, width: 480, height: 600 }, // face, crown and beard (4:5)
     glowRule: false,
+    // Rigged components (left side, source px; mirrored at `axis`). Draw order and
+    // motion live in src/pilots/oduyaRig.js.
+    parts: {
+      axis: 668,
+      hole: 3,                 // @2x px: the body hole grows past each outline (no slivers)
+      list: [
+        { // arm: elbow joint and upper arm (root, pivot at the shoulder), gauntlet and gold fist (tip: punches along its axis)
+          name: 'arm', pivot: [470, 760],
+          split: [[352, 662], [478, 598]],
+          poly: [[276, 412], [298, 396], [332, 404], [348, 440], [364, 470], [404, 504], [442, 546], [458, 592], [472, 640], [482, 690], [480, 742], [458, 774], [420, 778], [394, 748], [384, 704], [360, 664], [320, 644], [288, 604], [260, 542], [256, 482], [266, 440]],
+        },
+        { // lightning wing: the black-and-blue blade panels behind the arm
+          name: 'wing', pivot: [440, 830], exclude: ['arm'],
+          poly: [[4, 390], [60, 420], [130, 470], [200, 520], [250, 470], [300, 500], [300, 560], [330, 620], [380, 690], [440, 720], [500, 760], [520, 840], [510, 940], [470, 1040], [400, 1120], [330, 1172], [200, 1172], [90, 1160], [10, 1150], [40, 1060], [90, 960], [120, 880], [130, 800], [100, 720], [60, 620], [30, 520]],
+        },
+      ],
+    },
     anchors: {
-      hitbox: [668, 480],      // chest centre: lands on player.x/y
-      head: [668, 640],        // gold lion head
-      crown: [668, 170],       // central gold spike at the waist front
-      fistL: [305, 430],       // gold fists: lightning origins
+      hitbox: [668, 480],       // chest centre: lands on player.x/y
+      head: [668, 640],         // gold lion head
+      crown: [668, 170],        // central gold spike at the waist front (never fires)
+      fistL: [305, 430],        // gold knuckles: every bolt leaves here
       fistR: [1031, 430],
-      ventL: [380, 900],       // wing roots: wide back plumes
+      wristL: [395, 620],       // blue wrist ring
+      wristR: [941, 620],
+      elbowL: [430, 675],       // white elbow joint (the gauntlet punches from here)
+      elbowR: [906, 675],
+      shoulderL: [470, 760],    // shoulder pivot of the whole arm
+      shoulderR: [866, 760],
+      wingRootL: [440, 830],    // lightning wing pivot
+      wingRootR: [896, 830],
+      wingTipL: [20, 400],      // upper wing tip
+      wingTipR: [1316, 400],
+      wingLowL: [60, 1100],     // lower wing blade tip
+      wingLowR: [1276, 1100],
+      ventL: [380, 900],        // wing roots: wide back plumes
       ventR: [956, 900],
-      maneL: [640, 1060],      // gold flame mane: smaller plumes
+      maneL: [640, 1060],       // gold flame mane: smaller plumes
       maneR: [696, 1060],
     },
   },
