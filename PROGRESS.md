@@ -1059,6 +1059,27 @@ Notes and decisions: [ASSET_NOTES.md](src/pilot%20concept%20art/Kairo%20Vance/AS
 - **Frame rate.** Storm T4: 59.5 FPS with the art versus 60 procedural.
 - **Shared.** `process-art` `parts` and the `mechaArt` `rig` path are opt-in; the other pilots are unchanged and were checked.
 
+## Roster: portraits, 9×3 grid, Quincy, placeholder slots (branch `art/sera`)
+
+- **Painted portraits** for Nova-7, Rufus, Aiko, Pike, Zuri, Cass, Holt & Holt, Warden, Vincenzo and Quincy. They come from [tools/process-portraits.mjs](tools/process-portraits.mjs) (4:5 head-and-shoulders crops) and are loaded as portrait-only entries in `ART_MANIFEST`. Their mecha stay procedural. Portrait-only art can't break the cut-in: it keeps the plain band.
+- **Select grid** has equal tiles (9 per row). Vincenzo's tile is standard size (gold border and LEGENDARY badge kept) and sits next to his wife, Sera, at the end of row 1. Arrow keys wrap in both directions.
+- **Quincy, ARROWHEAD** (pilot #18, [pilots/quincy.js](src/pilots/quincy.js)) has a placeholder procedural mecha. Her ability, *Arrow*, redirects attacks:
+  - **Special: ARROW** (7 s). Enemy bullets within 150 become homing arrows aimed at the nearest enemy. Enemy lasers crossing her die and hit their owner.
+  - **Bomb: VECTOR STORM.** Every bullet and laser on screen is redirected, every step, for 2 s.
+  - **Ultimate: ALL ROADS LEAD BACK.** A 6 s redirect field (r = 120) rides with her while arrows rain in from both screen edges.
+  - Headless check: the special turned 293 of 500 bullets into arrows and killed the laser, and its owner took the hit. The bomb cleared all 500.
+  - Boss DPS: 22–74 shot, 41–112 focus (first pass; the field is ~70–124).
+- **Fix:** Nova-7's lore line was keyed `nova7` (pilot id `nova`), so it never showed on the select screen.
+
+- **Row 3: placeholder slots 19–27** ([pilots/placeholders.js](src/pilots/placeholders.js)). The grid is now 9×3 (27 pilots).
+  - Tiles keep their full size. The third row fits because the bio, lore and abilities moved into an info panel (below).
+  - Each slot (PILOT 19 … PILOT 27) is playable: a procedural placeholder mecha (dart, delta or twin-boom hull in its own colour), a "?" silhouette portrait, and one of three shot patterns (fan, twin lines, needles).
+  - Shared placeholder kit: PULSE special (clears bullets in a ring), SHOCKWAVE bomb, OVERDRIVE ultimate. Boss DPS is 14–103, inside the roster's range.
+  - Placeholders are left out of the attract-mode demo.
+  - To fill a slot: give the pilot its own `src/pilots/<id>.js` and swap it into `PILOTS`.
+- **Info panel.** A round "?" button sits under each pilot's stats. Click it, or press X (the bomb key; pad button 1), to open a panel with the bio, personnel file (origin, rival faction, file line) and every skill: shot, focus, special, bomb and ultimate. Arrow keys keep browsing pilots while it's open. X or ESC closes it, and ESC closes the panel before it goes back.
+- **Fix:** Quincy's option bolt sprite was drawn tall instead of wide (shot sprites face right and rotate to their heading).
+
 ## Run
 
 ```

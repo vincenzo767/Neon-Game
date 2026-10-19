@@ -14,7 +14,8 @@
     "art:oduya": "node tools/process-art.mjs oduya",
     "art:lin": "node tools/process-art.mjs lin",
     "art:miguerre": "node tools/process-art.mjs miguerre",
-    "art:sera": "node tools/process-art.mjs sera"
+    "art:sera": "node tools/process-art.mjs sera",
+    "art:portraits": "node tools/process-portraits.mjs"
   },
   "devDependencies": {
     "sharp": "^0.35.5",
