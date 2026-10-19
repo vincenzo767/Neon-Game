@@ -3,6 +3,7 @@ import { biomeArena, resolveArena } from './arenas.js';
 import { transitionFor } from './transitions.js';
 import { ScoreStars } from './ScoreStars.js';
 import { installArenaBackground } from './ArenaBackground.js';
+import { worldSystem } from '../world/index.js';
 
 // Boss arena mode (UPDATE_01 §1.3). While a main boss is up, the Arena owns
 // the background layers: shader mode + palette, parallax set, weather and
@@ -11,7 +12,14 @@ import { installArenaBackground } from './ArenaBackground.js';
 // when the screen is fully covered, while colours and scroll speed blend
 // smoothly up to it.
 //
+// Level mode (level rework): showLevel(id) puts a level's arena world on
+// screen for the whole level — waves, mini-boss and boss. Boss phases then
+// only change the arena's MOOD (vision veil / tint, eased), never the world.
+// The first view is held under a cover until its chunks are built.
+//
 // Lifecycle (driven by StageScene from world events):
+//   showLevel(id, biome)    level mode: this arena from the first wave on
+//   mood(arena)             phase visibility / tint over the level arena
 //   enter(stageBiome)       arena mode on; remembers the stage biome
 //   transitionTo(arena, fx) crossfade to a phase arena (snaps any running one)
 //   finish()                complete the running transition immediately
@@ -21,6 +29,11 @@ import { installArenaBackground } from './ArenaBackground.js';
 // it hosts (bullet → score conversion, kept here so stars outlive the boss).
 
 const BASE_SCROLL = 0.012; // Background's stage scroll speed
+const MAX_POOL = 3;        // arena worlds alive at once (shown + incoming + prefetched)
+const HOLD_MAX = 40;       // max steps a transition may hold full cover for a late arena build
+const LOAD_MAX = 60 * 10;  // a level's first view waits at most this long under the cover
+const COVER_FADE = 45;     // steps to lift the cover once the level arena is ready
+const MOOD_EASE = 0.03;    // per-step easing of phase darkness / light / tint
 const COLORS = ['base', 'fog', 'neonA', 'neonB'];
 const NUMS = ['tilt', 'bright', 'detail'];
 
@@ -148,6 +161,27 @@ Object.assign(AMBIENT, {
     },
   },
 });
+Object.assign(AMBIENT, {
+  // Re-entry: plasma sheath streaks rushing past the screen edges, flickering hot.
+  reentry: {
+    init: (R) => Array.from({ length: 34 }, () => ({ x: R.range(0, W), y: R.range(0, H), v: R.range(9, 18), l: R.range(60, 180), w: R.range(1.5, 4), ph: R.range(0, 6.28) })),
+    update(s) { for (const f of s) { f.y -= f.v; if (f.y < -f.l) { f.y = H + f.l; } } },
+    draw(b, F, s, t) {
+      for (const f of s) {
+        const edge = Math.min(1, (Math.abs(f.x - W / 2) / (W / 2)) * 1.6);
+        b.draw(F.laser, f.x, f.y, f.l, f.w, Math.PI / 2, 2, 0.9 + 0.3 * Math.sin(t * 9 + f.ph), 0.35, 0.18 * edge, 1);
+      }
+      b.draw(F.glow, -40, H / 2, 260, H * 1.4, 0, 1.6, 0.55, 0.15, 0.12 + 0.04 * Math.sin(t * 7), 1);
+      b.draw(F.glow, W + 40, H / 2, 260, H * 1.4, 0, 1.6, 0.55, 0.15, 0.12 + 0.04 * Math.sin(t * 6.3), 1);
+    },
+  },
+  // Wind-blown sea spray in storms.
+  spray: {
+    init: (R) => Array.from({ length: 40 }, () => ({ x: R.range(0, W), y: R.range(0, H), v: R.range(5, 9), s: R.range(10, 30) })),
+    update(s) { for (const f of s) { f.x += f.v; f.y += f.v * 0.25; if (f.x > W + 30) { f.x = -30; f.y = Math.random() * H; } } },
+    draw(b, F, s) { for (const f of s) b.draw(F.smoke, f.x, f.y, f.s * 2, f.s, 0.2, 0.85, 0.9, 0.95, 0.08, 0); },
+  },
+});
 // Names from boss data that map onto the layers above.
 const AMBIENT_ALIAS = { searchlight_beams: 'searchlights', aurora_bands: 'aurora', snowfall: 'snow', ash_fall: 'ash' };
 
@@ -166,11 +200,19 @@ export class Arena {
     this.world = world;
     // Arena-only shader scenes (modes >= 10) render through the stage Background.
     installArenaBackground(this.bg, r.gl);
+    // Arena rework: authored phase arenas are rendered by the world system.
+    this.sys = worldSystem(game);
+    this.pool = new Map();   // arena config id → ArenaWorld (current, incoming, prefetched)
+    this.view = null;        // the ArenaWorld on screen
     this.stars = new ScoreStars(world);
     this.reset();
   }
 
-  reset() {
+  reset(keepId = null) {
+    this.levelRec = null;
+    this.cover = 0;
+    this.loadT = 0;
+    this.moodTo = null;
     this.active = false;
     this.exiting = false;
     this.tr = null;
@@ -179,15 +221,110 @@ export class Arena {
     this.amb = [];
     this.bg.speed = BASE_SCROLL;
     this.stars.clear();
+    for (const [id, v] of this.pool) if (id !== keepId) { v.dispose(); this.pool.delete(id); }
+    this.view = null;
+    this.bg.world = null;
   }
 
   get transitioning() { return !!this.tr; }
+
+  // ------------------------------------------------------------ level mode
+
+  /**
+   * Show level arena `id` for the whole level (no transition: the scene is
+   * covered until the first view is built, then the cover lifts).
+   */
+  showLevel(id, biome) {
+    const rec = resolveArena({ id });
+    if (!rec.world) return false;
+    this.enter(biome);
+    this.levelRec = rec;
+    const v = this._worldFor(rec.world);
+    this._swap({ to: rec, toView: v, swapped: false });
+    this.bg.speed = BASE_SCROLL * rec.scrollSpeed;
+    this.cover = 1;
+    this.loadT = 0;
+    this.moodTo = null;
+    return true;
+  }
+
+  /** True while a level's first view is still being built (the scene waits). */
+  get loading() { return !!this.levelRec && this.cover >= 1; }
+
+  /** Level mode: true. Phase arenas then only set the mood. */
+  get locked() { return !!this.levelRec; }
+
+  /**
+   * A boss phase's arena in level mode: keep the level world, ease toward
+   * that arena's visibility (Light Pool), darkness and tint.
+   */
+  mood(arena) {
+    if (!this.levelRec) return;
+    const rec = arena ? resolveArena(arena) : this.levelRec;
+    this.moodTo = { darkness: rec.darkness || 0, light: rec.light || 0, tint: rec.tint || this.levelRec.tint || null };
+  }
+
+  _updateMood() {
+    const m = this.moodTo, cur = this.cur;
+    if (!m || !cur) return;
+    if (cur === this.levelRec) this.cur = { ...cur }; // never write into the shared recipe
+    const c = this.cur;
+    c.darkness += (m.darkness - (c.darkness || 0)) * MOOD_EASE * 2;
+    // The light pool snaps open / shut with the veil (a radius easing from 0 reads as a pinhole).
+    c.light = m.darkness > 0 ? m.light : (c.darkness < 0.05 ? 0 : c.light);
+    if (m.tint) {
+      const t = c.tint ? [...c.tint] : [m.tint[0], m.tint[1], m.tint[2], 0];
+      for (let i = 0; i < 4; i++) t[i] += (m.tint[i] - t[i]) * MOOD_EASE;
+      c.tint = t;
+    } else if (c.tint) {
+      c.tint = [c.tint[0], c.tint[1], c.tint[2], c.tint[3] * (1 - MOOD_EASE)];
+      if (c.tint[3] < 0.005) c.tint = null;
+    }
+  }
+
+  /** Scroll of the arena's ground / water plane at screen row `sy` (world px per step). */
+  groundSpeed(sy) {
+    const v = this.view;
+    return v && v.groundSpeedAt ? v.groundSpeedAt(sy) : 1.5;
+  }
 
   enter(stageBiome) {
     this.active = true;
     this.exiting = false;
     this.home = stageBiome;
     this.cur = biomeArena(stageBiome);
+  }
+
+  // ------------------------------------------------------- arena worlds
+
+  /**
+   * Start building an arena before it is needed (boss WARNING, each phase
+   * start for the next phase). Keeps at most MAX_POOL worlds alive.
+   */
+  prefetch(arena) {
+    if (!arena) return null;
+    const rec = arena.bg && arena.parallax ? arena : resolveArena(arena);
+    if (!rec.world) return null;
+    return this._worldFor(rec.world);
+  }
+
+  _worldFor(cfg) {
+    let v = this.pool.get(cfg.id);
+    if (v && !v.disposed) return v;
+    v = this.sys.create(cfg);
+    this.pool.set(cfg.id, v);
+    // Bound the pool: drop the oldest world that is neither shown nor incoming.
+    if (this.pool.size > MAX_POOL) {
+      for (const [id, w] of this.pool) {
+        if (w === this.view || w === v || (this.tr && this.tr.toView === w)) continue;
+        w.dispose(); this.pool.delete(id); break;
+      }
+    }
+    return v;
+  }
+
+  _dropView(keep = null) {
+    for (const [id, w] of this.pool) if (w !== keep && w === this.view) { w.dispose(); this.pool.delete(id); }
   }
 
   /** Crossfade to `arena` (a phase's arena block, or a resolved recipe). */
@@ -197,7 +334,8 @@ export class Arena {
     const to = arena.bg && arena.parallax ? arena : resolveArena(arena);
     const work = cloneBg(this.bg.biome);
     this.bg.biome = work; // private copy, blended in place up to the swap
-    const tr = { from: this.cur, to, name: fx, fx: transitionFor(fx), dur, t: 0, swapped: false, start: cloneBg(work), speed0: this.bg.speed };
+    const tr = { from: this.cur, to, name: fx, fx: transitionFor(fx), dur, t: 0, swapped: false, start: cloneBg(work), speed0: this.bg.speed, hold: 0 };
+    tr.toView = to.world ? this._worldFor(to.world) : null;
     if (tr.fx.init) tr.fx.init(tr, this.R);
     this.tr = tr;
   }
@@ -214,6 +352,7 @@ export class Arena {
 
   /** Hand control back to the stage biome. */
   exit() {
+    if (this.levelRec) { this.mood(null); return; }
     if (!this.active || !this.home) return;
     this.exiting = false;
     this.transitionTo(biomeArena(this.home), 'fade', 80);
@@ -226,12 +365,22 @@ export class Arena {
     this.cur = null;
     this.amb = [];
     this.bg.speed = BASE_SCROLL;
+    for (const v of this.pool.values()) v.dispose();
+    this.pool.clear();
+    this.view = null;
+    this.bg.world = null;
   }
 
   _swap(tr) {
     tr.swapped = true;
     this.bg.setBiome(cloneBg(tr.to.bg));
     this.parallax.setStyle(tr.to);
+    // World arenas replace the background slot; the outgoing world is freed
+    // now that the transition fully covers the screen.
+    const next = tr.toView || null;
+    if (this.view && this.view !== next) this._dropView(next);
+    this.view = next;
+    this.bg.world = next;
     this.cur = tr.to;
     this.amb = [];
     for (const raw of tr.to.ambient) {
@@ -242,10 +391,21 @@ export class Arena {
 
   update() {
     this.stars.update();
+    this.sys.check();
+    for (const v of this.pool.values()) if (v !== this.view) v.idle(); // prefetched arenas upload gradually
     if (!this.active) return;
+    if (this.cover > 0) {
+      this.loadT++;
+      if (this.cover < 1 || (this.view && this.view.ready) || this.loadT > LOAD_MAX) this.cover = Math.max(0, this.cover - 1 / COVER_FADE);
+    }
+    this._updateMood();
     const tr = this.tr;
     if (tr) {
-      tr.t++;
+      // Hold full coverage at the midpoint (a few frames at most) if the
+      // incoming arena's first view is still being built: never show holes.
+      const atSwap = !tr.swapped && (tr.t + 1) / tr.dur >= 0.5;
+      if (atSwap && tr.toView && !tr.toView.ready && tr.hold < HOLD_MAX) tr.hold++;
+      else tr.t++;
       const k = tr.t / tr.dur;
       if (!tr.swapped) {
         const m = smooth(k / 0.5);
@@ -255,14 +415,19 @@ export class Arena {
       }
       if (tr.t >= tr.dur) this.finish();
     }
+    if (this.view) this.view.update();
     if (this.cur && this.cur.noStructs) this.parallax.structs.length = 0;
     for (const a of this.amb) if (a.A.update) a.A.update(a.s, this);
   }
+
+  /** World-space FX hooks for gameplay presentation (impacts, tread marks, wakes). */
+  get fx() { return this.view ? this.view.fx : null; }
 
   /** Arena layers + transition effect: over the parallax, under all entities. */
   renderUnder(b, alpha, time) {
     if (!this.active) return;
     const F = this.F, cur = this.cur;
+    if (this.view) this.view.renderFx(b, alpha);
     if (cur) {
       if (cur.darkness > 0) b.draw(F.white, W / 2, H / 2, W + 20, H + 20, 0, 0, 0, 0, cur.darkness, 0);
       if (cur.tint) { const c = cur.tint; b.draw(F.white, W / 2, H / 2, W + 20, H + 20, 0, c[0], c[1], c[2], c[3], 0); }
@@ -270,6 +435,7 @@ export class Arena {
     }
     const tr = this.tr;
     if (tr) tr.fx.draw(b, F, Math.min(1, Math.max(0, (tr.t - 1 + alpha) / tr.dur)), tr, time);
+    if (this.cover > 0) b.draw(F.white, W / 2, H / 2, W + 40, H + 40, 0, 0, 0, 0, smooth(this.cover), 0);
   }
 
   /** Score stars: over the world, under enemy bullets. */

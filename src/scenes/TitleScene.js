@@ -15,7 +15,7 @@ export class TitleScene extends MenuScene {
     this.idle = 0;
     this.index = this.opts.index || 0;
     this.rows = [
-      { label: 'START', hint: 'Endless procedural run: pick a difficulty, then a pilot', confirm: () => g.setScene(new DifficultySelectScene()) },
+      { label: 'START', hint: 'Campaign: 6 archetypes · 30 levels · pick a difficulty, then a pilot', confirm: () => g.setScene(new DifficultySelectScene()) },
       {
         label: 'PRACTICE', disabled: seen === 0,
         hint: seen ? `Fight any boss you have reached (${seen} unlocked)` : 'Reach a syndicate boss in a run to unlock practice',

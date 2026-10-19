@@ -188,15 +188,15 @@ export class PostFX {
   resize(w, h) {
     const gl = this.gl;
     if (this.targets) for (const t of Object.values(this.targets)) destroyTarget(gl, t);
-    const mk = (tw, th) => {
-      let t = this.hdr ? createTarget(gl, tw, th, true) : null;
-      if (!t) { this.hdr = false; t = createTarget(gl, tw, th, false); }
+    const mk = (tw, th, depth = false) => {
+      let t = this.hdr ? createTarget(gl, tw, th, true, depth) : null;
+      if (!t) { this.hdr = false; t = createTarget(gl, tw, th, false, depth); }
       return t;
     };
     const hw = Math.max(1, w >> 1), hh = Math.max(1, h >> 1);
     const qw = Math.max(1, w >> 2), qh = Math.max(1, h >> 2);
     this.targets = {
-      scene: mk(w, h),
+      scene: mk(w, h, true), // depth: the arena world pass (world/)
       halfA: mk(hw, hh), halfB: mk(hw, hh),
       quarterA: mk(qw, qh), quarterB: mk(qw, qh),
     };

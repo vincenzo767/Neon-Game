@@ -35,8 +35,11 @@ function compileShader(gl, type, src, name) {
   return sh;
 }
 
-/** Colour render target. Uses RGBA16F when the device can render to it (HDR bloom). */
-export function createTarget(gl, w, h, hdr) {
+/**
+ * Colour render target. Uses RGBA16F when the device can render to it (HDR
+ * bloom). `depth` adds a depth renderbuffer (the arena world pass).
+ */
+export function createTarget(gl, w, h, hdr, depth = false) {
   const tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
   if (hdr) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
@@ -48,20 +51,30 @@ export function createTarget(gl, w, h, hdr) {
   const fb = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  let rb = null;
+  if (depth) {
+    rb = gl.createRenderbuffer();
+    gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, w, h);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb);
+    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+  }
   const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   if (status !== gl.FRAMEBUFFER_COMPLETE) {
     gl.deleteFramebuffer(fb);
     gl.deleteTexture(tex);
+    if (rb) gl.deleteRenderbuffer(rb);
     return null;
   }
-  return { fb, tex, w, h };
+  return { fb, tex, w, h, rb };
 }
 
 export function destroyTarget(gl, t) {
   if (!t) return;
   gl.deleteFramebuffer(t.fb);
   gl.deleteTexture(t.tex);
+  if (t.rb) gl.deleteRenderbuffer(t.rb);
 }
 
 // Fullscreen triangle generated from gl_VertexID — no vertex buffers needed.

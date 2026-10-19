@@ -75,3 +75,16 @@
 .tally-next b { color: var(--neon-a); }
 .tally-seed { margin-top: calc(6 * var(--u)); font-size: calc(7 * var(--u)); letter-spacing: 0.3em; opacity: 0.5; }
 .menu-sub .seed { font-size: 1em; color: var(--neon-a); letter-spacing: 0.2em; }
+
+/* Level rework: wave announcements — a dark band across the screen, a large
+   numeral that slides in, the wave count / what comes next underneath. */
+.hud-banner.wave {
+  top: 34%; padding: calc(12 * var(--u)) 0 calc(10 * var(--u));
+  font-size: calc(44 * var(--u)); letter-spacing: 0.24em; color: #fff6e0;
+  background: linear-gradient(90deg, transparent, rgba(8, 10, 16, 0.72) 18%, rgba(8, 10, 16, 0.72) 82%, transparent);
+  border-top: 1px solid rgba(255, 200, 90, 0.55); border-bottom: 1px solid rgba(255, 200, 90, 0.55);
+  text-shadow: 0 0 calc(8 * var(--u)) #ff9a1a, 0 0 calc(22 * var(--u)) rgba(255, 120, 30, 0.7);
+}
+.hud-banner.wave.show { animation: wave-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+.hud-banner.wave small { color: #ffd27a; font-size: 0.28em; letter-spacing: 0.5em; }
+@keyframes wave-in { from { transform: scaleX(1.6); letter-spacing: 0.6em; opacity: 0; } to { transform: none; opacity: 1; } }

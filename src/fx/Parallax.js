@@ -31,7 +31,7 @@ export class Parallax {
   }
 
   setStyle(biome) {
-    const st = biome ? { ...biome.parallax, traffic: biome.bg.mode === 0 } : DEFAULT_STYLE;
+    const st = biome ? { ...biome.parallax, traffic: biome.parallax.traffic ?? biome.bg.mode === 0 } : DEFAULT_STYLE;
     this.style = st;
     this.structs = [];
     this.structTimer = 0;
@@ -62,6 +62,7 @@ export class Parallax {
 
   _spawnStruct(y) {
     const R = this.R, F = this.F;
+    if (!this.style.structs || !this.style.structs.length) return; // arena worlds: no sprite structures
     if (R.chance(0.2)) return;
     const kind = R.pick(this.style.structs);
     if (kind === 'girder') {
@@ -100,7 +101,7 @@ export class Parallax {
 
   renderBack(b, alpha, t) {
     const F = this.F, sh = this.style.shafts;
-    for (let k = 0; k < 3; k++) {
+    for (let k = 0; sh && sh.length && k < 3; k++) {
       const x = 80 + k * 160 + Math.sin(t * 0.3 + k * 2) * 40;
       const a = 0.05 + 0.03 * Math.sin(t * 0.8 + k);
       const col = sh[k % sh.length];

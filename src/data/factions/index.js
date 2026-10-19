@@ -61,7 +61,8 @@ export function tagEnemyRoster(enemies) {
  * a resolver for which faction's colours a spawned enemy wears.
  */
 export function stageFactions(plan) {
-  const own = BIOME_OWNERS[plan.biome.id] || { main: 'ironclad' };
+  // Campaign levels: the archetype's syndicate owns the level.
+  const own = BIOME_OWNERS[plan.biome.id] || { main: (plan.level && ARCHETYPE_FACTION[plan.level.archetype]) || 'ironclad' };
   const main = FACTIONS[own.main];
   const R = new RNG(`${plan.seed}:dispatch:${plan.index}`);
   const line = main.dispatch[R.int(0, main.dispatch.length - 1)].replace('{territory}', titleCase(plan.biome.name));

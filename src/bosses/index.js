@@ -1,21 +1,42 @@
 import { RNG } from '../core/RNG.js';
 import { BossController } from './BossController.js';
 import prototype from './test/prototype.js';
-import colossusCrawler from './ground/colossusCrawler.js';
-import skywardenCarrier from './aerial/skywardenCarrier.js';
-import leviathanDreadnought from './sea/leviathanDreadnought.js';
-import titanEnforcer from './mecha/titanEnforcer.js';
-import hiveSovereign from './extraterrestrial/hiveSovereign.js';
-import mawOfTheDeep from './abyssal/mawOfTheDeep.js';
+import ground from './ground/index.js';
+import aerial from './aerial/index.js';
+import sea from './sea/index.js';
+import mecha from './mecha/index.js';
+import extraterrestrial from './extraterrestrial/index.js';
+import abyssal from './abyssal/index.js';
+import { MINIBOSSES } from './minibosses/index.js';
 
-// Boss registry + endless-mode rotation (UPDATE_01 §1.6).
+// Boss registry + endless-mode rotation (UPDATE_01 §1.6, arena rework §6).
 //
-// Rotation: stage bosses are dealt from shuffled "decks" of the six
-// archetypes, one deck per six stages. Every archetype appears once per deck
-// before any repeats, and a new deck never opens with the archetype that
-// closed the previous one, so the same archetype never fights twice in a row.
-// Deck k (0-based) fields Mk. (k + 1) variants, capped at Mk. III.
-// Everything derives from the run seed: same seed, same boss sequence.
+// Two independent seeded layers:
+//
+//  A. ARCHETYPE deck (unchanged since M4b): stage bosses are dealt from
+//     shuffled decks of the six archetypes, one deck per six stages. Every
+//     archetype appears once per deck; a new deck never opens with the
+//     archetype that closed the previous one. Deck k fields Mk. (k + 1),
+//     capped at Mk. III. Stream: `${seed}:bossdeck:${k}`.
+//
+//  B. VARIANT decks, one sequence per archetype: an archetype's n-th
+//     appearance in the run (n = the archetype deck index, since each deck
+//     holds every archetype exactly once) takes entry n mod L of variant deck
+//     ⌊n / L⌋ — a seeded shuffle of that archetype's roster (L bosses).
+//     No variant repeats until all L have fought; a new variant deck never
+//     opens with the variant that closed the previous one.
+//     Stream: `${seed}:variantdeck:${archetype}:${m}` (separate from A).
+//
+// Recovery: a roster entry that is missing or `disabled` is skipped by walking
+// forward through the same deck (wrapping); if every entry is unavailable the
+// flagship is used, then the framework prototype. Selection never reads
+// gameplay state or any other RNG, so the same seed always gives the same
+// sequence.
+//
+// Old seeds: the archetype order and Mk. progression are identical to the
+// pre-roster game; which boss of the archetype appears is new (previously
+// always the flagship). Saved progression is keyed by boss id (practice
+// unlocks) and archetype (Warden), both of which are unaffected.
 
 export const ARCHETYPES = ['ground', 'aerial', 'sea', 'mecha', 'extraterrestrial', 'abyssal'];
 export const ARCHETYPE_LABEL = {
@@ -23,16 +44,30 @@ export const ARCHETYPE_LABEL = {
   extraterrestrial: 'EXTRATERRESTRIAL', abyssal: 'ABYSSAL', prototype: 'PROTOTYPE',
 };
 
-/** All boss definitions by id: one per archetype (M4c) + the framework prototype. */
+/** Stable roster order per archetype (flagship first). */
+export const ROSTER = { ground, aerial, sea, mecha, extraterrestrial, abyssal };
+const ROSTER_IDS = Object.fromEntries(Object.entries(ROSTER).map(([a, list]) => [a, list.map((b) => b.id)]));
+export const FLAGSHIP = Object.fromEntries(Object.entries(ROSTER_IDS).map(([a, ids]) => [a, ids[0]]));
+
+/** All boss definitions by id (the 30-boss roster + the framework prototype). */
 export const BOSSES = {
-  ...Object.fromEntries([colossusCrawler, skywardenCarrier, leviathanDreadnought, titanEnforcer, hiveSovereign, mawOfTheDeep].map((b) => [b.id, b])),
+  ...Object.fromEntries(Object.values(ROSTER).flat().map((b) => [b.id, b])),
   [prototype.id]: prototype,
 };
 
-/** Stand-in for an archetype with no authored boss (none since M4c; kept for safety). */
+/** Stand-in when nothing in an archetype is available (kept for safety). */
 export const FALLBACK_BOSS = prototype.id;
 
-const byArchetype = (a) => Object.values(BOSSES).filter((b) => b.archetype === a).map((b) => b.id);
+const available = (id) => !!BOSSES[id] && !BOSSES[id].disabled;
+
+function shuffled(list, R) {
+  const d = [...list];
+  for (let i = d.length - 1; i > 0; i--) {
+    const j = R.int(0, i);
+    [d[i], d[j]] = [d[j], d[i]];
+  }
+  return d;
+}
 
 const deckCache = new Map();
 
@@ -40,12 +75,7 @@ const deckCache = new Map();
 export function archetypeDeck(seed, k) {
   const key = `${seed}|${k}`;
   if (deckCache.has(key)) return deckCache.get(key);
-  const R = new RNG(`${seed}:bossdeck:${k}`);
-  const deck = [...ARCHETYPES];
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = R.int(0, i);
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
+  const deck = shuffled(ARCHETYPES, new RNG(`${seed}:bossdeck:${k}`));
   if (k > 0) {
     const prev = archetypeDeck(seed, k - 1);
     if (deck[0] === prev[prev.length - 1]) [deck[0], deck[1]] = [deck[1], deck[0]];
@@ -55,21 +85,53 @@ export function archetypeDeck(seed, k) {
   return deck;
 }
 
+const variantCache = new Map();
+
+/** Variant deck m of an archetype for a run (a shuffle of its roster). */
+export function variantDeck(seed, archetype, m) {
+  const key = `${seed}|${archetype}|${m}`;
+  if (variantCache.has(key)) return variantCache.get(key);
+  const ids = ROSTER_IDS[archetype] || [];
+  const deck = shuffled(ids, new RNG(`${seed}:variantdeck:${archetype}:${m}`));
+  if (m > 0 && deck.length > 1) {
+    const prev = variantDeck(seed, archetype, m - 1);
+    if (deck[0] === prev[prev.length - 1]) [deck[0], deck[1]] = [deck[1], deck[0]];
+  }
+  if (variantCache.size > 512) variantCache.clear();
+  variantCache.set(key, deck);
+  return deck;
+}
+
+/** Boss variant for the n-th appearance of an archetype in a run. */
+export function variantFor(seed, archetype, n) {
+  const ids = ROSTER_IDS[archetype] || [];
+  const L = ids.length;
+  if (!L) return { id: FALLBACK_BOSS, recovered: true };
+  const deck = variantDeck(seed, archetype, Math.floor(n / L));
+  const at = n % L;
+  for (let s = 0; s < L; s++) {
+    const id = deck[(at + s) % L];
+    if (available(id)) return { id, recovered: s > 0 };
+  }
+  return available(FLAGSHIP[archetype]) ? { id: FLAGSHIP[archetype], recovered: true } : { id: FALLBACK_BOSS, recovered: true };
+}
+
 /**
  * Boss for global stage `index` of a run.
- * @returns {{ id, archetype, mk, deck, fallback }}
+ * @returns {{ id, archetype, mk, deck, variant, fallback }}
  */
 export function bossForStage(seed, index) {
   const n = ARCHETYPES.length;
   const k = Math.floor(index / n);
   const archetype = archetypeDeck(seed, k)[index % n];
-  const ids = byArchetype(archetype);
-  const id = ids.length ? ids[new RNG(`${seed}:boss:${index}`).int(0, ids.length - 1)] : FALLBACK_BOSS;
-  return { id, archetype, mk: Math.min(3, k + 1), deck: k, fallback: !ids.length };
+  const v = variantFor(seed, archetype, k);
+  return { id: v.id, archetype, mk: Math.min(3, k + 1), deck: k, variant: k, fallback: v.id === FALLBACK_BOSS, recovered: v.recovered };
 }
 
-/** Spawn a main boss from a rotation spec; returns the World enemy (e.ctrl = controller). */
+export { MINIBOSSES };
+
+/** Spawn a boss (main or a level's mini-boss) from a spec; returns the World enemy (e.ctrl = controller). */
 export function spawnArenaBoss(w, spec) {
-  const def = BOSSES[spec.id] || BOSSES[FALLBACK_BOSS];
+  const def = BOSSES[spec.id] || MINIBOSSES[spec.id] || BOSSES[FALLBACK_BOSS];
   return new BossController(w, def, spec).e;
 }

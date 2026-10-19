@@ -419,7 +419,13 @@ export function installArenaBackground(bg, gl) {
   if (bg.arenaBg) return bg.arenaBg;
   const arena = new ArenaBackground(gl);
   const stageRender = bg.render.bind(bg);
-  bg.render = (...args) => ((bg.biome.mode | 0) >= ARENA_MODE_BASE ? arena.render(bg, ...args) : stageRender(...args));
+  bg.render = (...args) => {
+    // Arena rework: a live ArenaWorld (world/) owns the whole background slot.
+    // Renderer passes the camera shake as uv offsets (offset / size * 0.6).
+    const w = bg.world;
+    if (w && !w.disposed) return w.render(args[0], args[1], args[3], ((args[4] || 0) * 480) / 0.6, (-(args[5] || 0) * 640) / 0.6);
+    return (bg.biome.mode | 0) >= ARENA_MODE_BASE ? arena.render(bg, ...args) : stageRender(...args);
+  };
   bg.arenaBg = arena;
   return arena;
 }

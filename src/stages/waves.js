@@ -5,17 +5,20 @@ import { WORLD_W } from '../core/constants.js';
 //   { t, id, x, y, p, elite }   (t in steps from the template's start)
 // R is the stage's seeded RNG, so a given seed always yields the same waves.
 //
-//   tags     — used for biome weighting (biome.bias)
+//   tags     — used for biome weighting (biome.bias) and the level terrain
+//              filter (StageGen TERRAIN_BLOCK): 'ground'/'road' need land,
+//              'naval' needs open water, 'wing'/'rotor'/'bomber' need air
 //   cost     — difficulty budget the template consumes
-//   minStage — earliest global stage index it may appear in
-//   ground   — needs a biome with a ground plane
+//   minStage — earliest level index (0..29 in the campaign) it may appear in
+//   ground   — needs a biome with a ground plane (land or sea surface)
+//   reinforce — small enough for a boss to call in mid-fight
 
 const W = WORLD_W;
 const PI = Math.PI;
 
 export const TEMPLATES = [
   {
-    id: 'vee', tags: ['air'], cost: 2, minStage: 0,
+    id: 'vee', tags: ['air'], cost: 2, minStage: 0, reinforce: true,
     build(R, c) {
       const cx = R.range(130, W - 130), out = [];
       for (let k = -2; k <= 2; k++) {
@@ -25,7 +28,7 @@ export const TEMPLATES = [
     },
   },
   {
-    id: 'dartSwoop', tags: ['air'], cost: 2, minStage: 0,
+    id: 'dartSwoop', tags: ['air', 'wing'], cost: 2, minStage: 0, reinforce: true,
     build(R, c) {
       const dir = R.sign(), out = [];
       for (let k = 0; k < 6; k++) {
@@ -43,7 +46,7 @@ export const TEMPLATES = [
     },
   },
   {
-    id: 'turretField', tags: ['ground'], cost: 3, minStage: 0, ground: true,
+    id: 'turretField', tags: ['ground'], cost: 3, minStage: 0, ground: true, reinforce: true,
     build(R, c) {
       const out = [];
       for (let k = 0; k < 4; k++) out.push(c.ev(k * 40, 'turret', R.range(40, W - 40), -20));
@@ -77,7 +80,7 @@ export const TEMPLATES = [
     },
   },
   {
-    id: 'carrierEscort', tags: ['heavy', 'air'], cost: 7, minStage: 1,
+    id: 'carrierEscort', tags: ['heavy', 'air', 'wing'], cost: 7, minStage: 1,
     build(R, c) {
       const out = [c.ev(0, 'carrier', W / 2, -80)];
       for (let k = 0; k < 4; k++) out.push(c.ev(40 + k * 12, 'bug', 60 + k * 120, -20));
@@ -85,7 +88,7 @@ export const TEMPLATES = [
     },
   },
   {
-    id: 'gunshipPair', tags: ['air', 'heavy'], cost: 5, minStage: 1,
+    id: 'gunshipPair', tags: ['air', 'heavy', 'rotor'], cost: 5, minStage: 1,
     build(R, c) {
       return [c.ev(0, 'gunship', 120, -50, { stopY: 130 }), c.ev(40, 'gunship', W - 120, -50, { stopY: 165 })];
     },
@@ -112,20 +115,20 @@ export const TEMPLATES = [
     },
   },
   {
-    id: 'bomberRun', tags: ['bomber', 'air'], cost: 4, minStage: 1,
+    id: 'bomberRun', tags: ['bomber', 'air', 'wing'], cost: 4, minStage: 1,
     build(R, c) {
       const d = R.sign();
       return [c.ev(0, 'bomber', d > 0 ? -50 : W + 50, 70, { dir: d }), c.ev(70, 'bomber', d > 0 ? W + 50 : -50, 140, { dir: -d })];
     },
   },
   {
-    id: 'spinners', tags: ['spinner'], cost: 3, minStage: 0,
+    id: 'spinners', tags: ['spinner'], cost: 3, minStage: 0, reinforce: true,
     build(R, c) {
       return [0, 1, 2, 3].map((k) => c.ev(k * 22, 'spinner', 80 + k * 106, -20, { phase: k * 1.3 }));
     },
   },
   {
-    id: 'orbiters', tags: ['orbit'], cost: 3, minStage: 0,
+    id: 'orbiters', tags: ['orbit'], cost: 3, minStage: 0, reinforce: true,
     build(R, c) {
       const cx = R.range(140, W - 140);
       return [0, 1, 2, 3, 4].map((k) => c.ev(0, 'orbiter', cx, -40, { cx, cy: -40, a0: (k / 5) * PI * 2, dir: 1 }));
@@ -146,7 +149,7 @@ export const TEMPLATES = [
     },
   },
   {
-    id: 'bikeRush', tags: ['road', 'swarm'], cost: 3, minStage: 0,
+    id: 'bikeRush', tags: ['road', 'swarm'], cost: 3, minStage: 0, reinforce: true,
     build(R, c) {
       const out = [];
       for (let k = 0; k < 6; k++) out.push(c.ev(k * 18, 'bike', k % 2 ? 30 : W - 30, -20));
@@ -154,7 +157,7 @@ export const TEMPLATES = [
     },
   },
   {
-    id: 'swarm', tags: ['swarm'], cost: 2, minStage: 0,
+    id: 'swarm', tags: ['swarm'], cost: 2, minStage: 0, reinforce: true,
     build(R, c) {
       const out = [];
       for (let k = 0; k < 10; k++) out.push(c.ev(k * 9, 'bug', k % 2 ? 140 : W - 140, -20, { phase: k * 0.7 }));
@@ -162,7 +165,7 @@ export const TEMPLATES = [
     },
   },
   {
-    id: 'frigate', tags: ['heavy'], cost: 7, minStage: 2,
+    id: 'frigate', tags: ['heavy', 'wing'], cost: 7, minStage: 2,
     build(R, c) {
       const out = [c.ev(0, 'frigate', R.range(160, W - 160), -70)];
       for (let k = 0; k < 4; k++) out.push(c.ev(120 + k * 16, 'dart', k % 2 ? -20 : W + 20, 60, { dir: k % 2 ? 1 : -1, ang: k % 2 ? 0.25 : PI - 0.25 }));
@@ -170,13 +173,52 @@ export const TEMPLATES = [
     },
   },
   {
-    id: 'ambush', tags: ['air'], cost: 4, minStage: 1,
+    id: 'ambush', tags: ['air', 'wing'], cost: 4, minStage: 1,
     build(R, c) {
       const out = [];
       for (let k = 0; k < 3; k++) out.push(c.ev(k * 12, 'drone', 90 + k * 150, -30, { stopY: 100, hold: 200 }));
       const dir = R.sign();
       for (let k = 0; k < 4; k++) out.push(c.ev(60 + k * 14, 'dart', dir > 0 ? -20 : W + 20, 90, { dir, ang: dir > 0 ? 0.2 : PI - 0.2 }));
       return out;
+    },
+  },
+
+  // ---------------------------------------------------- sea levels (surface)
+  {
+    id: 'boatPatrol', tags: ['naval'], cost: 3, minStage: 0, ground: true, reinforce: true,
+    build(R, c) {
+      const x = R.range(90, W - 90), out = [];
+      for (let k = 0; k < 3; k++) out.push(c.ev(k * 34, 'gunboat', x + (k - 1) * 22, -40, { amp: R.range(12, 26) * R.sign() }));
+      return out;
+    },
+  },
+  {
+    id: 'fastCraft', tags: ['naval', 'swarm'], cost: 3, minStage: 0, ground: true, reinforce: true,
+    build(R, c) {
+      const out = [];
+      for (let k = 0; k < 6; k++) out.push(c.ev(k * 16, 'rhib', k % 2 ? R.range(60, 180) : R.range(W - 180, W - 60), -30, { amp: (k % 2 ? 1 : -1) * R.range(30, 60) }));
+      return out;
+    },
+  },
+  {
+    id: 'missileBoats', tags: ['naval', 'heavy'], cost: 4, minStage: 1, ground: true,
+    build(R, c) {
+      return [c.ev(0, 'missileboat', R.range(70, 170), -50), c.ev(40, 'missileboat', R.range(W - 170, W - 70), -50)];
+    },
+  },
+  {
+    id: 'seaMines', tags: ['naval', 'mine'], cost: 2, minStage: 0, ground: true,
+    build(R, c) {
+      const out = [];
+      for (let k = 0; k < 6; k++) out.push(c.ev(k * 20, 'seamine', R.range(40, W - 40), -20, { amp: R.range(6, 14) }));
+      return out;
+    },
+  },
+  {
+    id: 'corvetteGroup', tags: ['naval', 'heavy'], cost: 7, minStage: 2, ground: true,
+    build(R, c) {
+      const x = R.range(150, W - 150);
+      return [c.ev(0, 'corvette', x, -80), c.ev(60, 'gunboat', x - 90, -40), c.ev(60, 'gunboat', x + 90, -40)];
     },
   },
 ];

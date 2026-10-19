@@ -102,7 +102,8 @@ export const MOVERS = {
 
   /** Ground units ride the scroll, plus their own road velocity. */
   ground(e, w, p) {
-    e.y += GROUND_SPEED + (p.vy || 0);
+    // Arena worlds report the true scroll of their ground / water plane at this screen row.
+    e.y += (w.groundSpeed ? w.groundSpeed(e.y) : GROUND_SPEED) + (p.vy || 0);
     e.x += (p.vx || 0) + (p.amp ? Math.sin(e.t * (p.freq ?? 0.02)) * p.amp * (p.freq ?? 0.02) : 0);
   },
 };

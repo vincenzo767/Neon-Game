@@ -99,7 +99,19 @@ export class Renderer {
     this.stage.classList.remove('gl-lost');
   }
 
-  frame(name) { return this.atlas.get(name); }
+  /** Sprite frame by name: main atlas first, then lazily built textures (boss art). */
+  frame(name) {
+    const f = this.extraFrames && this.extraFrames.get(name);
+    return f || this.atlas.get(name);
+  }
+
+  /** Register frames that live in their own texture (frame.tex). */
+  addFrames(frames) {
+    if (!this.extraFrames) this.extraFrames = new Map();
+    for (const fr of frames) { fr.id = this.frames.length; this.frames.push(fr); this.extraFrames.set(fr.name, fr); }
+  }
+
+  hasFrame(name) { return !!(this.extraFrames && this.extraFrames.has(name)) || this.atlas.has(name); }
 
   /** Fit the 3:4 play field into the window and size the backing store. */
   resize() {
@@ -136,7 +148,8 @@ export class Renderer {
     this.post.crt = this.settings.data.crt;
     this.post.bindScene();
     gl.clearColor(0, 0, 0, 1);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.clearDepth(1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     this.background.render(this.width, this.height, time, alpha,
       camera.offsetX / WORLD_W * 0.6, -camera.offsetY / WORLD_H * 0.6);
     this.batch.begin(this.texture, camera.offsetX, camera.offsetY);

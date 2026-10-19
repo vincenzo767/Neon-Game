@@ -86,9 +86,9 @@ export default {
 
   phases: [
     {
-      name: 'INVASION DAY',
+      name: 'GLYPH SPORES',
       hp: 720,
-      arena: { theme: 'city_invasion', layers: ['burning_city', 'tractor_beams', 'falling_debris'] },
+      arena: 'hs_invasion_day',
       transitionFx: 'flash',
       move: { type: 'hover', amp: 100, y: 135 },
       parts: ['crystalL', 'crystalR'],
@@ -96,18 +96,18 @@ export default {
       musicLayer: 'alien_p1',
     },
     {
-      name: 'MOTHERSHIP HOLD',
+      name: 'GRAVITY WELLS',
       hp: 770,
-      arena: { theme: 'mothership_hold', layers: ['membranes', 'ribs', 'veins'], particles: ['spores'] },
+      arena: 'hs_mothership_hold',
       transitionFx: 'membrane',
       move: { type: 'figure8', amp: 90, ampY: 25, y: 130 },
       patterns: ['gravityWells', 'ringStorm'],
       musicLayer: 'alien_p2',
     },
     {
-      name: 'CRYSTAL WORLD',
+      name: 'CRYSTAL RAIN',
       hp: 820,
-      arena: { theme: 'crystal_world', layers: ['crystal_facets', 'glowing_seams'] },
+      arena: 'hs_crystal_world',
       transitionFx: 'warp_tunnel',
       move: { type: 'sweep', amp: 110, y: 130 },
       parts: ['crystalL', 'crystalR', 'crystalT'],
@@ -115,9 +115,9 @@ export default {
       musicLayer: 'alien_p3',
     },
     {
-      name: 'NEBULA THRONE',
+      name: 'PHASE SHIFT',
       hp: 870,
-      arena: { theme: 'nebula_throne', layers: ['nebula_clouds', 'starfield'] },
+      arena: 'hs_nebula_throne',
       transitionFx: 'warp_tunnel',
       move: { type: 'hover', amp: 60, y: 140 },
       parts: ['coreA', 'coreB'],
@@ -127,7 +127,7 @@ export default {
     {
       name: 'SINGULARITY',
       hp: 940,
-      arena: { theme: 'singularity', layers: ['accretion_disk', 'event_horizon', 'nebula'] },
+      arena: 'hs_singularity',
       transitionFx: 'darkness_swallow',
       move: { type: 'hover', amp: 90, y: 150 },
       patterns: ['teleport', 'orbitSpiral', 'glyphs'],

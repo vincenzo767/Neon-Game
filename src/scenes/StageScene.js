@@ -2,16 +2,22 @@ import { PlayScene } from './PlayScene.js';
 import { StageDirector } from '../stages/StageDirector.js';
 import { generateStage } from '../stages/StageGen.js';
 import { Arena } from '../bosses/Arena.js';
-import { ARCHETYPE_LABEL } from '../bosses/index.js';
+import { ARCHETYPE_LABEL, BOSSES, MINIBOSSES } from '../bosses/index.js';
+import { ensureBossArt } from '../bosses/bossArt.js';
+import { ENEMIES } from '../entities/enemies/index.js';
+import { NAVAL_PACK } from '../entities/enemies/naval.js';
+import { TEMPLATES } from '../stages/waves.js';
 import { music } from '../audio/music.js';
 import { sfx } from '../audio/sfx.js';
 import { DMG_IGNORES_SHIELDS, DMG_INSTANT_KILL, DMG_INSTANT_PHASE_CLEAR } from '../core/damage.js';
 import { stageFactions, factionForArchetype } from '../data/factions/index.js';
 import { showFactionCard } from '../ui/factionCard.js';
 import { recordBossDefeat, recordBossSeen } from '../pilots/unlocks.js';
+import { levelFor } from '../stages/campaign.js';
 
-// The main game: an endless sequence of procedurally generated stages.
-// The run is fully determined by the seed (game.seed) plus player input.
+// The main game: the campaign (stages/campaign.js) — six archetypes of five
+// levels, each level played start to finish in its boss's arena, looping at
+// a higher Mk. The run is fully determined by the seed plus player input.
 
 const TALLY_COUNT_STEPS = 120;
 
@@ -33,6 +39,8 @@ export class StageScene extends PlayScene {
     this.tallyState = null;
     // Boss arena mode: owns the background layers while a main boss is up.
     this.arena = new Arena(g, this.world, this.parallax);
+    // Bosses reach the arena's world-space FX (craters, splashes, wakes) via w.arena.fx.
+    this.world.arena = this.arena;
     this.beginStage(this.startStage);
   }
 
@@ -51,13 +59,14 @@ export class StageScene extends PlayScene {
   nextStage() { this.beginStage(this.stageIndex + 1); }
 
   /** "loop-stage" reached, for ranking entries (M7a). */
-  stageLabel() { return this.plan ? `${this.plan.loop}-${this.plan.stageInLoop + 1}` : ''; }
+  stageLabel() { return this.plan ? (this.plan.level ? this.plan.level.label : `${this.plan.loop}-${this.plan.stageInLoop + 1}`) : ''; }
 
   beginStage(index) {
     const g = this.g, w = this.world;
     this.stageIndex = index;
-    this.arena.reset();
     this.plan = this.makePlan(index);
+    const lv = this.plan.level;
+    this.arena.reset(lv ? lv.arena : null); // keeps the level arena if it was prefetched during the tally
     // Update 02: who owns this territory, and whose colours each enemy wears
     // (split territories change hands by unit type or after the mid-boss).
     this.factions = stageFactions(this.plan);
@@ -68,11 +77,23 @@ export class StageScene extends PlayScene {
     if (index > this.startStage) g.renderer.background.fadeTo(this.plan.biome.bg, 90);
     else g.renderer.background.setBiome(this.plan.biome.bg);
     this.parallax.setStyle(this.plan.biome);
+    // Level rework: the level's arena is on screen from the first wave.
+    if (lv && this.arena.showLevel(lv.arena, this.plan.biome)) w.groundSpeed = (y) => this.arena.groundSpeed(y);
+    else w.groundSpeed = null;
+    this._preloadLevelArt();
     w.bullets.clearAll();
     w.clearLasers();
     this.director.start(this.plan);
     const p = this.plan;
-    this.hud.setStage(`LOOP ${p.loop} · STAGE ${p.loop}-${p.stageInLoop + 1} · ${p.biome.name}`);
+    this.waveLabel = '';
+    this._setStageLine();
+  }
+
+  /** HUD stage line: level, current wave, arena. */
+  _setStageLine() {
+    const p = this.plan;
+    if (!p.level) { this.hud.setStage(`LOOP ${p.loop} · STAGE ${p.loop}-${p.stageInLoop + 1} · ${p.biome.name}`); return; }
+    this.hud.setStage(`${p.level.title}${this.waveLabel ? ` · ${this.waveLabel}` : ''} · ${p.biome.name}`);
   }
 
   onSceneEvent(type, data) {
@@ -84,14 +105,27 @@ export class StageScene extends PlayScene {
         showFactionCard(this.fxLayer, p, this.factions);
         break;
       }
-      case 'warning': this._warning(data.boss); break;
+      case 'warning':
+        this.waveLabel = data.boss ? 'BOSS' : 'MID-BOSS';
+        this._setStageLine();
+        this._warning(data.boss);
+        if (this.arena.locked) { /* level mode: the arena is already up */ }
+        else if (data.boss) this._prefetchBossArena(); // arena rework: build phase 1's arena during the WARNING
+        else if (data.midArena) this.arena.prefetch({ id: data.midArena });
+        break;
       case 'bossIntro': {
         const e = data, c = e.ctrl;
+        if (c && c.def.mini) {
+          const fac = factionForArchetype(c.archetype);
+          this.banner(e.name, `${fac ? `${fac.short} · ` : ''}MID-BOSS · ${c.def.title || ''}`, 120, 'boss');
+          break;
+        }
         if (c) {
           if (this.ranked !== false) recordBossSeen(c.def.id, c.mk || 1); // M7b: unlocks it in practice
           // Named intro card: archetype class (or the slot a prototype stands in for) + phase count.
           const label = ARCHETYPE_LABEL[c.archetype] || '';
-          const cls = c.def.archetype === c.archetype ? `${label} CLASS` : `${c.def.title || 'PROTOTYPE'} · ${label} SLOT`;
+          const lv = this.plan.level;
+          const cls = c.def.archetype === c.archetype ? `${lv && lv.main ? 'MAIN BOSS · ' : ''}${label} CLASS` : `${c.def.title || 'PROTOTYPE'} · ${label} SLOT`;
           const fac = factionForArchetype(c.archetype);
           this.banner(e.name, `${fac ? `${fac.short} · ` : ''}${cls} · ${c.total} PHASES`, 130, 'boss');
           break;
@@ -102,6 +136,7 @@ export class StageScene extends PlayScene {
       case 'bossDown':
         this.banner(data.type === 'boss' ? 'TARGET DESTROYED' : 'MID-BOSS DOWN', '', 110);
         if (data.type === 'midboss') this.upperLevels = true; // the climb continues (split territories)
+        if (data.type === 'boss') this._prefetchNextLevel();
         this.world.cancelAll();
         this.world.clearLasers();
         this.world.autoCollect = 180;
@@ -109,14 +144,35 @@ export class StageScene extends PlayScene {
       case 'bossEscape': this.banner('TARGET ESCAPED', 'NO BONUS', 90); break;
       // ---- boss arena mode (bosses/BossController + bosses/Arena)
       case 'arenaEnter':
-        this.arena.enter(this.plan.biome);
+        if (!this.arena.locked) this.arena.enter(this.plan.biome);
         data.stars = this.arena.stars; // phase breaks convert bullets into score stars
         break;
-      case 'bossArena': this.arena.transitionTo(data.arena, data.fx, data.dur); break;
+      case 'bossArena': {
+        // Level mode: one arena per level — a phase only changes its mood.
+        if (this.arena.locked) { this.arena.mood(data.arena); break; }
+        this.arena.transitionTo(data.arena, data.fx, data.dur);
+        // Build the arena after this one while this phase is fought.
+        const c = this.director.bossCtrl, next = c && c.phases[c.index + 2];
+        if (next) this.arena.prefetch(next.arena);
+        break;
+      }
       case 'bossPhaseCard': this._phaseCard(data); break;
       case 'bossMusic': music.setLayer(data.layer); break;
       case 'bossPartDown': this.hud.toast(`${data.name} DESTROYED · +${data.medals} MEDALS`, 'gold'); break;
+      case 'waveStart': {
+        const last = data.number === data.total, before = data.number === data.total / 2;
+        this.banner(`WAVE ${data.number}`, last ? 'FINAL WAVE · THE BOSS IS NEXT' : before ? 'LAST WAVE BEFORE THE MID-BOSS' : `${data.number} / ${data.total}`, 120, 'wave');
+        this.waveLabel = `WAVE ${data.number}/${data.total}`;
+        this._setStageLine();
+        if (data.number > 1) this.g.renderer.post.flash(1, 0.9, 0.6, 0.12, 0.03);
+        break;
+      }
+      case 'bossSummon':
+        this.hud.toast('REINFORCEMENTS INBOUND', 'red');
+        if (data.e) this.world.explosions.sparks(data.e.x, data.e.y + 20, 14, [1, 0.6, 0.3], 4, 22, 4);
+        break;
       case 'bossDefeated': {
+        if (data.ctrl.def.mini) break;
         // M5: Warden's Verdict copies the last boss defeated; the first defeat unseals Warden.
         const arch = data.ctrl.archetype;
         this.world.lastBossArchetype = arch;
@@ -132,12 +188,49 @@ export class StageScene extends PlayScene {
         this.arena.finish();
         this._removePhaseCard();
         break;
+      // Optional mid-boss arena: the shared arena system shows it for the fight
+      // and crossfades back to the stage biome afterwards.
+      case 'midbossArena':
+        this.arena.enter(this.plan.biome);
+        this.arena.transitionTo({ id: data.arena }, 'flash', 90);
+        break;
+      case 'midbossArenaExit':
+        this.arena.exit();
+        break;
       case 'arenaExit':
         this.arena.exit();
         music.setLayer(null);
         break;
       case 'tally': this._showTally(data); break;
     }
+  }
+
+  /**
+   * Draw this level's boss, mini-boss and unit art now, while the level's
+   * arena loads under its cover, instead of mid-fight when they first spawn.
+   */
+  _preloadLevelArt() {
+    const r = this.g.renderer;
+    if (!r.addFrames) return;
+    for (const sec of this.plan.sections) {
+      const def = sec.arena && (BOSSES[sec.arena.id] || MINIBOSSES[sec.arena.id]);
+      if (def) ensureBossArt(r, def);
+      for (const set of sec.sets || []) for (const ev of set.events) { const ed = ENEMIES[ev.id]; if (ed && ed.pack) ensureBossArt(r, ed.pack); }
+    }
+    for (const id of this.plan.reinforce || []) { const t = TEMPLATES.find((x) => x.id === id); if (t && t.tags.includes('naval')) ensureBossArt(r, NAVAL_PACK); }
+  }
+
+  /** Build the next level's arena while the tally is up (practice has no next level). */
+  _prefetchNextLevel() {
+    if (this.practice || !this.plan.level) return;
+    this.arena.prefetch({ id: levelFor(this.stageIndex + 1).arena });
+  }
+
+  /** Start building the main boss's first arena (the WARNING gives it ~3 s). */
+  _prefetchBossArena() {
+    const sec = this.plan.sections.find((s2) => s2.type === 'boss');
+    const def = sec && sec.arena && BOSSES[sec.arena.id];
+    if (def && def.phases[0]) this.arena.prefetch(def.phases[0].arena);
   }
 
   _warning(isBoss) {
@@ -171,7 +264,7 @@ export class StageScene extends PlayScene {
     this.overlayEl.innerHTML = `
       <div class="menu tally">
         <h2>STAGE CLEAR</h2>
-        <div class="menu-sub">STAGE ${p.loop}-${p.stageInLoop + 1} · ${p.biome.name}</div>
+        <div class="menu-sub">${p.level ? p.level.title : `STAGE ${p.loop}-${p.stageInLoop + 1}`} · ${p.biome.name}</div>
         ${rows}
         <div class="tally-row total"><span>STAGE BONUS</span><i>${this.diffCfg.scoreMul > 1 ? `×${this.diffCfg.scoreMul} ${this.diffCfg.name}` : ''}</i><b>${total}</b></div>
         <div class="tally-next">${k >= 1 ? 'PRESS <b>Z</b> TO CONTINUE' : '&nbsp;'}</div>
@@ -204,6 +297,9 @@ export class StageScene extends PlayScene {
     el.className = `phase-card${d.desperation ? ' desperation' : ''}`;
     const pips = Array.from({ length: d.total }, (_, i) => `<i class="${i < d.number - 1 ? 'done' : i === d.number - 1 ? 'on' : ''}"></i>`).join('');
     el.innerHTML = `<small>${d.boss}</small><b>${d.desperation ? 'FINAL' : `PHASE ${d.number}`} — ${d.name}</b><div class="pc-pips">${pips}</div>`;
+    // Long arena names ("FROZEN WEAPONS FACILITY") shrink to fit the card.
+    const title = `${d.desperation ? 'FINAL' : `PHASE ${d.number}`} — ${d.name}`;
+    if (title.length > 26) el.querySelector('b').style.fontSize = `calc(${(17 * Math.max(0.6, 26 / title.length)).toFixed(2)} * var(--u))`;
     this.fxLayer.appendChild(el);
     this.phaseCardEl = el;
     el.timer = setTimeout(() => el.remove(), 2400);
@@ -270,13 +366,20 @@ export class StageScene extends PlayScene {
     this._devBossKeys();
     this.arena.update();
     if (this.tallyState) this._tickTally();
-    else this.director.update();
+    else if (!this.arena.loading) this.director.update(); // a level starts once its arena is built
+    // Wave clock on the HUD stage line ("WAVE 3/10 · 0:42").
+    const left = this.director.waveLeft;
+    if (left >= 0 && left % 30 === 0 && this.director.set) {
+      const sec = Math.ceil(left / 60);
+      this.waveLabel = `WAVE ${this.director.set.number}/${this.director.section.totalWaves} · ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+      this._setStageLine();
+    }
     const dbg = this.g.debug, p = this.plan, d = this.director;
     const c = d.bossCtrl;
     dbg.set('boss', c && c.e.ctrl === c && (c.e.alive || this.arena.active)
       ? `${c.def.id} [${c.archetype} mk${c.mk}] ${c.state} ${c.number}/${c.total} · arena ${this.arena.cur ? this.arena.cur.theme : '-'}${this.arena.transitioning ? ' (fx)' : ''} · music ${music.layer || '-'}`
       : '-');
-    dbg.set('stage', `${p.number} (loop ${p.loop}) ${p.biome.id} · ${d.section ? d.section.type : '-'}${d.section && d.section.type === 'waves' ? ` set ${d.setIdx + 1}/${d.section.sets.length}` : ''}`);
+    dbg.set('stage', `${p.number} ${p.level ? p.level.label : `(loop ${p.loop})`} ${p.biome.id} · ${d.section ? d.section.type : '-'}${d.section && d.section.type === 'waves' ? ` set ${d.setIdx + 1}/${d.section.sets.length}` : ''}`);
     dbg.set('diff', `dens ${p.diff.density.toFixed(2)} spd ${p.diff.speed.toFixed(2)} elite ${(p.diff.eliteChance * 100) | 0}%`);
   }
 }

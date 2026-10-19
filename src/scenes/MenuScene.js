@@ -1,12 +1,14 @@
 // Shared base for the full-screen menus (M7b): title, ranking, options,
-// practice select, results. It owns the animated city backdrop, the menu
-// theme and a small list-menu helper so each screen only describes rows.
+// practice select, results. It owns the backdrop (level rework: one of the
+// game's real arenas flying by — fx/menuBackdrop.js), the menu theme and a
+// small list-menu helper so each screen only describes rows.
 //
 // Row: { label, value?: () => string, left?(), right?(), confirm?(),
 //        disabled?: boolean, hint?: string }
 // Subclasses implement build() (DOM) and optionally tick() / onBack().
 
 import { Parallax } from '../fx/Parallax.js';
+import { menuBackdrop, updateMenuBackdrop, renderMenuCover } from '../fx/menuBackdrop.js';
 import { BIOMES } from '../stages/biomes.js';
 import { music } from '../audio/music.js';
 import { playUiTick, playConfirm, playBack } from '../audio/sting.js';
@@ -25,6 +27,7 @@ export class MenuScene {
     const biome = this.biome || BIOMES[0];
     g.renderer.background.setBiome(biome.bg);
     this.parallax = new Parallax(g, biome);
+    menuBackdrop(g);
     this.build();
   }
 
@@ -44,8 +47,11 @@ export class MenuScene {
     if (!box) return;
     box.innerHTML = this.rows.map((r, i) => {
       const v = r.value ? `<span class="ms-val">${r.left || r.right ? '◀ ' : ''}${r.value()}${r.left || r.right ? ' ▶' : ''}</span>` : '';
-      return `<div class="ms-row${i === this.index ? ' sel' : ''}${r.disabled ? ' off' : ''}"><span class="ms-label">${r.label}</span>${v}</div>`;
+      return `<div class="ms-row${i === this.index ? ' sel' : ''}${r.disabled ? ' off' : ''}${r.header ? ' hdr' : ''}"><span class="ms-label">${r.label}</span>${v}</div>`;
     }).join('');
+    // Long lists scroll: keep the selected row in view.
+    const cur = box.querySelector('.ms-row.sel');
+    if (cur && box.scrollHeight > box.clientHeight) cur.scrollIntoView({ block: 'nearest' });
     const hint = this.g.hud.querySelector('.ms-rowhint');
     if (hint) hint.textContent = (this.rows[this.index] && this.rows[this.index].hint) || '';
   }
@@ -85,10 +91,10 @@ export class MenuScene {
     if (g.scene !== this) return;
     handleDevKeys(g);
     g.renderer.background.update();
-    this.parallax.update();
+    updateMenuBackdrop(g);
   }
 
-  render(r, alpha) {
-    this.parallax.render(r.batch, alpha, this.g.time);
+  render(r) {
+    renderMenuCover(r.batch, r.frame('white'));
   }
 }

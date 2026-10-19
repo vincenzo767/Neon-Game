@@ -10,10 +10,11 @@ export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 /**
  * True every `n` steps (phase-local t), sped up by phase intensity
- * (desperation) and Mk level (+15% rate per Mk).
+ * (desperation), Mk level (+15% rate per Mk) and the boss's place in its
+ * archetype (campaign rank 0..4: +4% per level, the main boss the fastest).
  */
 export function every(c, t, n, off = 0) {
-  const k = Math.max(2, Math.round(n / (c.intensity * (1 + 0.15 * (c.mk - 1)))));
+  const k = Math.max(2, Math.round(n / (c.intensity * (1 + 0.15 * (c.mk - 1) + 0.04 * (c.rank || 0)))));
   return (t + off) % k === 0;
 }
 

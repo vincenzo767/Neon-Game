@@ -3,6 +3,8 @@ import * as P from '../../patterns/index.js';
 import { MOVERS } from './movers.js';
 import { buildEnemySprites } from './art.js';
 import { skinEnemy } from '../../fx/factionSkins.js';
+import { NAVAL_ENEMIES } from './naval.js';
+import { ensureBossArt } from '../../bosses/bossArt.js';
 
 // Syndicate enemy roster — data definitions + factory.
 //
@@ -292,6 +294,9 @@ export const ENEMIES = {
   },
 };
 
+// Level rework: surface warships for sea levels (own lazily built art).
+Object.assign(ENEMIES, NAVAL_ENEMIES);
+
 // ----------------------------------------------------------------- factory
 
 function makeAI(def) {
@@ -342,6 +347,7 @@ export function spawnEnemy(w, id, x, y, params = null, elite = false) {
   if (!def) throw new Error(`Unknown enemy "${id}"`);
   if (!def._ai) def._ai = makeAI(def);
   const r = w.r;
+  if (def.pack && r.addFrames) ensureBossArt(r, def.pack); // art packs outside the full main atlas
   const hpMul = (elite ? 1.8 : 1) * (def.boss ? w.diff.bossHp || 1 : w.diff.hp || 1);
   const e = w.spawnEnemy({
     kind: id, name: def.name, def, x, y, r: def.r, hp: Math.round(def.hp * hpMul),

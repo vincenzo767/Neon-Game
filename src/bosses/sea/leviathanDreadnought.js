@@ -80,12 +80,9 @@ export default {
 
   phases: [
     {
-      name: 'HARBOR SIEGE',
+      name: 'BROADSIDE',
       hp: 720,
-      arena: {
-        theme: 'harbor_night', palette: ['#0a1428', '#1e3a5f', '#ffcc33', '#3a7aff'],
-        layers: ['skyline_far', 'docks_mid', 'water_surface'], weather: 'light_rain', particles: ['searchlight_beams'], scrollSpeed: 0.5,
-      },
+      arena: 'ld_harbor_siege',
       transitionFx: 'flash',
       move: { type: 'hover', amp: 60, y: 135, freq: 0.008 },
       parts: ['gunBow', 'gunStern'],
@@ -93,9 +90,9 @@ export default {
       musicLayer: 'sea_p1',
     },
     {
-      name: 'STORM SURGE',
+      name: 'TORPEDO LANES',
       hp: 760,
-      arena: { theme: 'ocean_storm', layers: ['swell', 'whitecaps', 'lightning'], weather: 'heavy_rain' },
+      arena: 'ld_storm_surge',
       transitionFx: 'water_flood',
       move: { type: 'hover', amp: 90, y: 130, freq: 0.01 },
       parts: ['gunL', 'gunR'],
@@ -103,18 +100,18 @@ export default {
       musicLayer: 'sea_p2',
     },
     {
-      name: 'TRENCH DIVE',
+      name: 'CRASH DIVE',
       hp: 800,
-      arena: { theme: 'trench_dive', layers: ['trench_floor', 'caustics', 'god_rays'], particles: ['bubbles'] },
+      arena: 'ld_trench_dive',
       transitionFx: 'water_flood',
       move: { type: 'figure8', amp: 110, ampY: 30, y: 140 },
       patterns: ['dive', 'torpedoLanes', 'depthCharges'],
       musicLayer: 'sea_p3',
     },
     {
-      name: 'ICE BREAKER',
+      name: 'ICE SHARDS',
       hp: 860,
-      arena: { theme: 'arctic_sea', layers: ['ice_floes', 'black_water'], particles: ['snow'] },
+      arena: 'ld_ice_breaker',
       transitionFx: 'ice_crack',
       move: { type: 'sweep', amp: 110, y: 130, freq: 0.01 },
       parts: ['gunBow', 'gunL', 'gunR'],
@@ -124,7 +121,7 @@ export default {
     {
       name: 'MAELSTROM',
       hp: 940,
-      arena: { theme: 'maelstrom', layers: ['whirlpool', 'storm_swell'], weather: 'heavy_rain' },
+      arena: 'ld_maelstrom',
       transitionFx: 'water_flood',
       move: { type: 'hover', amp: 100, y: 130 },
       patterns: ['dive', 'broadsideFull', 'vortex', 'torpedoLanes'],
