@@ -168,7 +168,7 @@
 @keyframes tilePulse { from { opacity: 1; } to { opacity: 0; transform: scale(1.12); } }
 
 .sel-main {
-  position: absolute; top: calc(184 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u));
+  position: absolute; top: calc(246 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u));
   display: flex; gap: calc(12 * var(--u));
 }
 .sel-portrait {
@@ -193,18 +193,48 @@
 .sel-stats.anim .pips i.on { animation: pip 0.3s backwards; }
 @keyframes pip { from { opacity: 0; transform: skewX(-20deg) scaleY(0); } }
 
-.sel-bio {
-  position: absolute; z-index: 1; /* text above a tall mecha preview (e.g. Miguerre's sword) */ top: calc(330 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u));
-  font-size: calc(8 * var(--u)); line-height: 1.55; opacity: 0.9;
-  background: rgba(3, 4, 12, 0.55); padding: calc(6 * var(--u)) calc(8 * var(--u));
+/* Info button under the stats: opens the info panel (click, or X / pad button). */
+.sel-info-btn {
+  position: relative; z-index: 1; pointer-events: auto; cursor: pointer;
+  display: flex; align-items: center; gap: calc(5 * var(--u)); margin-top: calc(8 * var(--u));
+  background: none; border: none; padding: 0; color: inherit; font: inherit;
 }
-.sel-abilities {
-  position: absolute; z-index: 1; top: calc(398 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u));
-  font-size: calc(7.2 * var(--u)); line-height: 1.6;
-  background: rgba(3, 4, 12, 0.55); padding: calc(4 * var(--u)) calc(8 * var(--u));
+.sel-info-btn i {
+  width: calc(16 * var(--u)); height: calc(16 * var(--u)); border-radius: 50%;
+  border: calc(1.6 * var(--u)) solid var(--pc); color: var(--pc);
+  display: grid; place-items: center; font-style: normal; font-weight: 800;
+  font-family: 'Orbitron', sans-serif; font-size: calc(10 * var(--u));
+  box-shadow: 0 0 calc(6 * var(--u)) var(--pc); transition: background 0.12s, color 0.12s;
 }
+.sel-info-btn span { font-size: calc(7 * var(--u)); letter-spacing: 0.2em; opacity: 0.8; }
+.sel-info-btn span b { color: var(--neon-a); }
+.sel-info-btn:hover i, .select:has(.sel-panel.open) .sel-info-btn i { background: var(--pc); color: #05040a; }
+
+/* Info panel: bio, personnel file and abilities, over the lower half of the screen. */
+.sel-panel {
+  position: absolute; z-index: 3; top: calc(396 * var(--u)); left: calc(12 * var(--u)); right: calc(12 * var(--u)); bottom: calc(40 * var(--u));
+  background: rgba(3, 4, 12, 0.93); border: 1px solid var(--pc);
+  box-shadow: 0 0 calc(14 * var(--u)) var(--pc), inset 0 0 calc(12 * var(--u)) rgba(0, 0, 0, 0.8);
+  padding: calc(8 * var(--u)) calc(10 * var(--u)); overflow-y: auto; pointer-events: auto;
+  display: none;
+}
+.sel-panel.open { display: block; animation: panelIn 0.16s ease-out; }
+@keyframes panelIn { from { opacity: 0; transform: translateY(calc(6 * var(--u))); } }
+.sel-panel-head {
+  font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: calc(11 * var(--u)); letter-spacing: 0.08em;
+  color: var(--pc); text-shadow: 0 0 calc(6 * var(--u)) var(--pc); padding-right: calc(18 * var(--u));
+}
+.sel-panel-head small { display: block; font-family: 'JetBrains Mono', monospace; font-weight: 400; font-size: calc(6.5 * var(--u)); letter-spacing: 0.2em; opacity: 0.85; margin-top: calc(2 * var(--u)); }
+.sel-panel-close {
+  position: absolute; top: calc(4 * var(--u)); right: calc(6 * var(--u)); cursor: pointer;
+  background: none; border: none; color: var(--pc); font-size: calc(14 * var(--u)); line-height: 1;
+}
+.sel-bio { font-size: calc(8 * var(--u)); line-height: 1.55; opacity: 0.9; margin: calc(6 * var(--u)) 0; }
+.sel-abilities { font-size: calc(7.4 * var(--u)); line-height: 1.6; border-top: 1px solid rgba(255, 255, 255, 0.12); padding-top: calc(5 * var(--u)); }
 .sel-abilities:empty { display: none; }
 .sel-abilities b { color: var(--pc); letter-spacing: 0.12em; }
+.sel-panel-hint { margin-top: calc(6 * var(--u)); font-size: calc(6.5 * var(--u)); letter-spacing: 0.1em; opacity: 0.6; }
+.sel-panel-hint b { color: var(--neon-a); }
 .sel-tier {
   position: absolute; top: calc(560 * var(--u)); left: calc(12 * var(--u));
   font-family: 'Orbitron', sans-serif; font-size: calc(8 * var(--u)); letter-spacing: 0.2em; color: var(--pc);

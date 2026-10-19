@@ -94,6 +94,10 @@ export const ART_MANIFEST = {
     },
     json: { anchors: 'sera.anchors.json', layers: 'sera.layers.json' },
   },
+  // Portrait-only pilots (tools/process-portraits.mjs): the painted portrait on
+  // the select screen and cut-in; procedural mecha until their art arrives.
+  ...Object.fromEntries(['nova', 'rufus', 'aiko', 'pike', 'zuri', 'cass', 'holt', 'warden', 'vincenzo', 'quincy']
+    .map((id) => [id, { images: { portrait: `${id}_portrait.jpg` } }])),
 };
 
 const base = () => {
@@ -128,7 +132,7 @@ export async function loadPilotArt() {
   await Promise.all(Object.entries(ART_MANIFEST).map(async ([id, m]) => {
     try {
       const imgs = await Promise.all(Object.entries(m.images).map(async ([k, f]) => [k, await loadImage(artUrl(id, f))]));
-      const json = await Promise.all(Object.entries(m.json).map(async ([k, f]) => [k, await loadJson(artUrl(id, f))]));
+      const json = await Promise.all(Object.entries(m.json || {}).map(async ([k, f]) => [k, await loadJson(artUrl(id, f))]));
       ART.set(id, { images: Object.fromEntries(imgs), ...Object.fromEntries(json) });
     } catch (err) {
       console.warn(`[art] ${id}: ${err.message}; using procedural sprites`);

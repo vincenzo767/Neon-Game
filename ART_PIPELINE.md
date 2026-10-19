@@ -131,6 +131,8 @@ What the script does to the back view, in order:
 
 The front view gets the same background removal when it has no alpha, then it is cleaned, trimmed and resized. The portrait gets a 4:5 crop from the top.
 
+**Portrait-only pilots.** A pilot that has a painted portrait but no mecha art yet goes through `tools/process-portraits.mjs` (`npm run art:portraits`). It reads `src/pilot concept art/<folder>/portrait.jpg`, crops the 4:5 box set in its `PORTRAITS` table, and writes the same `<id>_portrait.jpg` / `<id>_portrait_sm.jpg`. List the id in the portrait-only block of `ART_MANIFEST` ([core/pilotArt.js](src/core/pilotArt.js)). The pilot keeps its procedural mecha, and its cut-in keeps the plain band with the painted portrait.
+
 ---
 
 ## 5. Anchor JSON: `<id>.anchors.json`

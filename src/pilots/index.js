@@ -15,14 +15,22 @@ import cass from './cass.js';
 import holt from './holt.js';
 import warden from './warden.js';
 import vincenzo from './vincenzo.js';
+import quincy from './quincy.js';
+import { PLACEHOLDER_PILOTS } from './placeholders.js';
 import { isUnlocked } from './unlocks.js';
 
 // Pilot registry. To add a pilot: create src/pilots/<id>.js exporting a
 // definition (see kairo.js for the full shape) and list it here.
 
-export const PILOTS = [kairo, mira, bruno, tess, oduya, lin, miguerre, sera, nova, rufus, aiko, pike, zuri, cass, holt, warden, vincenzo];
+// Select-screen order: three rows of nine. Vincenzo (Legendary) sits next to his wife, Sera.
+// Row 3 is placeholder slots 19-27 (placeholders.js) until their pilots are designed.
+export const PILOTS = [
+  kairo, mira, bruno, tess, oduya, lin, miguerre, sera, vincenzo,
+  nova, rufus, aiko, pike, zuri, cass, holt, warden, quincy,
+  ...PLACEHOLDER_PILOTS,
+];
 
-/** The 16 standard pilots in roster order, plus the Legendary slot (#17). */
+/** All 27 pilots in roster order (Vincenzo is the Legendary). */
 export const ROSTER = PILOTS;
 export const LEGENDARY_INDEX = PILOTS.indexOf(vincenzo);
 

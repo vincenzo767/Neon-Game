@@ -48,7 +48,7 @@ function autopilot(p, w) {
 
 export class AttractScene extends StageScene {
   constructor() {
-    const pool = ROSTER.filter((d) => !d.legendary && d.id !== 'warden');
+    const pool = ROSTER.filter((d) => !d.legendary && !d.placeholder && d.id !== 'warden');
     super(pool[Math.floor(Math.random() * pool.length)], { stage: Math.floor(Math.random() * 6) });
     this.attract = true;
     this.ranked = false;

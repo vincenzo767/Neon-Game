@@ -19,7 +19,8 @@ export function showCutIn(root, def, opts = {}) {
   const ms = Math.round(BASE_MS * (steps / CUTIN_STEPS));
   const el = document.createElement('div');
   // Hand-made art (KAIRO_ART_TEST): portrait slides in over the mecha with speed lines.
-  const art = !opts.title && pilotArt(def.id);
+  const full = !opts.title && pilotArt(def.id);
+  const art = full && full.images.front ? full : null; // portrait-only art keeps the plain band (canvas portrait)
   el.className = `cutin${def.legendary ? ' legendary' : ''}${art ? ' art' : ''}`;
   el.style.setProperty('--pc', def.css);
   el.style.setProperty('--ms', `${ms}ms`);

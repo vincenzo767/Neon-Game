@@ -16,14 +16,17 @@ import { DifficultySelectScene } from './DifficultySelectScene.js';
 import { getDifficulty } from '../core/difficulty.js';
 import { pilotLore } from '../data/lore/pilots.js';
 import { pilotArt } from '../core/pilotArt.js';
+import { factionById } from '../data/factions/index.js';
 import '../ui/pilotArt.css';
 
-// Pilot select: 16-slot roster grid plus the Legendary slot (#17, a tall
-// tile in the ninth column), animated portrait, stat bars, bio, ability
-// list, and a live WebGL vehicle preview that cycles through all four power
-// tiers and both fire modes.
+// Pilot select: 27-slot roster grid (9×3; the Legendary tile is the same size
+// as the others, with its gold border), animated portrait, stat bars, and a
+// live WebGL vehicle preview that cycles through all four power tiers and both
+// fire modes. Bio, personnel file and abilities live in the info panel, opened
+// by the "?" button under the stats (click, or the bomb key / pad button).
 
-const COLS = 8; // standard pilots per row (two rows)
+const COLS = 9; // pilots per row
+const ROWS = Math.ceil(ROSTER.length / COLS);
 const L = LEGENDARY_INDEX;
 const STAT_KEYS = [['speed', 'SPEED'], ['power', 'POWER'], ['range', 'RANGE'], ['bomb', 'BOMB']];
 const PREVIEW_Y = 588;
@@ -34,6 +37,7 @@ export const rosterIndexOf = (def) => Math.max(0, ROSTER.indexOf(def));
 export class PilotSelectScene {
   constructor(opts = {}) {
     this.index = opts.index ?? 0;
+    this.infoOpen = false; // info panel (bio, file, abilities)
     this.practice = opts.practice || null; // M7b: {id, mk} when launched from practice select
   }
 
@@ -63,7 +67,7 @@ export class PilotSelectScene {
     this.roster = getRoster();
     const tiles = this.roster.map((p, i) => (i === L
       ? `<div class="sel-tile legendary" data-i="${i}" style="--pc:${p.css}">
-          <canvas width="120" height="300"></canvas><b class="leg-badge">LEGENDARY</b>${'<i class="leg-spark"></i>'.repeat(6)}
+          <canvas width="60" height="75"></canvas><b class="leg-badge">LEGENDARY</b>${'<i class="leg-spark"></i>'.repeat(6)}
         </div>`
       : `<div class="sel-tile ${p.locked ? 'locked' : ''}" data-i="${i}" style="--pc:${p.css || '#555'}">
           <canvas width="60" height="75"></canvas>
@@ -79,13 +83,19 @@ export class PilotSelectScene {
             <div class="sel-name"></div>
             <div class="sel-vehicle"></div>
             <div class="sel-stats"></div>
+            <button class="sel-info-btn" type="button" aria-label="Pilot info"><i>?</i><span>INFO <b>X</b></span></button>
           </div>
           <div class="sel-mecha"><img alt=""></div>
         </div>
-        <div class="sel-bio"></div>
-        <div class="sel-abilities"></div>
+        <div class="sel-panel">
+          <button class="sel-panel-close" type="button" aria-label="Close">×</button>
+          <div class="sel-panel-head"></div>
+          <div class="sel-bio"></div>
+          <div class="sel-abilities"></div>
+          <div class="sel-panel-hint"><b>X</b> / <b>ESC</b> close · <b>←→↑↓</b> browse pilots</div>
+        </div>
         <div class="sel-tier"></div>
-        <div class="sel-hint"><b>←→↑↓</b> choose · <b>Z / ENTER</b> launch · <b>C</b> test range · <b>ESC</b> difficulty<br>SEED <b>${this.g.seed}</b></div>
+        <div class="sel-hint"><b>←→↑↓</b> choose · <b>Z / ENTER</b> launch · <b>X</b> info · <b>C</b> test range · <b>ESC</b> difficulty<br>SEED <b>${this.g.seed}</b></div>
       </div>`;
     const root = this.g.hud;
     this.el = {
@@ -99,22 +109,30 @@ export class PilotSelectScene {
       tier: root.querySelector('.sel-tier'),
       main: root.querySelector('.sel-main'),
       mecha: root.querySelector('.sel-mecha'),
+      panel: root.querySelector('.sel-panel'),
+      panelHead: root.querySelector('.sel-panel-head'),
     };
+    // The HUD ignores the pointer; these two buttons opt back in (ui.css).
+    root.querySelector('.sel-info-btn').addEventListener('click', () => this._toggleInfo());
+    root.querySelector('.sel-panel-close').addEventListener('click', () => this._toggleInfo(false));
     this.el.tiles.forEach((t, i) => drawPortrait(t.querySelector('canvas'), this.roster[i], 0.5));
   }
 
-  /** Grid navigation: 8×2 standard tiles, the Legendary tile to the right of both rows. */
+  /** Show / hide the info panel (bio, personnel file, abilities). */
+  _toggleInfo(open = !this.infoOpen) {
+    if (open === this.infoOpen) return;
+    this.infoOpen = open;
+    this.el.panel.classList.toggle('open', open);
+    if (open) playUiTick(this.g.settings.data.sfxVolume ?? 0.8);
+    else playBack();
+  }
+
+  /** Grid navigation: 9×3 tiles, wrapping at the edges. */
   _move(dx, dy) {
     const i = this.index;
-    if (i === L) {
-      if (dx) return (this.lastRow || 0) * COLS + (dx < 0 ? COLS - 1 : 0);
-      return i;
-    }
     const row = Math.floor(i / COLS), col = i % COLS;
-    if (dy) return ((row + 1) % 2) * COLS + col;
-    if (dx > 0 && col === COLS - 1) { this.lastRow = row; return L; }
-    if (dx < 0 && col === 0) { this.lastRow = row; return L; }
-    return i + dx;
+    if (dy) return ((row + dy + ROWS) % ROWS) * COLS + col;
+    return row * COLS + ((col + dx + COLS) % COLS);
   }
 
   /** Two indestructible practice targets so homing / flak can be seen. */
@@ -153,15 +171,20 @@ export class PilotSelectScene {
     el.mecha.classList.toggle('show', !!(art && art.images.front));
     if (art && art.images.front) el.mecha.querySelector('img').src = art.images.front.src;
     el.mecha.style.setProperty('--mscale', (!p.locked && p.previewScale) || 1); // opt-in: a tall, narrow front view drawn bigger
+    // Info panel: bio, then the precinct personnel file from the lore data (Update 02), then abilities.
+    el.panelHead.innerHTML = p.locked ? 'CLASSIFIED' : `${p.name}<small>${p.vehicle} — ${p.role}${p.legendary ? ' · LEGENDARY' : ''}</small>`;
     el.bio.textContent = p.locked ? 'Personnel file sealed by order of the Commissioner.' : p.bio;
-    // Update 02: precinct personnel file from the lore data (adds to the bio).
     const lore = !p.locked && pilotLore(p.id);
-    if (lore) el.bio.insertAdjacentHTML('beforeend', `<span class="sel-lore">FILE · ${lore.origin.toUpperCase()} — ${lore.file}</span>`);
+    if (lore) {
+      const rival = factionById(lore.rival);
+      el.bio.insertAdjacentHTML('beforeend', `<span class="sel-lore">FILE · ${lore.origin.toUpperCase()}${rival ? ` · SWORN AGAINST ${rival.short}` : ''} — ${lore.file}</span>`);
+    }
     el.abil.innerHTML = p.locked ? '' : `
       <div><b>SHOT</b> ${p.weapons.main}</div>
       <div><b>FOCUS</b> ${p.weapons.focus}</div>
       <div><b>SPECIAL</b> ${p.special.name} — ${p.special.desc}</div>
-      <div><b>BOMB</b> ${p.bomb.name} ×${p.bombStock} · <b>ULT</b> ${p.ultimate.name}</div>`;
+      <div><b>BOMB</b> ${p.bomb.name} ×${p.bombStock}</div>
+      <div><b>ULTIMATE</b> ${p.ultimate.name}</div>`;
 
     // Restart the stat-pip fill animation.
     el.stats.classList.remove('anim'); void el.stats.offsetWidth; el.stats.classList.add('anim');
@@ -190,6 +213,8 @@ export class PilotSelectScene {
     if (inp.pressed('down')) i = this._move(0, 1);
     if (i !== this.index) this._select(i);
 
+    if (inp.pressed('bomb')) this._toggleInfo();
+    if (inp.pressed('back') && this.infoOpen) { this._toggleInfo(false); return; }
     if (inp.pressed('back')) {
       playBack();
       if (this.practice) import('./PracticeSelectScene.js').then(({ PracticeSelectScene }) => g.setScene(new PracticeSelectScene({ id: this.practice.id })));

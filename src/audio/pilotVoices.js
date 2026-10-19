@@ -274,6 +274,16 @@ export const PILOT_VOICES = {
       pad(c, o, t, { freqs: [hz(62), hz(66), hz(69)], dur: 1.2, peak: 0.1, a: 0.1, formants: [[700, 1], [1150, 0.6]], unison: 3, send: { cath: 0.5 } });
     },
   },
+  // Arrows: a bowstring "thwip"; the redirect is a whip-crack sweep.
+  quincy: {
+    gap: 0.09, pitch: 900, gain: 1.1,
+    shot(c, o, t, s) {
+      tone(c, o, t, { type: 'triangle', f: s.focus ? 1400 : 1100, f2: 500, ft: 0.05, dur: 0.06, peak: 0.04, pan: s.pan });
+    },
+    special(c, o, t) {
+      tone(c, o, t, { type: 'sawtooth', f: 300, f2: 2400, ft: 0.12, dur: 0.16, peak: 0.08, filter: { type: 'bandpass', f: 1800, q: 3 } });
+    },
+  },
 };
 
 /** Fallback for unknown pilot ids. */
