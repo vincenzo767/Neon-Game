@@ -24,7 +24,7 @@ export class BossLook {
   constructor(c) {
     this.c = c;
     this.w = c.w;
-    this.L = LOOKS[c.def.id] || null;
+    this.L = LOOKS[c.def.id] || c.def.look || null;
     this.fac = this.L ? factionById(this.L.faction) : null;
     this.t = 0;
     this.stage = 0;          // 0 pristine, 1 ≤66% phase HP, 2 ≤33%
@@ -187,12 +187,43 @@ export class BossLook {
     switch (this.L.anim) {
       case 'crawler': {
         this.treadPh += 0.35 + Math.hypot(e.x - e.px, e.y - e.py) * 0.9;
+        // Track marks left on the arena floor behind the outer tread units.
+        const tfx = w.arena && w.arena.fx;
+        if (tfx && this.t % 9 === 0 && meta.treads && meta.treads.length) {
+          let lo = meta.treads[0], hi = lo;
+          for (const tr of meta.treads) { if (tr.x0 < lo.x0) lo = tr; if (tr.x1 > hi.x1) hi = tr; }
+          for (const tr of lo === hi ? [lo] : [lo, hi]) { const [sx, sy] = this._xf((tr.x0 + tr.x1) / 2, tr.y0 - 10, x, y); tfx.trail(sx, sy, (tr.x1 - tr.x0) * 1.1, e.rot); }
+        }
         // Smokestack exhaust puffs.
         if (this.t % 8 === 0) for (const [ox, oy] of meta.stacks) {
           const [sx, sy] = this._xf(ox, oy, x, y);
           const i = L.spawn(w.r.frame('smoke'), sx, sy, R.range(-0.3, 0.3), R.range(-1.8, -1.1), 46);
           if (i >= 0) { L.size(i, 7, 22); L.color(i, 0.2, 0.18, 0.16, 0.06, 0.05, 0.05); L.phys(i, 0.98, -0.01); L.look(i, 0.6, 0, FADE_INOUT); }
           if (R.chance(0.35)) { const j = H.spawn(w.F.spark, sx, sy, R.range(-0.6, 0.6), R.range(-2.5, -1), 20); if (j >= 0) { H.size(j, 3, 1); H.color(j, 2, 1, 0.3, 1, 0.3, 0); H.look(j, 1, 1, FADE_FLICKER); } }
+        }
+        break;
+      }
+      case 'ship': {
+        // Generic warship / platform: foam along the waterline sized from the
+        // hull (meta.hw, meta.hl), bow spray, stern wake and funnel smoke.
+        // L.submerged: only a bubble trail; L.moored: no bow wave.
+        const hw = meta.hw || 50, hl = meta.hl || 120, sub = this.L.submerged;
+        if (this.t % 3 === 0) {
+          const pts = sub ? [[R.range(-hw * 0.4, hw * 0.4), R.range(-hl, hl)]]
+            : [[R.sign() * (hw + R.range(0, 6)), R.range(-hl * 0.6, hl * 0.6)], [R.range(-hw * 0.5, hw * 0.5), -hl - R.range(4, 14)], ...(this.L.moored ? [] : [[R.range(-hw * 0.3, hw * 0.3), hl + 4]])];
+          for (const [ox, oy] of pts) {
+            const [sx, sy] = this._xf(ox, oy, x, y);
+            const i = L.spawn(w.F.glow, sx, sy, R.range(-0.3, 0.3) + (oy > hl * 0.8 ? ox * 0.01 : 0), sub ? -0.6 : R.range(-0.9, -0.4), sub ? 40 : 70);
+            if (i >= 0) { L.size(i, sub ? 4 : 6, sub ? 8 : 18); L.color(i, 0.8, 0.95, 1, 0.5, 0.7, 0.8); L.look(i, sub ? 0.5 : 0.28, 1, FADE_OUT); }
+          }
+        }
+        // Foam decals on the arena's water surface (world-space wake).
+        const fx = w.arena && w.arena.fx;
+        if (fx && !sub && !this.L.moored && this.t % 10 === 0) { const [sx, sy] = this._xf(0, -hl, x, y); fx.trail(sx, sy, hw * 1.6, e.rot); }
+        if (!sub && this.t % 10 === 0) for (const [ox, oy] of meta.funnels || []) {
+          const [sx, sy] = this._xf(ox, oy, x, y);
+          const i = L.spawn(w.r.frame('smoke'), sx, sy, 0, -1.2, 50);
+          if (i >= 0) { L.size(i, 6, 20); L.color(i, 0.18, 0.18, 0.2, 0.05, 0.05, 0.06); L.phys(i, 0.98, -0.01); L.look(i, 0.55, 0, FADE_INOUT); }
         }
         break;
       }
@@ -308,6 +339,14 @@ export class BossLook {
           b.draw(ring, x, y - 6 * sc, 200 * sc, 200 * sc, -t * 0.007, 0.4, 1.2, 0.8, 0.18, 1);
           break;
         }
+        case 'alien': {
+          // Non-organic alien constructs: counter-rotating glyph rings and a
+          // pulsing core glow (L.rings: [{ r, rgb, spin, a }], L.pulse rgb).
+          const ring = w.r.frame('bx_glyphring'), pulse = 0.5 + 0.5 * Math.sin(t * 0.07);
+          for (const rg of L.rings || []) b.draw(ring, x, y, rg.r * 2 * sc, rg.r * 2 * sc, t * (rg.spin || 0.004), rg.rgb[0], rg.rgb[1], rg.rgb[2], (rg.a ?? 0.25) * (0.7 + 0.3 * pulse), 1);
+          if (L.pulse) { const [px, py] = this._xf(L.weak.x, L.weak.y, x, y); b.draw(F.glow, px, py, L.weak.r * 4 * sc, L.weak.r * 4 * sc, 0, L.pulse[0], L.pulse[1], L.pulse[2], 0.25 + 0.35 * pulse, 1); }
+          break;
+        }
         case 'maw': {
           const ten = w.r.frame('bx_tentacle');
           for (let k = 0; k < 6; k++) {
@@ -323,7 +362,8 @@ export class BossLook {
     }
     // Damage decals (§4.4: dents, cracks, exposed machinery / wounds).
     if (this.stage > 0 && c.state !== 'enter') {
-      const n = this.stage === 1 ? 2 : 6;
+      // Never more decals than the hull has damage sites (mini-bosses define four).
+      const n = Math.min(this.stage === 1 ? 2 : 6, L.sites.length);
       for (let i = 0; i < n; i++) {
         const [ox, oy] = L.sites[i], [px, py] = this._xf(ox, oy, x, y);
         if (L.organic) {

@@ -1,5 +1,7 @@
 import { BG_CITY, BG_HARBOR, BG_FOUNDRY, BG_VOID, BG_ORBITAL, BG_STORM } from '../stages/biomes.js';
 import { AM } from './ArenaBackground.js';
+import { ARENAS } from './arenaConfigs/index.js';
+import { lighting } from '../world/lighting.js';
 
 // Arena themes: the procedural layer recipes a boss phase can take over the
 // screen with. Built from the same pieces as stage biomes (background shader
@@ -127,8 +129,67 @@ export const ARENA_THEMES = {
     { bright: 0.65, darkness: 0.3, light: 170, ambient: ['sanity'], scrollSpeed: 0.4 }),
 };
 
+// ------------------------------------------------ arena rework (world/)
+// Authored phase-arena configurations (bosses/arenaConfigs/*) rendered by
+// the arena world system. A boss phase references one by id:
+//   arena: 'cc_burning_overpass'      or   arena: { id: 'cc_burning_overpass', ...overrides }
+// Legacy `{ theme }` blocks still resolve to the shader themes above.
+
+export { ARENAS };
+export const ARENA_IDS = Object.keys(ARENAS);
+
+/** Arena config by id (with an optional desperation variant: `<id>~desperation`). */
+export function arenaConfig(id) {
+  if (ARENAS[id]) return ARENAS[id];
+  const m = /^(.*)~desperation$/.exec(id || '');
+  if (m && ARENAS[m[1]]) return desperationConfig(ARENAS[m[1]]);
+  return null;
+}
+
+/** Hell's desperation phase: the final arena, pushed further (config `desperation` overrides). */
+export function desperationConfig(cfg) {
+  const d = cfg.desperation || {};
+  return {
+    ...cfg, ...d, id: `${cfg.id}~desperation`, name: d.name || cfg.name,
+    params: { ...(cfg.params || {}), ...(d.params || {}) },
+    light: { ...(cfg.light || {}), ...(d.light || {}) },
+    tint: d.tint || [0.4, 0.02, 0.02, 0.1],
+  };
+}
+
+const WORLD_BG = (cfg) => {
+  // A stage-biome-shaped palette so the Arena's palette blending still has
+  // sensible endpoints; the world pass replaces the shader output.
+  const L = lighting(cfg);
+  const f = L.fogCol;
+  return { mode: 0, base: [...f], fog: [...f], neonA: [...L.sunCol.map((v) => Math.min(1, v))], neonB: [...f], tilt: 0.5, bright: 0.5, detail: 0.3 };
+};
+
+function resolveWorld(cfg, over = {}) {
+  const weather = WEATHER[over.weather || cfg.weather] || WEATHER.none;
+  const vis = over.visibility || cfg.visibility || {};
+  return {
+    theme: cfg.id,
+    world: cfg,
+    bg: WORLD_BG(cfg),
+    parallax: { structs: [], streak: weather, shafts: null, traffic: false },
+    noStructs: true,
+    scrollSpeed: cfg.scroll ?? 1,
+    tint: over.tint || cfg.tint || null,
+    darkness: vis.darkness ?? 0,
+    light: vis.radius ?? 0,
+    ambient: [...(cfg.ambient || []), ...(over.particles || [])],
+  };
+}
+
 /** Resolve a phase's `arena` block into a concrete, self-contained layer recipe. */
 export function resolveArena(a = {}) {
+  if (typeof a === 'string') a = { id: a };
+  if (a.id) {
+    const cfg = arenaConfig(a.desperation ? `${a.id}~desperation` : a.id);
+    if (cfg) return resolveWorld(cfg, a);
+    console.warn(`[arena] unknown arena config "${a.id}"; using a legacy theme`);
+  }
   const th = ARENA_THEMES[a.theme] || ARENA_THEMES.highway_burning;
   const bg = { ...th.bg, base: [...th.bg.base], fog: [...th.bg.fog], neonA: [...th.bg.neonA], neonB: [...th.bg.neonB] };
   if (a.palette && a.palette.length >= 3) {

@@ -19,6 +19,10 @@
 }
 
 .ms-list { margin: calc(18 * var(--u)) auto 0; width: calc(330 * var(--u)); display: flex; flex-direction: column; gap: calc(3 * var(--u)); }
+.ms-list.pr-list { max-height: calc(430 * var(--u)); overflow-y: auto; scrollbar-width: none; gap: calc(2 * var(--u)); }
+.ms-list.pr-list::-webkit-scrollbar { display: none; }
+.ms-row.hdr { opacity: 0.9; font-size: calc(8 * var(--u)); letter-spacing: 0.32em; color: var(--dc); padding-top: calc(8 * var(--u)); border-left-color: transparent; background: none; }
+.pr-list .ms-row { padding-top: calc(3.5 * var(--u)); padding-bottom: calc(3.5 * var(--u)); }
 .ms-row {
   display: flex; justify-content: space-between; align-items: baseline;
   padding: calc(5 * var(--u)) calc(10 * var(--u));

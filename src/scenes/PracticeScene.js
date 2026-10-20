@@ -8,6 +8,7 @@ import { BIOMES } from '../stages/biomes.js';
 import { EXTRA_BIOMES } from '../stages/biomesExtra.js';
 import { BIOME_OWNERS, factionForArchetype } from '../data/factions/index.js';
 import { BOSSES } from '../bosses/index.js';
+import { levelOfBoss } from '../stages/campaign.js';
 
 /** First biome owned by the faction behind an archetype (the boss's home turf). */
 function homeBiome(archetype) {
@@ -30,11 +31,13 @@ export class PracticeScene extends StageScene {
   }
 
   makePlan(index) {
-    const base = generateStage(this.g.seed, index, this.diffCfg.id);
     const def = BOSSES[this.practice.id], mk = this.practice.mk || 1;
+    // Level rework: the fight plays in the boss's own level arena, at that level's difficulty.
+    const lv = levelOfBoss(def.id);
+    const base = generateStage(this.g.seed, lv ? lv.index : index, this.diffCfg.id);
     return {
       ...base,
-      biome: homeBiome(def.archetype),
+      ...(lv ? { level: { ...base.level, mk } } : { level: null, biome: homeBiome(def.archetype) }),
       sections: [
         { type: 'boss', id: 'syndicateCore', arena: { id: def.id, archetype: def.archetype, mk, deck: mk - 1, fallback: false } },
         { type: 'tally' },

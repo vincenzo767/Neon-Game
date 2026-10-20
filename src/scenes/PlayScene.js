@@ -1,3 +1,4 @@
+import { releaseMenuBackdrop } from '../fx/menuBackdrop.js';
 import { World } from '../entities/World.js';
 import { Parallax } from '../fx/Parallax.js';
 import { Hud, hiScoreId } from '../ui/Hud.js';
@@ -22,6 +23,7 @@ export class PlayScene {
 
   enter(g) {
     this.g = g;
+    releaseMenuBackdrop(g); // level rework: menus fly a real arena; play brings its own
     this.world = new World(g);
     // Difficulty (chosen on the difficulty select screen) sets lives, bombs and score rate.
     const cfg = (this.diffCfg = getDifficulty(this.difficultyId || g.difficultyId)); // M7b: attract / practice may override

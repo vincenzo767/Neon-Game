@@ -4,6 +4,7 @@ import { FADE_OUT } from '../fx/Particles.js';
 import { BossKit } from './kit.js';
 import { BossLook } from './look.js';
 import { LOOKS } from './looks.js';
+import { ensureBossArt } from './bossArt.js';
 
 // Runtime for a data-driven main boss (UPDATE_01 §1.3–1.5, §2.6).
 //
@@ -76,11 +77,13 @@ export class BossController {
     this.w = w;
     this.def = def;
     this.mk = Math.max(1, spec.mk || 1);
+    this.rank = spec.rank || 0;       // campaign: level within the archetype (pattern rate)
     this.archetype = spec.archetype || def.archetype;
     this.stars = null;        // ScoreStars, attached by the scene's arena (else plain cancel)
     const diff = w.diff;
     this.phases = selectPhases(def, diff.bossPhases ?? 5, !!diff.desperation);
-    const hpScale = (this.hpScale = (diff.bossHp || 1) * (1 + 0.35 * (this.mk - 1)));
+    // Mk: +35 % per Mk. Campaign rank (level within the archetype): +5 % per level.
+    const hpScale = (this.hpScale = (diff.bossHp || 1) * (1 + 0.35 * (this.mk - 1)) * (1 + 0.05 * this.rank));
     for (const p of this.phases) p.hp = Math.max(1, Math.round(p.hp * hpScale));
     const total = this.phases.reduce((a, p) => a + p.hp, 0);
     // floors[i]: HP left when phase i is cleared.
@@ -89,16 +92,17 @@ export class BossController {
     this.name = `${def.name}${mkSuffix(this.mk)}`;
 
     const r = w.r;
-    const medals = Array(6 + 2 * this.mk).fill('M');
+    if (r.addFrames) ensureBossArt(r, def); // roster bosses draw their art into their own texture
+    const medals = Array((def.mini ? 3 : 6) + 2 * this.mk).fill('M');
     // M4d: retrofitted bosses draw their own weak-point glow (bosses/look.js)
     // instead of the full-body halo, and use a softer hit flash.
-    const retro = !!LOOKS[def.id];
+    const retro = !!(LOOKS[def.id] || def.look);
     this.e = w.spawnEnemy({
       kind: `boss:${def.id}`, name: this.name, x: WORLD_W / 2, y: -110, r: def.r || 40, hp: total,
       f: r.frame(def.sprite), f2: def.sprite2 ? r.frame(def.sprite2) : null, scale: def.scale || 1,
       glow: retro ? null : def.glow || null, ...(retro ? { flashA: 0.15 } : {}), boss: true, blast: 0, armor: 1,
       score: (def.score || 100000) * this.mk, ult: 40,
-      drops: ['P', 'P', 'P', 'B', ...medals, ...(this.mk > 1 ? ['L'] : [])],
+      drops: def.mini ? ['P', 'P', 'B', ...medals] : ['P', 'P', 'P', 'B', ...medals, ...(this.mk > 1 ? ['L'] : [])],
       // Hud boss bar: phase floors as HP fractions = one segment per phase.
       def: { boss: true, phases: this.floors.slice(0, -1).map((f) => f / total) },
       ai: () => this.update(),
@@ -519,7 +523,7 @@ export function selectPhases(def, count, desperation) {
   const set = (def.phaseSets && def.phaseSets[n]) || (authored.length === 5 ? DEFAULT_PHASE_SETS[n] : null)
     || authored.map((_, i) => i).slice(authored.length - n);
   const out = set.map((i) => ({ ...authored[i] }));
-  if (desperation) {
+  if (desperation && !def.mini) { // mid-bosses never get a desperation phase
     const last = authored[authored.length - 1];
     const d = def.desperation || {};
     out.push({
@@ -527,7 +531,8 @@ export function selectPhases(def, count, desperation) {
       name: 'DESPERATION',
       hp: Math.round(last.hp * 0.5),
       intensity: (last.intensity || 1) * 1.4,
-      arena: { ...last.arena, tint: [0.45, 0, 0.04, 0.22] },
+      // Authored arena configs (string ids) get their desperation variant; legacy theme blocks a red tint.
+      arena: typeof last.arena === 'string' ? { id: last.arena, desperation: true } : { ...last.arena, tint: [0.45, 0, 0.04, 0.22] },
       transitionFx: 'screen_tear',
       musicLayer: `${last.musicLayer || def.id}_desperation`,
       ...d,

@@ -1,6 +1,7 @@
 import { WORLD_W } from '../core/constants.js';
 import { World } from '../entities/World.js';
 import { Parallax } from '../fx/Parallax.js';
+import { menuBackdrop, updateMenuBackdrop, renderMenuCover } from '../fx/menuBackdrop.js';
 import { ROSTER, getRoster, LEGENDARY_INDEX } from '../pilots/index.js';
 import { unlock } from '../pilots/unlocks.js';
 import { playChoir, playUiTick, playConfirm, playBack } from '../audio/sting.js';
@@ -47,6 +48,7 @@ export class PilotSelectScene {
     this.world = new World(g);
     g.renderer.background.setBiome(BIOMES[0].bg);
     this.parallax = new Parallax(g, BIOMES[0]);
+    menuBackdrop(g); // a real arena behind the menu (level rework)
     this.t = 0;
     this.demoT = 0;
     this._buildDom();
@@ -255,13 +257,13 @@ export class PilotSelectScene {
     if (this.t % 3 === 0) drawPortrait(this.el.tiles[L].querySelector('canvas'), this.roster[L], g.time);
 
     g.renderer.background.update();
-    this.parallax.update();
+    updateMenuBackdrop(g);
     this.world.update();
   }
 
   render(r, alpha) {
     const b = r.batch;
-    this.parallax.render(b, alpha, this.g.time);
+    renderMenuCover(b, r.frame('white'));
     this.world.renderMid(b, alpha);
     this.world.renderTop(b, alpha);
   }

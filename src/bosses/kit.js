@@ -203,6 +203,9 @@ export class BossKit {
         if (h.onFire) h.onFire(h, w);
         if (h.type === 'circle' && h.boom !== false) {
           w.explosions.blast(h.x, h.y, Math.min(2.2, h.r / 40), h.color);
+          // Leave a mark on the arena floor (crater / scorch / water foam).
+          const fx = w.arena && w.arena.fx;
+          if (fx) fx.impact(h.x, h.y, h.r * 0.6, { crater: h.crater });
         }
       }
       if (h.t >= h.warn && h.t < h.warn + h.fire && h.lethal && canHit && this._inside(h, p.x, p.y, p.hitR)) p.hit();

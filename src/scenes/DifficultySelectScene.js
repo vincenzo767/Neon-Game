@@ -1,6 +1,7 @@
 import { WORLD_W } from '../core/constants.js';
 import { World } from '../entities/World.js';
 import { Parallax } from '../fx/Parallax.js';
+import { menuBackdrop, updateMenuBackdrop, renderMenuCover } from '../fx/menuBackdrop.js';
 import { BIOMES } from '../stages/biomes.js';
 import { DIFFICULTIES, DEFAULT_DIFFICULTY } from '../core/difficulty.js';
 import * as P from '../patterns/index.js';
@@ -28,6 +29,7 @@ export class DifficultySelectScene {
     music.menu(); // M6: starts once audio unlocks on the first key press
     g.renderer.background.setBiome(BIOMES[0].bg);
     this.parallax = new Parallax(g, BIOMES[0]);
+    menuBackdrop(g); // a real arena behind the menu (level rework)
     // A World with no player: just a bullet-preview emitter.
     this.world = new World(g);
     this.emitter = this.world.spawnEnemy({
@@ -114,13 +116,13 @@ export class DifficultySelectScene {
     if (this.t % 80 === 40) P.ring(w, e.x, e.y, SPEC.ring, this.t * 0.05);
 
     g.renderer.background.update();
-    this.parallax.update();
+    updateMenuBackdrop(g);
     w.update();
   }
 
   render(r, alpha) {
     const b = r.batch;
-    this.parallax.render(b, alpha, this.g.time);
+    renderMenuCover(b, r.frame('white'));
     this.world.renderMid(b, alpha);
     this.world.renderTop(b, alpha);
   }

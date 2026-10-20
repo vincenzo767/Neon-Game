@@ -92,9 +92,9 @@ export default {
 
   phases: [
     {
-      name: 'DAWN PATROL',
+      name: 'DRONE LAUNCH',
       hp: 700,
-      arena: { theme: 'clouds_dawn', layers: ['cloud_sea', 'sunrise_glow'], scrollSpeed: 1.6 },
+      arena: 'sw_dawn_patrol',
       transitionFx: 'flash',
       move: { type: 'sweep', amp: 110, y: 120 },
       parts: ['podL', 'podR'],
@@ -102,9 +102,9 @@ export default {
       musicLayer: 'aerial_p1',
     },
     {
-      name: 'STORM CELL',
+      name: 'BEAM CURTAIN',
       hp: 760,
-      arena: { theme: 'storm_front', layers: ['storm_clouds', 'lightning'], weather: 'heavy_rain' },
+      arena: 'sw_storm_cell',
       transitionFx: 'cloud_burst',
       move: { type: 'hover', amp: 80, y: 115 },
       parts: ['podL', 'podR'],
@@ -112,18 +112,18 @@ export default {
       musicLayer: 'aerial_p2',
     },
     {
-      name: 'AURORA CEILING',
+      name: 'MIRROR FORMATION',
       hp: 800,
-      arena: { theme: 'stratosphere_aurora', layers: ['high_cloud', 'aurora', 'first_stars'], scrollSpeed: 1.2 },
+      arena: 'sw_aurora_ceiling',
       transitionFx: 'cloud_burst',
       move: { type: 'figure8', amp: 100, ampY: 25, y: 120 },
       patterns: ['mirrorFormation', 'wingSpirals'],
       musicLayer: 'aerial_p3',
     },
     {
-      name: 'EDGE OF ORBIT',
+      name: 'CROSSFIRE',
       hp: 860,
-      arena: { theme: 'orbit_edge', layers: ['planet_limb', 'starfield', 'orbital_debris'] },
+      arena: 'sw_edge_of_orbit',
       transitionFx: 'warp_tunnel',
       move: { type: 'sweep', amp: 130, y: 115, freq: 0.01 },
       parts: ['podL', 'podR'],
@@ -131,9 +131,9 @@ export default {
       musicLayer: 'aerial_p4',
     },
     {
-      name: 'RE-ENTRY',
+      name: 'FIRE FROM ABOVE',
       hp: 940,
-      arena: { theme: 'reentry_fire', layers: ['plasma_sheath', 'burning_clouds'], weather: 'embers', scrollSpeed: 2.4 },
+      arena: 'sw_reentry',
       transitionFx: 'flash',
       move: { type: 'hover', amp: 120, y: 120, freq: 0.013 },
       patterns: ['beamCurtain', 'mirrorFormation', 'fireRain', 'noseFan'],

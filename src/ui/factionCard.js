@@ -22,7 +22,7 @@ export function showFactionCard(layer, plan, fac) {
   el.className = 'faction-card';
   el.style.setProperty('--fc', p.glow);
   el.style.setProperty('--fa', p.accent);
-  const loop = plan.stageInLoop === 0
+  const loop = (plan.level ? plan.index % 30 === 0 : plan.stageInLoop === 0)
     ? `<div class="fc-loop"><b>LOOP ${plan.loop}</b><span>“${esc(loopLine(plan.loop))}”</span>${plan.loop > 1 ? '<i>DENSITY UP · ELITES DEPLOYED</i>' : ''}</div>`
     : '';
   const second = fac.second && fac.second !== f
@@ -33,7 +33,7 @@ export function showFactionCard(layer, plan, fac) {
     <div class="fc-main">
       <img class="fc-emblem" src="${emblemURL(f.id, 72)}" alt="">
       <div class="fc-text">
-        <small>STAGE ${plan.loop}-${plan.stageInLoop + 1} · ${esc(plan.biome.name)}</small>
+        <small>${plan.level ? esc(plan.level.title) : `STAGE ${plan.loop}-${plan.stageInLoop + 1}`} · ${esc(plan.biome.name)}</small>
         <b>${esc(f.name.toUpperCase())}</b>
         <em>LEADER: ${esc(f.leader.toUpperCase())}</em>
       </div>
