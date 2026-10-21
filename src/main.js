@@ -44,7 +44,14 @@ async function boot() {
     game.start();
     // Exposed for console debugging only.
     window.__npo = game;
-    window.__npoDev = { spawnEnemy, ENEMIES, generateStage, BIOMES, BOSSES, bossForStage, archetypeDeck, dmgFlags };
+    window.__npoDev = {
+      spawnEnemy, ENEMIES, generateStage, BIOMES, BOSSES, bossForStage, archetypeDeck, dmgFlags,
+      // Headless checks (tools/boss-shot.mjs): open a practice fight in dev and production builds.
+      async practice(pilotId, bossId, mk = 1) {
+        const [{ PracticeScene }, { PILOTS }] = await Promise.all([import('./scenes/PracticeScene.js'), import('./pilots/index.js')]);
+        game.setScene(new PracticeScene(PILOTS.find((p) => p.id === pilotId), { id: bossId, mk }));
+      },
+    };
   } catch (err) {
     console.error(err);
     stage.innerHTML = `<div class="fatal"><b>NEON PRECINCT failed to start.</b><br>${String(err.message || err)}</div>`;

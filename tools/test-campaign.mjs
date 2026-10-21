@@ -34,7 +34,7 @@ if (CAMPAIGN_LENGTH !== 30) fail(`campaign length ${CAMPAIGN_LENGTH}`);
 const seen = { boss: new Set(), arena: new Set(), mini: new Set() };
 const SEA_ENVS = new Set(['ocean', 'harbor', 'arctic', 'coast']);
 const DEEP_ENVS = new Set(['seabed', 'ruins', 'flesh']);
-const LAND_ENVS = new Set(['terrain', 'city', 'highway', 'battlefield', 'scrapyard', 'foundry', 'reactor', 'tunnel', 'datacenter']);
+const LAND_ENVS = new Set(['terrain', 'city', 'highway', 'battlefield', 'frontline', 'scrapyard', 'foundry', 'reactor', 'tunnel', 'datacenter']);
 for (const a of CAMPAIGN_ORDER) {
   const list = LEVELS[a];
   if (list.length !== 5) fail(`${a} has ${list.length} levels`);

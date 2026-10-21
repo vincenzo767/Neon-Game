@@ -264,10 +264,16 @@ export class BossController {
     e.y = e.py = this.my = y;
   }
 
-  renderUnder(b, alpha) { this.look.renderUnder(b, alpha); this.kit.renderUnder(b, alpha); }
+  renderUnder(b, alpha) {
+    this.look.renderUnder(b, alpha); this.kit.renderUnder(b, alpha);
+    if (this.def.renderUnder) this.def.renderUnder(this, b, alpha);
+  }
   /** Hull overlays (animation, damage decals): before the arena's vision veil. */
   renderSurface(b, alpha) { this.look.renderSurface(b, alpha); }
-  renderOver(b, alpha) { this.look.renderOver(b, alpha); this.kit.renderOver(b, alpha); }
+  renderOver(b, alpha) {
+    this.look.renderOver(b, alpha); this.kit.renderOver(b, alpha);
+    if (this.def.renderOver) this.def.renderOver(this, b, alpha);
+  }
 
   _updateFight() {
     const c = this, w = this.w, ph = this.phase;

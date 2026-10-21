@@ -94,7 +94,7 @@ export class BossKit {
     const c = this.c, w = this.w, r = w.r, defs = c.def.parts || {};
     for (const name of names) {
       const d = defs[name];
-      if (!d) continue;
+      if (!d || (d.skip && d.skip(c))) continue; // e.g. a mount already destroyed in an earlier phase
       const pe = w.spawnEnemy({
         kind: 'bosspart', name: d.label || name, x: c.e.x + (d.ox || 0), y: c.e.y + (d.oy || 0), r: d.r || 14,
         hp: Math.max(1, Math.round((d.hp || 60) * c.hpScale)),
@@ -107,6 +107,7 @@ export class BossKit {
       });
       pe.entered = true;
       const part = { name, d, e: pe, open: true };
+      if (d.onSpawn) d.onSpawn(pe, c); // e.g. carry a mount's damage over from the last phase
       if (d.eye) {
         // Weak point: takes damage itself (breakable, drops medals) and
         // forwards a multiple of it to the boss, through any shield.
@@ -314,8 +315,9 @@ export class BossKit {
     const w = this.w;
     for (const p of this.parts) {
       if (p.dead || !p.e.alive) continue;
+      if (p.d.onClear) p.d.onClear(p, this.c);
       p.e.alive = false;
-      w.explosions.blast(p.e.x, p.e.y, 0.7, this.c.def.glow);
+      if (!p.d.quietClear) w.explosions.blast(p.e.x, p.e.y, 0.7, this.c.def.glow);
     }
     for (const m of this.minions) {
       if (!m.alive) continue;

@@ -361,7 +361,7 @@ export class BossLook {
       }
     }
     // Damage decals (§4.4: dents, cracks, exposed machinery / wounds).
-    if (this.stage > 0 && c.state !== 'enter') {
+    if (this.stage > 0 && c.state !== 'enter' && !L.noDecals) {
       // Never more decals than the hull has damage sites (mini-bosses define four).
       const n = Math.min(this.stage === 1 ? 2 : 6, L.sites.length);
       for (let i = 0; i < n; i++) {
@@ -396,6 +396,7 @@ export class BossLook {
       }
     }
     // Weak point: brighter and faster the more of the phase is gone.
+    if (L.noWeak) return; // drawn by the boss itself (3D emissive)
     const wk = L.weak, dmg = c.state === 'dying' ? 1 : 1 - this._phaseFrac();
     const pulse = 0.5 + 0.5 * Math.sin(t * (0.08 + dmg * 0.22));
     const [px, py] = this._xf(wk.x, wk.y, x, y), r = wk.r * sc * (1 + 0.18 * pulse + 0.35 * dmg);
