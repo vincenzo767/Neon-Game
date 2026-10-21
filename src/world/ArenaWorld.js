@@ -42,13 +42,17 @@ export class ArenaWorld {
     this.Q = QUALITY[this.qname] || QUALITY.high;
     this.cam = new Camera3D(cfg.camera || {});
     this.cam.y = this.cam.py = opts.startY ?? 0;
-    this.speed = (cfg.scroll ?? 1) * BASE_SPEED;
+    this.speed = this.baseSpeed = (cfg.scroll ?? 1) * BASE_SPEED;
     this.wind = cfg.wind || [0.6, 0.25];
     this.R = new RNG(`fx:${cfg.id}:${Date.now() & 0xffff}`);
     this.chunks = new Map();      // `${layer}:${k}` → chunk record
     this.dynAnchors = [];
     this.anchors = [];
     this.movers = [];
+    // 3D actors drawn inside the world pass (depth-tested with the terrain):
+    // { renderWorld(view, alpha) }, e.g. the White Fang tank (bosses/ground).
+    this.extras = [];
+    this.speedTarget = null; // eased scroll override (a boss holding the field)
     this.time = 0;
     this.disposed = false;
     this.floorZ = this.S.floorZ ?? (this.layers[0] ? this.layers[0].z : 0);
@@ -205,6 +209,10 @@ export class ArenaWorld {
 
   update() {
     if (this.disposed) return;
+    if (this.speedTarget !== null) {
+      const d = this.speedTarget - this.speed;
+      this.speed = Math.abs(d) < 0.002 ? this.speedTarget : this.speed + d * 0.025;
+    }
     this.cam.speed = this.speed;
     this.cam.step(this.speed);
     this.time++;
@@ -256,15 +264,15 @@ export class ArenaWorld {
    */
   groundSpeedAt(sy) {
     const cam = this.cam, tab = this._gs || (this._gs = { t: -1, v: new Float32Array(18) });
-    if (tab.t !== cam.y) {
-      tab.t = cam.y;
+    if (tab.t !== cam.y || tab.s !== this.speed) {
+      tab.t = cam.y; tab.s = this.speed;
       const z = (this.S.surfacesTopDown && this.S.surfacesTopDown[0].z) ?? this.floorZ;
       const p = [0, 0, 0], q = [0, 0, 0, 0];
       for (let i = 0; i < tab.v.length; i++) {
         const y = i * 40 - 20;
         const w = cam.unproject(240, y, z, p);
         tab.v[i] = w ? cam.project(w[0], w[1] - this.speed, z, q)[1] - y : 0;
-        if (!(tab.v[i] > 0)) tab.v[i] = i ? tab.v[i - 1] : 0.5;
+        if (!(tab.v[i] > 0)) tab.v[i] = this.speed <= 0.001 ? 0 : i ? tab.v[i - 1] : 0.5;
       }
     }
     const f = Math.min(tab.v.length - 1.001, Math.max(0, (sy + 20) / 40)), i = f | 0;
@@ -311,6 +319,10 @@ export class ArenaWorld {
       }
     }
     for (const m of this.movers) if (m.gl) w.drawLit(m.gl, { cut: 0.5, offset: this.moverOffset(m, alpha) });
+    if (this.extras.length) {
+      for (const x of this.extras) x.renderWorld(this, alpha);
+      w.beginLit(cam, A);
+    }
     // Transparent layers (cloud decks, haze sheets, coastlines over water).
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);

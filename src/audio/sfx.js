@@ -19,6 +19,7 @@ const LIMIT = {
   graze: [0.028, 3], medal: [0.035, 3], item: [0.05, 2], power: [0.05, 2],
   bossTick: [0.07, 1], laser: [0.12, 1], sparkle: [0.06, 2], shot: [0.04, 2],
   enemyShot: [0.05, 1], grab: [0.08, 2],
+  cannonFire: [0.07, 2], shellImpact: [0.08, 2], mortarLaunch: [0.1, 2], railFire: [0.1, 1], railCharge: [0.3, 1],
 };
 
 /** Per-pilot output: one persistent gain node per voice (its loudness trim, M7c). */
@@ -87,6 +88,46 @@ const LIB = {
   partDown(c, o, t, s) {
     LIB.explode2(c, o, t, s);
     metal(c, o, t, { f: 110, bp: 1200, dur: 1.2, peak: 0.12, q: 5, send: { rev: 0.4 } });
+  },
+
+  // ------------------------------------------------------------ White Fang (siege tank)
+  // Railgun: capacitor whine climbing to a crack-and-boom discharge.
+  railCharge(c, o, t, s) {
+    tone(c, o, t, { type: 'sawtooth', f: 160, f2: 2400, ft: 0.95, dur: 1.0, peak: 0.05, a: 0.2, filter: { type: 'bandpass', f: 800, f2: 5200, ft: 0.95, q: 5 }, pan: s.pan });
+    tone(c, o, t, { type: 'sine', f: 55, f2: 110, ft: 0.95, dur: 1.0, peak: 0.12, a: 0.3, pan: s.pan });
+  },
+  railFire(c, o, t, s) {
+    noise(c, o, t, { dur: 0.08, peak: 0.35, a: 0.001, filter: { type: 'highpass', f: 2500 }, pan: s.pan });
+    kick(c, o, t, { f0: 180, f1: 34, dur: 0.7, peak: 0.85, click: 0.4, drive: 1.6 });
+    tone(c, o, t, { type: 'sawtooth', f: 2600, f2: 180, ft: 0.35, dur: 0.45, peak: 0.07, filter: { type: 'lowpass', f: 6000, f2: 500, ft: 0.4 }, pan: s.pan, send: { rev: 0.35 } });
+    metal(c, o, t + 0.02, { f: 90, bp: 2200, dur: 0.9, peak: 0.06, q: 4, pan: s.pan, send: { rev: 0.4 } });
+  },
+  mortarLaunch(c, o, t, s) {
+    kick(c, o, t, { f0: 120, f1: 45, dur: 0.35, peak: 0.55, click: 0.15 });
+    noise(c, o, t, { color: 'pink', dur: 0.5, peak: 0.18, a: 0.004, filter: { type: 'bandpass', f: 900, f2: 300, ft: 0.4, q: 1.2 }, pan: s.pan });
+    tone(c, o, t + 0.05, { type: 'sine', f: 900, f2: 1500, ft: 0.6, dur: 0.7, peak: 0.02, pan: s.pan });
+  },
+  shellImpact(c, o, t, s) {
+    LIB.explode1(c, o, t, s);
+    noise(c, o, t + 0.04, { dur: 0.35, peak: 0.1, filter: { type: 'highpass', f: 4000, f2: 7000, ft: 0.3 }, pan: s.pan }); // ice shatter
+    for (let k = 0; k < 4; k++) tone(c, o, t + 0.05 + k * 0.03, { type: 'sine', f: 2400 + Math.random() * 2400, dur: 0.12, peak: 0.015, pan: s.pan });
+  },
+  cannonFire(c, o, t, s) {
+    kick(c, o, t, { f0: 200, f1: 70, dur: 0.16, peak: 0.3, click: 0.2 });
+    noise(c, o, t, { dur: 0.14, peak: 0.12, a: 0.001, filter: { type: 'lowpass', f: 3000, f2: 600, ft: 0.12 }, pan: s.pan });
+  },
+  ramRev(c, o, t, s) {
+    tone(c, o, t, { type: 'sawtooth', f: 38, f2: 95, ft: 0.9, dur: 1.1, peak: 0.16, a: 0.15, filter: { type: 'lowpass', f: 300, f2: 900, ft: 0.9 }, pan: s.pan });
+    noise(c, o, t, { color: 'brown', dur: 1.1, peak: 0.16, a: 0.3, filter: { type: 'lowpass', f: 500 } });
+  },
+  ramImpact(c, o, t, s) {
+    LIB.explode2(c, o, t, s);
+    metal(c, o, t, { f: 70, bp: 900, dur: 1.4, peak: 0.12, q: 6, send: { rev: 0.5 } });
+    noise(c, o, t, { color: 'brown', dur: 1.2, peak: 0.3, a: 0.01, filter: { type: 'lowpass', f: 300, f2: 80, ft: 1.1 } });
+  },
+  avalanche(c, o, t) {
+    noise(c, o, t, { color: 'brown', dur: 4.2, peak: 0.32, a: 1.3, filter: { type: 'lowpass', f: 220, f2: 520, ft: 3.5 } });
+    noise(c, o, t + 0.8, { color: 'pink', dur: 3.4, peak: 0.08, a: 1.2, filter: { type: 'bandpass', f: 1200, q: 0.8 }, send: { rev: 0.3 } });
   },
 
   // ------------------------------------------------------------ feedback

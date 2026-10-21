@@ -62,9 +62,9 @@ export default [
   // ---------------------------------------------------------------- White Fang
   {
     id: 'wf_frozen_frontline', name: 'Frozen Frontline', boss: 'white_fang', phase: 1,
-    env: 'battlefield',
-    params: { ground: 'snow', craters: 0.6, ruins: 0.4, fort: 0.7, fires: 0.35, armour: 0.6, road: true, trees: 0.6 },
-    light: { preset: 'arctic', elev: 18 },
+    env: 'frontline',
+    params: { craters: 0.8, walls: 0.8, wrecks: 0.75, fires: 0.6, poles: true },
+    light: { preset: 'arctic', elev: 40, az: 305, ambient: [0.4, 0.45, 0.56], fogStart: 700, fogEnd: 2600, fogMax: 0.45 },
     scroll: 0.8, wind: [1.2, -0.3],
     weather: 'none', ambient: ['snow'],
     transition: 'flash', music: 'ground_p1',
