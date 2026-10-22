@@ -13,9 +13,14 @@ import { PilotSelectScene } from './PilotSelectScene.js';
 
 const ROMAN = ['', 'I', 'II', 'III'];
 
+// Testing switch: every boss (and its Mk. I–III variants) is available in
+// practice regardless of what has been reached in ranked runs.
+const PRACTICE_UNLOCK_ALL = true;
+
 export class PracticeSelectScene extends MenuScene {
   build() {
-    const g = this.g, seen = bossesSeen();
+    const g = this.g;
+    const seen = PRACTICE_UNLOCK_ALL ? Object.fromEntries(Object.values(ROSTER).flat().map((b) => [b.id, 3])) : bossesSeen();
     this.mk = {};
     void BOSSES;
     let di = Math.max(0, DIFFICULTIES.findIndex((d) => d.id === (g.difficultyId || g.settings.data.difficulty || DEFAULT_DIFFICULTY)));
