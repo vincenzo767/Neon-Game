@@ -285,7 +285,7 @@ export class WorldFX {
     }
     for (let k = this.decals.length - 1; k >= 0; k--) {
       const dc = this.decals[k];
-      if (--dc.life <= 0 || dc.y < cam.y - 900) this.decals.splice(k, 1);
+      if (--dc.life <= 0 || dc.y < cam.y - 900 || dc.y > cam.y + 3000) this.decals.splice(k, 1);
     }
   }
 

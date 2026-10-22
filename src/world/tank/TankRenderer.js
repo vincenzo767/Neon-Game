@@ -55,7 +55,10 @@ uniform float u_exposure;
 uniform float u_glow;      // emissive intensity for this draw
 uniform float u_flash;     // hit flash
 uniform float u_damage;    // 0..1 scorching
-uniform float u_snow;      // snow cover on up-facing surfaces
+uniform float u_snow;      // snow / sand cover on up-facing surfaces
+uniform vec3 u_cover;      // its colour (snow, desert sand)
+uniform vec3 u_bounce;     // light bounced up off the ground
+uniform vec2 u_metal;      // texture-layer range lit as bare metal (brass)
 uniform float u_heat;      // warm glow (overheated vents, burning wreck)
 in vec3 v_world; in vec3 v_nrm; in vec3 v_uvl; in vec4 v_col; in float v_depth;
 out vec4 o;
@@ -70,21 +73,28 @@ void main() {
   // Snow settles on up-facing surfaces, broken up by world-space noise.
   float n1 = texture(u_noise, v_world.xy * 0.011).r, n2 = texture(u_noise, v_world.xy * 0.05 + 0.3).g;
   float sn = smoothstep(0.62, 0.95, N.z) * smoothstep(0.38, 0.62, n1 * 0.7 + n2 * 0.45) * u_snow * (1.0 - em);
-  alb = mix(alb, vec3(0.93, 0.96, 1.0), sn);
+  float metal = step(u_metal.x - 0.5, v_uvl.z) * step(v_uvl.z, u_metal.y + 0.5) * (1.0 - sn);
+  alb = mix(alb, u_cover, sn);
   spec = mix(spec, 0.45, sn);
   // Scorch damage: blotchy soot that grows with u_damage.
   float sc = smoothstep(0.75 - u_damage * 0.55, 0.85 - u_damage * 0.5, texture(u_noise, v_world.xy * 0.018 + 0.7).r);
   alb *= mix(1.0, 0.22, sc * u_damage);
-  // Lighting: key sun (wrapped a touch), sky dome, bounce off the snow.
+  metal *= 1.0 - sc * u_damage;
+  // Lighting: key sun (wrapped a touch), sky dome, bounce off the ground.
   vec3 L = normalize(u_sunDir);
   float ndl = max(0.0, dot(N, L) * 0.92 + 0.08);
   vec3 sky = u_amb * (0.42 + 0.48 * N.z);
-  vec3 bounce = vec3(0.55, 0.6, 0.68) * 0.3 * clamp(0.5 - 0.5 * N.z, 0.0, 1.0);
+  vec3 bounce = u_bounce * clamp(0.5 - 0.5 * N.z, 0.0, 1.0);
   vec3 H = normalize(L + V);
   float sp = pow(max(0.0, dot(N, H)), mix(14.0, 80.0, spec)) * (0.1 + 1.4 * spec * spec);
   float rim = pow(1.0 - max(0.0, dot(N, V)), 4.0) * 0.14;
+  // Bare metal (brass): specular takes the metal's colour, diffuse drops a
+  // little, and the sky / sunlit sand reflect in it (keeps gold from reading
+  // as flat yellow paint).
+  vec3 specCol = mix(u_sunCol, u_sunCol * alb * 1.9, metal);
+  vec3 refl = alb * (u_amb * (0.35 + 0.35 * N.z) + u_bounce * 0.8 * (1.0 - N.z)) * metal * 0.55;
   // Kept under the bloom threshold: only specular glints and emissives glow.
-  vec3 col = alb * (sky + u_sunCol * ndl * 0.9 + bounce) * 0.9 + u_sunCol * sp * (1.0 - em) + u_amb * rim;
+  vec3 col = alb * (sky + u_sunCol * ndl * 0.9 + bounce) * (0.9 - 0.18 * metal) + specCol * sp * (1.0 - em) + u_amb * rim + refl;
   col += v_col.rgb * t.rgb * em * u_glow * 2.2;
   col += vec3(1.0, 0.42, 0.12) * u_heat * (0.4 + 0.6 * sc) * (1.0 - N.z * 0.5);
   col = mix(col, vec3(1.7, 1.75, 1.85), u_flash * 0.45);
@@ -152,6 +162,11 @@ void main() {
   o = vec4(vec3(m * 0.98, m * 0.99, m), 1.0);
 }`;
 
+/** Per-model surroundings: what settles on it, ground bounce, metal layers, shadow tint. */
+export const SNOW_LOOK = { cover: [0.93, 0.96, 1.0], bounce: [0.165, 0.18, 0.204], shadow: [0.02, 0.035, 0.07], metal: null };
+export const SAND_LOOK = { cover: [0.84, 0.69, 0.46], bounce: [0.3, 0.22, 0.13], shadow: [0.06, 0.035, 0.015], metal: [TL.GOLD, TL.BRONZE] };
+const NO_METAL = [-9, -9];
+
 const CACHE = new WeakMap();
 
 /** Tank renderer for this WorldGL (built on first use; ~80 ms of painting). */
@@ -163,7 +178,11 @@ export function tankRenderer(wgl, quality = 'high') {
   return r;
 }
 
-let MODEL = null; // geometry is plain data: built once per session
+// Geometry is plain data: each model is built once per session, then uploaded
+// per GL context on first use. Mesh names of extra models are prefixed
+// (`sb.hull`), the White Fang parts keep their bare names.
+let MODEL = null;
+const EXTRA = new Map(); // prefix → built parts
 
 export class TankRenderer {
   constructor(wgl, quality, prev) {
@@ -191,6 +210,15 @@ export class TankRenderer {
     gl.bindVertexArray(null);
     this.trailCap = 0;
     this.mtmp = new Float32Array(16);
+    this.models = new Set();
+  }
+
+  /** Upload another model's parts (once): build() → { name: meshData }, drawn as `${prefix}.${name}`. */
+  ensure(prefix, build) {
+    if (this.models.has(prefix)) return;
+    if (!EXTRA.has(prefix)) EXTRA.set(prefix, build());
+    for (const [k, d] of Object.entries(EXTRA.get(prefix))) this.mesh[`${prefix}.${k}`] = this._upload(d);
+    this.models.add(prefix);
   }
 
   _textures() {
@@ -232,8 +260,12 @@ export class TankRenderer {
    * Bind the lit program for this frame. light: { dir (toward the sun),
    * col, amb }, A: the arena atmosphere (fog, exposure).
    */
-  begin(cam, A, light) {
+  begin(cam, A, light, look = SNOW_LOOK) {
     const gl = this.gl, p = this.tank, u = p.u;
+    gl.useProgram(p.prog);
+    gl.uniform3fv(u.u_cover, look.cover);
+    gl.uniform3fv(u.u_bounce, look.bounce);
+    gl.uniform2fv(u.u_metal, look.metal || NO_METAL);
     gl.useProgram(p.prog);
     gl.uniformMatrix4fv(u.u_vp, false, cam.vp);
     gl.uniform3f(u.u_eye, cam.ex, cam.ey, cam.ez);
@@ -274,11 +306,11 @@ export class TankRenderer {
 
   // --------------------------------------------------------- shadow pass
 
-  beginShadow(cam) {
+  beginShadow(cam, col = SNOW_LOOK.shadow) {
     const gl = this.gl, p = this.shadow, u = p.u;
     gl.useProgram(p.prog);
     gl.uniformMatrix4fv(u.u_vp, false, cam.vp);
-    gl.uniform3f(u.u_shCol, 0.02, 0.035, 0.07);
+    gl.uniform3fv(u.u_shCol, col);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.enable(gl.DEPTH_TEST);
@@ -324,12 +356,12 @@ export class TankRenderer {
   // ---------------------------------------------------------- trail pass
 
   /** Tread ribbons: data = Float32Array of triangles (x y z u v a), n vertices. */
-  trail(cam, data, n, hdr = true) {
+  trail(cam, data, n, hdr = true, layer = TL.TREAD) {
     if (!n) return;
     const gl = this.gl, p = this.trailP, u = p.u;
     gl.useProgram(p.prog);
     gl.uniformMatrix4fv(u.u_vp, false, cam.vp);
-    gl.uniform1f(u.u_layer, TL.TREAD);
+    gl.uniform1f(u.u_layer, layer);
     gl.uniform1f(u.u_hdr, hdr ? 1 : 0);
     gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.tex);
     gl.activeTexture(gl.TEXTURE0);

@@ -20,6 +20,8 @@ const LIMIT = {
   bossTick: [0.07, 1], laser: [0.12, 1], sparkle: [0.06, 2], shot: [0.04, 2],
   enemyShot: [0.05, 1], grab: [0.08, 2],
   cannonFire: [0.07, 2], shellImpact: [0.08, 2], mortarLaunch: [0.1, 2], railFire: [0.1, 1], railCharge: [0.3, 1],
+  chuff: [0.06, 1], railClack: [0.09, 1], coupleClank: [0.12, 2], rocketLaunch: [0.06, 2], gatling: [0.05, 1],
+  heavyCannon: [0.09, 2], sandBlast: [0.08, 2], steamVent: [0.25, 1], brakeScreech: [0.8, 1], trainHorn: [1.2, 1],
 };
 
 /** Per-pilot output: one persistent gain node per voice (its loudness trim, M7c). */
@@ -128,6 +130,54 @@ const LIB = {
   avalanche(c, o, t) {
     noise(c, o, t, { color: 'brown', dur: 4.2, peak: 0.32, a: 1.3, filter: { type: 'lowpass', f: 220, f2: 520, ft: 3.5 } });
     noise(c, o, t + 0.8, { color: 'pink', dur: 3.4, peak: 0.08, a: 1.2, filter: { type: 'bandpass', f: 1200, q: 0.8 }, send: { rev: 0.3 } });
+  },
+
+  // ------------------------------------------------------------ Sandbreaker (siege train)
+  // Exhaust beat: one chuff per quarter turn of the drivers (s.v = load 0..1).
+  chuff(c, o, t, s) {
+    const v = s.v ?? 0.6;
+    noise(c, o, t, { color: 'brown', dur: 0.22, peak: 0.05 + 0.09 * v, a: 0.004, filter: { type: 'lowpass', f: 420 + 500 * v, f2: 160, ft: 0.2 }, pan: s.pan });
+    noise(c, o, t, { color: 'pink', dur: 0.16, peak: 0.02 + 0.03 * v, a: 0.002, filter: { type: 'bandpass', f: 1400, q: 1.2 }, pan: s.pan });
+  },
+  // Wheels over a rail joint: a double "clack-clack".
+  railClack(c, o, t, s) {
+    for (const d of [0, 0.075]) metal(c, o, t + d, { f: 320, bp: 2600, dur: 0.07, peak: 0.022 * (s.v ?? 1), q: 3, pan: s.pan });
+  },
+  coupleClank(c, o, t, s) {
+    metal(c, o, t, { f: 140, bp: 1500, dur: 0.35, peak: 0.07, q: 5, pan: s.pan, send: { rev: 0.25 } });
+    kick(c, o, t, { f0: 160, f1: 70, dur: 0.12, peak: 0.18, click: 0.2 });
+  },
+  trainHorn(c, o, t, s) {
+    for (const f of [110, 138.6, 164.8]) tone(c, o, t, { type: 'sawtooth', f, dur: 1.5, peak: 0.05, a: 0.08, filter: { type: 'lowpass', f: 900, f2: 1400, ft: 0.3 }, pan: s.pan, send: { rev: 0.45 } });
+    tone(c, o, t, { type: 'sine', f: 55, dur: 1.5, peak: 0.12, a: 0.1, pan: s.pan });
+  },
+  brakeScreech(c, o, t, s) {
+    tone(c, o, t, { type: 'sawtooth', f: 2900, f2: 2200, ft: 1.2, dur: 1.3, peak: 0.022, a: 0.06, filter: { type: 'bandpass', f: 3200, q: 9 }, pan: s.pan, send: { rev: 0.3 } });
+    noise(c, o, t, { color: 'pink', dur: 1.3, peak: 0.07, a: 0.05, filter: { type: 'bandpass', f: 4200, q: 3 }, pan: s.pan });
+  },
+  steamVent(c, o, t, s) {
+    noise(c, o, t, { color: 'white', dur: 0.9, peak: 0.07, a: 0.02, filter: { type: 'highpass', f: 2600, f2: 1600, ft: 0.8 }, pan: s.pan, send: { rev: 0.2 } });
+  },
+  rocketLaunch(c, o, t, s) {
+    noise(c, o, t, { color: 'pink', dur: 0.6, peak: 0.12, a: 0.01, filter: { type: 'bandpass', f: 500, f2: 2600, ft: 0.5, q: 1.4 }, pan: s.pan });
+    kick(c, o, t, { f0: 130, f1: 60, dur: 0.15, peak: 0.2, click: 0.1 });
+  },
+  gatling(c, o, t, s) {
+    for (let k = 0; k < 3; k++) noise(c, o, t + k * 0.03, { dur: 0.03, peak: 0.07, a: 0.001, filter: { type: 'bandpass', f: 1800, q: 1.5 }, pan: s.pan });
+  },
+  heavyCannon(c, o, t, s) {
+    kick(c, o, t, { f0: 150, f1: 30, dur: 0.7, peak: 0.8, click: 0.35, drive: 1.6 });
+    noise(c, o, t, { color: 'pink', dur: 0.6, peak: 0.25, a: 0.002, filter: { type: 'lowpass', f: 5000, f2: 300, ft: 0.5 }, pan: s.pan, send: { rev: 0.35 } });
+    metal(c, o, t + 0.02, { f: 80, bp: 1600, dur: 0.6, peak: 0.04, q: 4, pan: s.pan, send: { rev: 0.4 } });
+  },
+  sandBlast(c, o, t, s) {
+    LIB.explode1(c, o, t, s);
+    noise(c, o, t + 0.05, { color: 'brown', dur: 0.8, peak: 0.16, a: 0.02, filter: { type: 'lowpass', f: 900, f2: 200, ft: 0.7 }, pan: s.pan });
+  },
+  engineFail(c, o, t, s) {
+    tone(c, o, t, { type: 'sawtooth', f: 140, f2: 30, ft: 2.4, dur: 2.6, peak: 0.12, a: 0.05, filter: { type: 'lowpass', f: 700, f2: 150, ft: 2.4 }, pan: s.pan });
+    LIB.steamVent(c, o, t + 0.3, s);
+    LIB.brakeScreech(c, o, t + 0.1, s);
   },
 
   // ------------------------------------------------------------ feedback
