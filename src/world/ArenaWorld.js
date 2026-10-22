@@ -53,6 +53,9 @@ export class ArenaWorld {
     // { renderWorld(view, alpha) }, e.g. the White Fang tank (bosses/ground).
     this.extras = [];
     this.speedTarget = null; // eased scroll override (a boss holding the field)
+    // Chunks kept streamed BEHIND the camera (cfg.keepBehind): arenas whose boss runs the
+    // field backward have a buffer ready the moment the scroll reverses.
+    this.keepBehind = cfg.keepBehind || 0;
     this.time = 0;
     this.disposed = false;
     this.floorZ = this.S.floorZ ?? (this.layers[0] ? this.layers[0].z : 0);
@@ -86,8 +89,23 @@ export class ArenaWorld {
   _range(L, ahead = 1) {
     const fp = this.cam.footprint(L.z, 60);
     if (!Number.isFinite(fp.y0)) return null;
-    const a = Math.floor((fp.y0 - 160) / L.length), b = Math.floor((fp.y1 + 220) / L.length) + ahead;
+    // Streaming leads in the direction of travel (a boss can run the field backward).
+    const back = this.speed < -0.05;
+    const a = Math.floor((fp.y0 - 160) / L.length) - (back ? ahead + 2 : 0) - this.keepBehind, b = Math.floor((fp.y1 + 220) / L.length) + (back ? 0 : ahead);
     return [a, b];
+  }
+
+  /**
+   * Periodic layers (`layer.period` chunks) repeat along y: chunk k is built as
+   * chunk k mod period and drawn shifted by whole periods. All of its chunks
+   * stay resident, so once the first lap is built nothing more is ever needed.
+   */
+  _wrap(L, k) { const n = L.period; return n ? ((k % n) + n) % n : k; }
+
+  /** Nearest image (to the camera) of chunk k of a periodic layer. */
+  _near(L, k) {
+    const n = L.period;
+    return n ? k + n * Math.round((this.cam.y / L.length - k) / n) : k;
   }
 
   _sync(first = false) {
@@ -96,18 +114,38 @@ export class ArenaWorld {
       const r = this._range(L);
       if (!r) continue;
       for (let k = r[0]; k <= r[1]; k++) {
-        const key = `${L.id}:${k}`;
+        const kk = this._wrap(L, k), key = `${L.id}:${kk}`;
         keep.add(key);
-        if (!this.chunks.has(key)) this._request(L, k, first);
+        if (!this.chunks.has(key)) this._request(L, kk, first);
       }
+      // The rest of a periodic layer queues behind what is needed now.
+      if (L.period) for (let k = 0; k < L.period; k++) if (!this.chunks.has(`${L.id}:${k}`)) this._request(L, k, false);
     }
     // Release chunks well behind the camera (keep a little slack against flicker).
     for (const [key, c] of this.chunks) {
       if (keep.has(key)) continue;
       const L = this.layers.find((l) => l.id === c.layer);
+      if (L && L.period) continue;
       const r = L && this._range(L, 2);
       if (!r || c.k < r[0] - 1 || c.k > r[1] + 2) this._free(key, c);
     }
+  }
+
+  /**
+   * Build priority (lower first). Nearest to the camera first; the incoming arena's
+   * first view beats prefetching — but the SHOWN arena's chunks that are on screen
+   * right now beat everything, and a shown arena running backward (a boss driving
+   * the field) keeps its short lead ahead of any prefetch.
+   */
+  _priority(L, k, first) {
+    k = this._near(L, k);
+    let pri = (first ? -1e6 : 0) + Math.abs(k * L.length - this.cam.y) + L.z * 0.01;
+    if (this.shown) {
+      const fp = this.cam.footprint(L.z, 0);
+      if (k * L.length < fp.y1 && (k + 1) * L.length > fp.y0) pri -= 3e6;
+      else if (this.speed < -0.05) pri -= 2e6;
+    }
+    return pri;
   }
 
   _request(L, k, first) {
@@ -115,8 +153,7 @@ export class ArenaWorld {
     const rec = { layer: L.id, k, state: 'pending', born: 0, anchors: [] };
     this.chunks.set(key, rec);
     this.stats.requested++;
-    // Priority: nearest to the camera first; the incoming arena's first view beats everything.
-    const pri = (first ? -1e6 : 0) + Math.abs(k * L.length - this.cam.y) + L.z * 0.01;
+    const pri = this._priority(L, k, first);
     this.svc.chunk(this.cfg, L.id, k, { ppu: this.Q.ppu, glow: this.Q.glow }, pri, this).then((d) => {
       if (this.disposed || this.chunks.get(key) !== rec) { closeBitmaps(d); return; }
       // GPU uploads (texImage2D + mipmaps) are spread over frames: one per update.
@@ -160,9 +197,47 @@ export class ArenaWorld {
 
   _rebuildAnchors() {
     const out = [], mv = [];
-    for (const c of this.chunks.values()) if (c.state === 'ready') { for (const a of c.anchors) out.push(a); for (const m of c.movers || []) mv.push(m); }
+    for (const c of this.chunks.values()) {
+      if (c.state !== 'ready') continue;
+      const L = this.layers.find((l) => l.id === c.layer);
+      if (L && L.period) continue; // placed per visible image (_periodicAnchors)
+      for (const a of c.anchors) out.push(a);
+      for (const m of c.movers || []) mv.push(m);
+    }
+    this.baseAnchors = out;
     this.anchors = out;
     this.movers = mv;
+    this._akey = null;
+    this._periodicAnchors();
+  }
+
+  /** Anchors of periodic layers, shifted onto every image near the camera (refreshed as it moves). */
+  _periodicAnchors() {
+    let key = '';
+    const imgs = [];
+    for (const L of this.layers) {
+      if (!L.period) continue;
+      const fp = this.cam.footprint(L.z, 300);
+      if (!Number.isFinite(fp.y0)) continue;
+      const a = Math.floor((fp.y0 - 300) / L.length), b = Math.floor((fp.y1 + 400) / L.length);
+      key += `${L.id}:${a}:${b};`;
+      imgs.push([L, a, b]);
+    }
+    if (!imgs.length || key === this._akey) return;
+    this._akey = key;
+    const out = (this.baseAnchors || []).slice();
+    for (const [L, a, b] of imgs) {
+      for (let k = a; k <= b; k++) {
+        const c = this.chunks.get(`${L.id}:${this._wrap(L, k)}`);
+        if (!c || c.state !== 'ready') { this._akey = null; continue; }
+        const dy = (k - c.k) * L.length;
+        if (!dy) { for (const an of c.anchors) out.push(an); continue; }
+        const img = c.img || (c.img = new Map());
+        if (!img.has(k)) img.set(k, c.anchors.map((an) => ({ ...an, y: an.y + dy })));
+        for (const an of img.get(k)) out.push(an);
+      }
+    }
+    this.anchors = out;
   }
 
   /** Current offset of a mover (deterministic: start + velocity × arena time). */
@@ -191,7 +266,7 @@ export class ArenaWorld {
       const fp = this.cam.footprint(L.z, 0);
       if (!Number.isFinite(fp.y0)) continue;
       for (let k = Math.floor(fp.y0 / L.length); k <= Math.floor(fp.y1 / L.length); k++) {
-        const c = this.chunks.get(`${L.id}:${k}`);
+        const c = this.chunks.get(`${L.id}:${this._wrap(L, k)}`);
         if (!c || (c.state !== 'ready' && c.state !== 'failed')) return false;
       }
     }
@@ -209,6 +284,7 @@ export class ArenaWorld {
 
   update() {
     if (this.disposed) return;
+    this.shown = true;
     if (this.speedTarget !== null) {
       const d = this.speedTarget - this.speed;
       this.speed = Math.abs(d) < 0.002 ? this.speedTarget : this.speed + d * 0.025;
@@ -218,9 +294,13 @@ export class ArenaWorld {
     this.time++;
     this.atmo.time = this.time / 60;
     this.cam.frame(1);
-    if (this.time % 10 === 0) this._sync();
+    if (this.time % 10 === 0) {
+      if (this.shown) this.svc.reprioritise(this, (m) => { const L = this.layers.find((l) => l.id === m.layer); return L ? this._priority(L, m.k, false) : 0; });
+      this._sync();
+    }
     this._drainUploads(1);
     this.svc.pump();
+    this._periodicAnchors();
     this.fx.update(this.anchors);
     for (const s of this.surfaces) if (s.flash && s.flash[3] > 0) s.flash[3] = Math.max(0, s.flash[3] * 0.82 - 0.01);
   }
@@ -233,6 +313,7 @@ export class ArenaWorld {
   /** Waiting in the wings (prefetched / incoming): trickle uploads in, one per step. */
   idle() {
     if (this.disposed) return;
+    this.shown = false;
     this._drainUploads(1);
   }
 
@@ -272,7 +353,8 @@ export class ArenaWorld {
         const y = i * 40 - 20;
         const w = cam.unproject(240, y, z, p);
         tab.v[i] = w ? cam.project(w[0], w[1] - this.speed, z, q)[1] - y : 0;
-        if (!(tab.v[i] > 0)) tab.v[i] = this.speed <= 0.001 ? 0 : i ? tab.v[i - 1] : 0.5;
+        // Rows past the horizon: reuse the row below (the sign follows the scroll direction).
+        if (!w || !Number.isFinite(tab.v[i])) tab.v[i] = Math.abs(this.speed) <= 0.001 ? 0 : i ? tab.v[i - 1] : 0.5 * Math.sign(this.speed);
       }
     }
     const f = Math.min(tab.v.length - 1.001, Math.max(0, (sy + 20) / 40)), i = f | 0;
@@ -311,6 +393,21 @@ export class ArenaWorld {
     // Opaque pass, bottom layer first.
     for (const L of this.layers) {
       if (L.blend) continue;
+      if (L.period) {
+        // Periodic layer: draw each visible image of its resident chunks, shifted by whole periods.
+        const fp = cam.footprint(L.z, 200);
+        if (!Number.isFinite(fp.y0)) continue;
+        for (let k = Math.floor(fp.y0 / L.length); k <= Math.floor(fp.y1 / L.length); k++) {
+          const c = this.chunks.get(`${L.id}:${this._wrap(L, k)}`);
+          if (!c || c.state !== 'ready') continue;
+          this._restoreIfLost(c);
+          const off = this.offBuf || (this.offBuf = [0, 0, 0]);
+          off[1] = (k - c.k) * L.length;
+          if (c.tex) w.drawLit(c.plane, { plane: c.tex, glow: c.glow, cut: L.cut ? 0.5 : 0.02, detail: L.detail ?? det, offset: off });
+          if (c.solid) w.drawLit(c.solid, { cut: 0.5, detail: [this.Q.detail * 0.6, 0.12], offset: off });
+        }
+        continue;
+      }
       for (const c of this.chunks.values()) {
         if (c.layer !== L.id || c.state !== 'ready') continue;
         this._restoreIfLost(c);
