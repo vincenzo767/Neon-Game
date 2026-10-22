@@ -53,6 +53,7 @@ export class ArenaWorld {
     // { renderWorld(view, alpha) }, e.g. the White Fang tank (bosses/ground).
     this.extras = [];
     this.speedTarget = null; // eased scroll override (a boss holding the field)
+    this.camFollow = null;   // optional (world) => void after each camera step: lateral chase framing
     // Chunks kept streamed BEHIND the camera (cfg.keepBehind): arenas whose boss runs the
     // field backward have a buffer ready the moment the scroll reverses.
     this.keepBehind = cfg.keepBehind || 0;
@@ -291,6 +292,7 @@ export class ArenaWorld {
     }
     this.cam.speed = this.speed;
     this.cam.step(this.speed);
+    if (this.camFollow) this.camFollow(this);
     this.time++;
     this.atmo.time = this.time / 60;
     this.cam.frame(1);
@@ -359,6 +361,20 @@ export class ArenaWorld {
     }
     const f = Math.min(tab.v.length - 1.001, Math.max(0, (sy + 20) / 40)), i = f | 0;
     return tab.v[i] + (tab.v[i + 1] - tab.v[i]) * (f - i);
+  }
+
+  /**
+   * Screen-space lateral shift (units per step) of the ground at row `sy` this
+   * step: non-zero only while a boss pans the camera sideways (chase framing),
+   * so ground units keep riding the road they are on.
+   */
+  groundShiftAt(sy) {
+    const cam = this.cam, dx = cam.x - cam.px;
+    if (!dx) return 0;
+    const z = (this.S.surfacesTopDown && this.S.surfacesTopDown[0].z) ?? this.floorZ;
+    const p = cam.unproject(240, sy, z, this._gsp || (this._gsp = [0, 0, 0]));
+    if (!p) return 0;
+    return -dx * cam.project(p[0], p[1], z, this._gsq || (this._gsq = [0, 0, 0, 0]))[2];
   }
 
   // ------------------------------------------------------------ render

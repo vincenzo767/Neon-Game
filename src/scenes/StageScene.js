@@ -78,8 +78,8 @@ export class StageScene extends PlayScene {
     else g.renderer.background.setBiome(this.plan.biome.bg);
     this.parallax.setStyle(this.plan.biome);
     // Level rework: the level's arena is on screen from the first wave.
-    if (lv && this.arena.showLevel(lv.arena, this.plan.biome)) w.groundSpeed = (y) => this.arena.groundSpeed(y);
-    else w.groundSpeed = null;
+    if (lv && this.arena.showLevel(lv.arena, this.plan.biome)) { w.groundSpeed = (y) => this.arena.groundSpeed(y); w.groundShift = (y) => this.arena.groundShift(y); }
+    else w.groundSpeed = w.groundShift = null;
     this._preloadLevelArt();
     w.bullets.clearAll();
     w.clearLasers();
@@ -151,14 +151,16 @@ export class StageScene extends PlayScene {
         // Level mode: one arena per level — a phase only changes its mood.
         if (this.arena.locked) { this.arena.mood(data.arena); break; }
         this.arena.transitionTo(data.arena, data.fx, data.dur);
-        // Build the arena after this one while this phase is fought.
-        const c = this.director.bossCtrl, next = c && c.phases[c.index + 2];
+        // Build the arena after this one while this phase is fought. The event
+        // comes at the fly-in (phase index shown) or mid-transition (index + 1 shown).
+        const c = this.director.bossCtrl, shown = c ? (c.state === 'enter' ? c.index : c.index + 1) : 0, next = c && c.phases[shown + 1];
         if (next) this.arena.prefetch(next.arena);
         break;
       }
       case 'bossPhaseCard': this._phaseCard(data); break;
       case 'bossMusic': music.setLayer(data.layer); break;
       case 'bossPartDown': this.hud.toast(`${data.name} DESTROYED · +${data.medals} MEDALS`, 'gold'); break;
+      case 'bossCallout': this.hud.toast(data.text, data.cls || 'red'); break;
       case 'waveStart': {
         const last = data.number === data.total, before = data.number === data.total / 2;
         this.banner(`WAVE ${data.number}`, last ? 'FINAL WAVE · THE BOSS IS NEXT' : before ? 'LAST WAVE BEFORE THE MID-BOSS' : `${data.number} / ${data.total}`, 120, 'wave');

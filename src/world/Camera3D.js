@@ -21,7 +21,8 @@ export class Camera3D {
     this.pitch = o.pitch ?? 0.3;
     this.near = o.near ?? 40;
     this.far = o.far ?? 30000;
-    this.x = 0;          // lateral sway
+    this.x = 0;          // lateral sway / chase framing (a boss may pan it)
+    this.px = 0;         // previous step's x (render interpolation)
     this.y = 0;          // forward travel (look target)
     this.py = 0;         // previous step (render interpolation)
     this.roll = 0;
@@ -33,15 +34,16 @@ export class Camera3D {
   /** Advance one simulation step. */
   step(speed = this.speed) {
     this.py = this.y;
+    this.px = this.x;
     this.y += speed;
   }
 
   /** Compute the basis + view-projection for render interpolation alpha. */
   _update(alpha, shakeX = 0, shakeY = 0) {
-    const y = this.py + (this.y - this.py) * alpha;
+    const y = this.py + (this.y - this.py) * alpha, x = this.px + (this.x - this.px) * alpha;
     const s = Math.sin(this.pitch), c = Math.cos(this.pitch), D = this.D;
     // Eye, forward, up, right (roll rotates up/right around forward).
-    this.ex = this.x; this.ey = y - D * s; this.ez = D * c;
+    this.ex = x; this.ey = y - D * s; this.ez = D * c;
     const fx = 0, fy = s, fz = -c;
     let ux = 0, uy = c, uz = s, rx = 1, ry = 0, rz = 0;
     if (this.roll) {

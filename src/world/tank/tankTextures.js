@@ -35,8 +35,18 @@ export const TL = {
   IVMARK: 23,   // v 0..0.5 hazard stripes, v 0.5..1 Iron Vein stencils
   EXCAV: 24,    // excavation trench (multiplier / 2): crushed rock, pick grooves, berms
   CRACK: 25,    // ground fracture (multiplier / 2): jagged crack down the middle of the strip
+  // URBAN DEVASTATOR (armoured pursuit supercar)
+  CARPAINT: 26, // deep black automotive paint over armour: clear coat, metal flake, scuffs, road grime
+  CARBON: 27,   // carbon-fibre twill weave under clear coat
+  SILVER: 28,   // brushed metallic silver / titanium panels (metallic)
+  TIRE: 29,     // performance tyre tread (u around the tyre, v across it)
+  RIM: 30,      // wheel face: rubber sidewall, machined twin-spoke alloy, drilled disc, red caliper (metallic)
+  GLASS: 31,    // smoked cockpit glazing with streaked reflections
+  UDMARK: 32,   // v 0..0.5 red / black hazard stripes, v 0.5..1 Urban Devastator stencils
+  SKID: 33,     // tyre skid mark (multiplier / 2): rubber streak with striations
+  CONCRETE: 34, // chipped barrier concrete (roadblocks, debris)
 };
-export const LAYERS = 26;
+export const LAYERS = 35;
 
 function rng(seed) {
   let s = seed >>> 0 || 1;
@@ -716,6 +726,202 @@ function crack(S) {
   return [c, sp];
 }
 
+// ------------------------------------------------ URBAN DEVASTATOR layers
+
+/** Car paint extras: metal flake, road grime toward the lower edge of panels, hot scuffs. */
+function carPost(S) {
+  return (ctx, sx, R, panels) => {
+    // Metal flake.
+    for (let i = 0; i < 2600; i++) {
+      const x = R() * S, y = R() * S, b = 90 + R() * 120;
+      ctx.fillStyle = `rgba(${b},${b},${b + 12},${0.12 + R() * 0.2})`; ctx.fillRect(x, y, 1, 1);
+      if (R() < 0.3) { sx.fillStyle = 'rgb(255,255,255)'; sx.fillRect(x, y, 1, 1); }
+    }
+    // Road grime and brake dust climbing up from the lower edge of panels (+v = down the body).
+    for (const [x, y, w, h] of panels) {
+      if (R() < 0.6) {
+        const g = ctx.createLinearGradient(0, y + h * 0.55, 0, y + h);
+        g.addColorStop(0, 'rgba(70,62,54,0)'); g.addColorStop(1, `rgba(70,62,54,${0.2 + R() * 0.25})`);
+        ctx.fillStyle = g; ctx.fillRect(x + 2, y + h * 0.55, w - 4, h * 0.45);
+        sx.fillStyle = 'rgba(40,40,40,0.5)'; sx.fillRect(x + 2, y + h * 0.75, w - 4, h * 0.25);
+      }
+    }
+    // Hot scuffs (paint burnt through to the silver primer).
+    for (let i = 0; i < 26; i++) {
+      const x = R() * S, y = R() * S, l = 10 + R() * 50, a = (R() - 0.5) * 0.6;
+      ctx.strokeStyle = `rgba(150,150,156,${0.25 + R() * 0.3})`; ctx.lineWidth = 1 + R() * 2.5;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); ctx.stroke();
+    }
+    overlay(ctx, noise(S, 6, 5, 311, 0.5, 0.95), 'multiply', 0.18, S);
+  };
+}
+
+/** Brushed metal: fine streaks across the tile. */
+function brushed(S) {
+  return (ctx, sx) => {
+    for (let i = 0; i < 1400; i++) { ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'; ctx.fillRect(0, (i * 37) % S, S, 1); }
+    sx.fillStyle = 'rgba(255,255,255,0.15)'; sx.fillRect(0, 0, S, S);
+  };
+}
+
+function carbonFibre(S) {
+  const c = canvas(S), ctx = c.getContext('2d'), sp = canvas(S), sx = sp.getContext('2d');
+  ctx.fillStyle = '#0c0d0f'; ctx.fillRect(0, 0, S, S);
+  const n = 32, q = S / n;
+  // 2×2 twill: each tow is a lit/dark gradient, alternating direction.
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const horiz = ((i + j) >> 1) % 2 === 0, x = i * q, y = j * q;
+    const g = horiz ? ctx.createLinearGradient(x, y, x, y + q) : ctx.createLinearGradient(x, y, x + q, y);
+    g.addColorStop(0, '#15171b'); g.addColorStop(0.45, '#3a3f47'); g.addColorStop(1, '#0d0e11');
+    ctx.fillStyle = g; ctx.fillRect(x + 0.4, y + 0.4, q - 0.8, q - 0.8);
+  }
+  overlay(ctx, noise(S, 4, 4, 321, 0.3, 0.9), 'soft-light', 0.3, S);
+  sx.fillStyle = 'rgb(215,215,215)'; sx.fillRect(0, 0, S, S);
+  return [c, sp];
+}
+
+function tyre(S) {
+  const c = canvas(S), ctx = c.getContext('2d'), sp = canvas(S), sx = sp.getContext('2d');
+  const R = rng(331);
+  // u = around the tyre (16 tread blocks per tile), v = across it (0, 1 = shoulders).
+  ctx.fillStyle = '#121214'; ctx.fillRect(0, 0, S, S);
+  sx.fillStyle = 'rgb(40,40,40)'; sx.fillRect(0, 0, S, S);
+  const n = 16, q = S / n;
+  for (let i = 0; i < n; i++) {
+    const x = i * q;
+    // Directional V grooves.
+    ctx.strokeStyle = '#050506'; ctx.lineWidth = q * 0.18;
+    for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + q * 0.5, S / 2 + side * S * 0.06); ctx.lineTo(x + q * 0.05, S / 2 + side * S * 0.42); ctx.stroke(); }
+    // Shoulder blocks.
+    for (const y of [0, S * 0.88]) { ctx.fillStyle = '#1d1e21'; ctx.fillRect(x + q * 0.12, y + S * 0.02, q * 0.7, S * 0.1); }
+  }
+  // Circumferential main grooves.
+  for (const y of [0.3, 0.7]) { ctx.fillStyle = '#060607'; ctx.fillRect(0, S * y - 5, S, 10); ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(0, S * y + 5, S, 2); }
+  // Scrubbed, hot rubber sheen in the middle, dust in the grooves.
+  const g = ctx.createLinearGradient(0, 0, 0, S);
+  g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(120,120,128,0.12)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+  for (let i = 0; i < 500; i++) { ctx.fillStyle = `rgba(120,110,100,${R() * 0.2})`; ctx.fillRect(R() * S, R() * S, 1 + R() * 2, 1); }
+  overlay(ctx, noise(S, 16, 4, 333), 'overlay', 0.3, S);
+  return [c, sp];
+}
+
+function rimFace(S) {
+  const c = canvas(S), ctx = c.getContext('2d'), sp = canvas(S), sx = sp.getContext('2d');
+  const m = S / 2;
+  ctx.fillStyle = '#0d0d0f'; ctx.fillRect(0, 0, S, S);
+  sx.fillStyle = 'rgb(30,30,30)'; sx.fillRect(0, 0, S, S);
+  // Sidewall rubber with a raised lettering ring.
+  ctx.fillStyle = '#151518'; ctx.beginPath(); ctx.arc(m, m, S * 0.5, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(160,160,165,0.35)'; ctx.lineWidth = S * 0.012;
+  for (let k = 0; k < 18; k++) { const a = (k / 18) * 6.283; ctx.beginPath(); ctx.arc(m, m, S * 0.455, a, a + 0.18); ctx.stroke(); }
+  // Rim lip (machined).
+  const lip = ctx.createRadialGradient(m, m, S * 0.36, m, m, S * 0.41);
+  lip.addColorStop(0, '#6e737a'); lip.addColorStop(0.5, '#e4e7ea'); lip.addColorStop(1, '#4a4e54');
+  ctx.fillStyle = lip; ctx.beginPath(); ctx.arc(m, m, S * 0.41, 0, 7); ctx.fill();
+  sx.fillStyle = 'rgb(240,240,240)'; sx.beginPath(); sx.arc(m, m, S * 0.41, 0, 7); sx.fill();
+  // Barrel depth: drilled brake disc + red caliper behind the spokes.
+  ctx.fillStyle = '#1a1b1e'; ctx.beginPath(); ctx.arc(m, m, S * 0.36, 0, 7); ctx.fill();
+  ctx.fillStyle = '#3d4044'; ctx.beginPath(); ctx.arc(m, m, S * 0.31, 0, 7); ctx.fill();
+  ctx.fillStyle = '#111214';
+  for (let k = 0; k < 36; k++) { const a = (k / 36) * 6.283; ctx.beginPath(); ctx.arc(m + Math.cos(a) * S * 0.26, m + Math.sin(a) * S * 0.26, S * 0.008, 0, 7); ctx.fill(); }
+  ctx.fillStyle = '#c4161c'; ctx.beginPath(); ctx.arc(m, m, S * 0.34, -2.4, -1.5); ctx.arc(m, m, S * 0.25, -1.5, -2.4, true); ctx.closePath(); ctx.fill();
+  // Seven twin spokes.
+  for (let k = 0; k < 7; k++) {
+    const a = (k / 7) * 6.283;
+    for (const d of [-0.07, 0.07]) {
+      const a0 = a + d, a1 = a + d * 2.2;
+      ctx.beginPath();
+      ctx.moveTo(m + Math.cos(a0 - 0.05) * S * 0.08, m + Math.sin(a0 - 0.05) * S * 0.08);
+      ctx.lineTo(m + Math.cos(a1 - 0.035) * S * 0.37, m + Math.sin(a1 - 0.035) * S * 0.37);
+      ctx.lineTo(m + Math.cos(a1 + 0.035) * S * 0.37, m + Math.sin(a1 + 0.035) * S * 0.37);
+      ctx.lineTo(m + Math.cos(a0 + 0.05) * S * 0.08, m + Math.sin(a0 + 0.05) * S * 0.08);
+      ctx.closePath();
+      const g = ctx.createLinearGradient(m, m, m + Math.cos(a) * S * 0.37, m + Math.sin(a) * S * 0.37);
+      g.addColorStop(0, '#c9cdd2'); g.addColorStop(0.6, '#8d9298'); g.addColorStop(1, '#5d6268');
+      ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+      sx.fillStyle = 'rgb(230,230,230)'; sx.beginPath(); sx.moveTo(m, m); sx.arc(m, m, S * 0.37, a0 - 0.05, a0 + 0.05); sx.fill();
+    }
+  }
+  // Centre-lock hub.
+  ctx.fillStyle = '#2a2c30'; ctx.beginPath(); ctx.arc(m, m, S * 0.09, 0, 7); ctx.fill();
+  ctx.fillStyle = '#d8dbde';
+  for (let k = 0; k < 6; k++) { const a = (k / 6) * 6.283; ctx.beginPath(); ctx.arc(m + Math.cos(a) * S * 0.06, m + Math.sin(a) * S * 0.06, S * 0.012, 0, 7); ctx.fill(); }
+  ctx.fillStyle = '#b8141a'; ctx.beginPath(); ctx.arc(m, m, S * 0.03, 0, 7); ctx.fill();
+  overlay(ctx, noise(S, 8, 4, 341), 'multiply', 0.15, S);
+  return [c, sp];
+}
+
+function smokedGlass(S) {
+  const c = canvas(S), ctx = c.getContext('2d'), sp = canvas(S), sx = sp.getContext('2d');
+  const R = rng(351);
+  const g = ctx.createLinearGradient(0, 0, S, S);
+  g.addColorStop(0, '#1d2733'); g.addColorStop(0.5, '#090c11'); g.addColorStop(1, '#141a22');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+  // Streaked reflections of the burning skyline.
+  for (let i = 0; i < 9; i++) {
+    const x = R() * S, w = 8 + R() * 40;
+    const sg = ctx.createLinearGradient(x, 0, x + w, 0);
+    sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, R() < 0.4 ? 'rgba(255,150,90,0.14)' : 'rgba(170,200,230,0.12)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sg; ctx.fillRect(x, 0, w, S);
+  }
+  overlay(ctx, noise(S, 4, 4, 353, 0.4, 0.9), 'soft-light', 0.25, S);
+  sx.fillStyle = 'rgb(185,185,185)'; sx.fillRect(0, 0, S, S);
+  return [c, sp];
+}
+
+function udMarks(S) {
+  const c = canvas(S), ctx = c.getContext('2d'), sp = canvas(S), sx = sp.getContext('2d');
+  ctx.fillStyle = '#b01218'; ctx.fillRect(0, 0, S, S / 2);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, S, S / 2); ctx.clip();
+  ctx.fillStyle = '#0d0d0f';
+  for (let x = -S; x < S * 2; x += 64) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 32, 0); ctx.lineTo(x + 32 - S / 2, S / 2); ctx.lineTo(x - S / 2, S / 2); ctx.fill(); }
+  ctx.restore();
+  overlay(ctx, noise(S, 8, 5, 361, 0.3, 0.8), 'multiply', 0.4, S);
+  ctx.fillStyle = '#121316'; ctx.fillRect(0, S / 2, S, S / 2);
+  overlay(ctx, noise(S, 6, 4, 363, 0.3, 0.9), 'soft-light', 0.4, S);
+  ctx.fillStyle = 'rgba(214,30,40,0.92)';
+  ctx.font = `bold ${S * 0.16}px "Arial Black", Arial, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('UD-04', S / 2, S * 0.66);
+  ctx.font = `bold ${S * 0.065}px Arial, sans-serif`;
+  ctx.fillStyle = 'rgba(200,205,210,0.8)';
+  ctx.fillText('IRONCLAD SYNDICATE', S / 2, S * 0.81);
+  ctx.fillStyle = '#c4161c'; ctx.fillRect(S * 0.1, S * 0.9, S * 0.8, S * 0.03);
+  sx.fillStyle = 'rgb(150,150,150)'; sx.fillRect(0, 0, S, S);
+  return [c, sp];
+}
+
+/** Tyre skid mark (multiplier / 2): a dark rubber streak with striations, soft at the edges. */
+function skidMark(S) {
+  const c = canvas(S), ctx = c.getContext('2d');
+  const R = rng(371);
+  const v = (m) => { const k = Math.round(Math.max(0, Math.min(1, m / 2)) * 255); return `rgb(${k},${k},${k})`; };
+  const lg = ctx.createLinearGradient(0, 0, S, 0);
+  lg.addColorStop(0, v(1)); lg.addColorStop(0.16, v(0.5)); lg.addColorStop(0.5, v(0.26)); lg.addColorStop(0.84, v(0.5)); lg.addColorStop(1, v(1));
+  ctx.fillStyle = lg; ctx.fillRect(0, 0, S, S);
+  for (let i = 0; i < 60; i++) { const x = S * (0.15 + R() * 0.7), w = 1 + R() * 3; ctx.fillStyle = v(R() < 0.5 ? 0.18 + R() * 0.12 : 0.55 + R() * 0.2); ctx.fillRect(x, 0, w, S); }
+  const n = noise(S, 8, 4, 373, 0.45, 0.9);
+  ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.18; ctx.drawImage(n, 0, 0); ctx.restore();
+  const sp = canvas(S); sp.getContext('2d').fillStyle = '#fff'; sp.getContext('2d').fillRect(0, 0, S, S);
+  return [c, sp];
+}
+
+function concreteLayer(S) {
+  const c = canvas(S), ctx = c.getContext('2d'), sp = canvas(S), sx = sp.getContext('2d');
+  const R = rng(381);
+  ctx.fillStyle = '#9a9690'; ctx.fillRect(0, 0, S, S);
+  overlay(ctx, noise(S, 4, 5, 383, 0.2, 0.9), 'multiply', 0.35, S);
+  overlay(ctx, noise(S, 32, 4, 385), 'overlay', 0.35, S);
+  for (let i = 0; i < 300; i++) { const x = R() * S, y = R() * S, r = 1 + R() * 3; ctx.fillStyle = R() < 0.5 ? 'rgba(60,58,54,0.5)' : 'rgba(200,196,190,0.4)'; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
+  // Red / white reflective band (barriers) along the top of the tile.
+  ctx.fillStyle = '#b8261e'; ctx.fillRect(0, S * 0.08, S, S * 0.07); ctx.fillStyle = '#e6e2da'; for (let x = 0; x < S; x += 64) ctx.fillRect(x, S * 0.08, 32, S * 0.07);
+  ctx.strokeStyle = 'rgba(30,28,26,0.6)'; ctx.lineWidth = 1.4;
+  for (let i = 0; i < 20; i++) { let x = R() * S, y = R() * S; ctx.beginPath(); ctx.moveTo(x, y); for (let k = 0; k < 4; k++) { x += (R() - 0.5) * 40; y += (R() - 0.5) * 40; ctx.lineTo(x, y); } ctx.stroke(); }
+  sx.fillStyle = 'rgb(50,50,50)'; sx.fillRect(0, 0, S, S);
+  return [c, sp];
+}
+
 /** Paint every layer: returns [{rgb canvas, spec canvas}] in TL order. */
 export function paintTankLayers(S = 512) {
   const W = { base: '#c4ccd4', var: 0.42, seam: 'rgba(40,48,58,0.75)', light: 'rgba(255,255,255,0.55)', chip: '#5d646b', grimeCol: '60,58,52', boltCol: '#b3bbc3', grime: 1, wear: 1, seed: 11, paintSpec: 95 };
@@ -724,9 +930,12 @@ export function paintTankLayers(S = 512) {
   const B = { base: '#6e5532', var: 0.42, seam: 'rgba(24,16,6,0.85)', light: 'rgba(240,210,150,0.4)', chip: '#a88a52', grimeCol: '36,24,10', boltCol: '#c9a35e', grime: 0.9, wear: 1.3, seed: 47, paintSpec: 150, post: brassPost(S, 0.6, 0.5) };
   const Y = { base: '#a8843a', var: 0.45, seam: 'rgba(36,26,12,0.85)', light: 'rgba(255,226,150,0.4)', chip: '#4a443e', grimeCol: '58,44,28', boltCol: '#c9b07a', grime: 1.3, wear: 1.8, seed: 61, paintSpec: 110, post: minePost(S, 0.8, 1) };
   const U = { base: '#4c4844', var: 0.5, seam: 'rgba(10,9,8,0.85)', light: 'rgba(210,190,170,0.3)', chip: '#8a6a4a', grimeCol: '70,40,20', boltCol: '#8a8276', grime: 1.4, wear: 1.6, seed: 67, paintSpec: 150, post: minePost(S, 1.4, 1.2) };
+  const K = { base: '#111216', var: 0.14, seam: 'rgba(0,0,0,0.7)', light: 'rgba(140,150,165,0.16)', chip: '#6a7078', grimeCol: '40,36,32', boltCol: '#22252a', grime: 0.3, wear: 0.3, seed: 301, paintSpec: 225, post: carPost(S) };
+  const V = { base: '#9aa1aa', var: 0.28, seam: 'rgba(20,24,30,0.8)', light: 'rgba(255,255,255,0.55)', chip: '#4a4f56', grimeCol: '50,46,42', boltCol: '#d6dadf', grime: 0.5, wear: 0.7, seed: 307, paintSpec: 225, post: brushed(S) };
   return [armour(S, W), armour(S, D), track(S), grille(S), snow(S), barrel(S), marks(S), glow(S), wheel(S), scorch(S), tread(S),
     armour(S, G), armour(S, B), sandLayer(S), sbMarks(S), railWheel(S), wake(S),
-    armour(S, Y), armour(S, U), carbide(S), rock(S), belt(S), ivTrack(S), ivMarks(S), excav(S), crack(S)];
+    armour(S, Y), armour(S, U), carbide(S), rock(S), belt(S), ivTrack(S), ivMarks(S), excav(S), crack(S),
+    armour(S, K), carbonFibre(S), armour(S, V), tyre(S), rimFace(S), smokedGlass(S), udMarks(S), skidMark(S), concreteLayer(S)];
 }
 
 /** Merge rgb + spec → ImageData (A = spec). */

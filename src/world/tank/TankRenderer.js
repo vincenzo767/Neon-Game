@@ -60,6 +60,9 @@ uniform vec3 u_cover;      // its colour (snow, desert sand)
 uniform vec3 u_bounce;     // light bounced up off the ground
 uniform vec4 u_metal;      // two texture-layer ranges lit as bare metal (brass, pick steel)
 uniform float u_heat;      // warm glow (overheated vents, burning wreck)
+uniform float u_gloss;     // clear-coat reflection (car paint): fresnel sky above, warm road glow below
+uniform vec4 u_pl;         // point light (muzzle flash, turbine): xyz, radius (0 = off)
+uniform vec3 u_plCol;
 in vec3 v_world; in vec3 v_nrm; in vec3 v_uvl; in vec4 v_col; in float v_depth;
 out vec4 o;
 void main() {
@@ -97,6 +100,17 @@ void main() {
   vec3 col = alb * (sky + u_sunCol * ndl * 0.9 + bounce) * (0.9 - 0.18 * metal) + specCol * sp * (1.0 - em) + u_amb * rim + refl;
   col += v_col.rgb * t.rgb * em * u_glow * 2.2;
   col += vec3(1.0, 0.42, 0.12) * u_heat * (0.4 + 0.6 * sc) * (1.0 - N.z * 0.5);
+  if (u_gloss > 0.0) {
+    float fres = pow(1.0 - max(0.0, dot(N, V)), 3.0);
+    // Sky / city glow above, warm firelit road below.
+    vec3 envc = mix(u_fogCol * 1.5 + u_amb * 0.6 + vec3(0.12, 0.13, 0.16), u_bounce * 2.6 + vec3(0.22, 0.11, 0.05), clamp(0.5 - 0.6 * N.z, 0.0, 1.0));
+    col += envc * (0.05 + 0.95 * fres) * spec * u_gloss * (1.0 - em) * (1.0 - metal * 0.5);
+  }
+  if (u_pl.w > 0.0) {
+    vec3 Lp = u_pl.xyz - v_world;
+    float dl = max(1.0, length(Lp)), att = max(0.0, 1.0 - dl / u_pl.w);
+    col += (alb + spec * 0.35) * u_plCol * att * att * max(0.0, dot(N, Lp / dl) * 0.75 + 0.25);
+  }
   col = mix(col, vec3(1.7, 1.75, 1.85), u_flash * 0.45);
   col *= u_exposure;
   float f = clamp((v_depth - u_fog.x) / max(1.0, u_fog.y - u_fog.x), 0.0, 1.0) * u_fog.z;
@@ -172,6 +186,7 @@ void main() {
 /** Per-model surroundings: what settles on it, ground bounce, metal layers, shadow tint. */
 export const SNOW_LOOK = { cover: [0.93, 0.96, 1.0], bounce: [0.165, 0.18, 0.204], shadow: [0.02, 0.035, 0.07], metal: null };
 export const SAND_LOOK = { cover: [0.84, 0.69, 0.46], bounce: [0.3, 0.22, 0.13], shadow: [0.06, 0.035, 0.015], metal: [TL.GOLD, TL.BRONZE] };
+export const CAR_LOOK = { cover: [0.4, 0.37, 0.34], bounce: [0.16, 0.11, 0.08], shadow: [0.012, 0.012, 0.018], metal: [TL.SILVER, TL.SILVER, TL.RIM, TL.RIM], gloss: 1 };
 export const MINE_LOOK = { cover: [0.6, 0.5, 0.39], bounce: [0.24, 0.19, 0.14], shadow: [0.045, 0.03, 0.02], metal: [TL.BRONZE, TL.BRONZE, TL.CARBIDE, TL.CARBIDE] };
 const NO_METAL = [-9, -9, -9, -9];
 const metal4 = (m) => (!m ? NO_METAL : m.length === 4 ? m : [m[0], m[1], -9, -9]);
@@ -275,7 +290,8 @@ export class TankRenderer {
     gl.uniform3fv(u.u_cover, look.cover);
     gl.uniform3fv(u.u_bounce, look.bounce);
     gl.uniform4fv(u.u_metal, metal4(look.metal));
-    gl.useProgram(p.prog);
+    gl.uniform1f(u.u_gloss, look.gloss || 0);
+    gl.uniform4f(u.u_pl, 0, 0, 0, 0);
     gl.uniformMatrix4fv(u.u_vp, false, cam.vp);
     gl.uniform3f(u.u_eye, cam.ex, cam.ey, cam.ez);
     gl.uniform3fv(u.u_fwd, cam.f);
@@ -295,6 +311,13 @@ export class TankRenderer {
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
     gl.depthMask(true);
+  }
+
+  /** One point light for the following draws (pos [x, y, z], radius, col [r, g, b]); radius 0 = off. */
+  pointLight(pos, radius, col) {
+    const u = this.tank.u;
+    this.gl.uniform4f(u.u_pl, pos[0], pos[1], pos[2], radius);
+    this.gl.uniform3fv(u.u_plCol, col);
   }
 
   /** o: { scroll [u, v], glow, flash, damage, snow, heat } */
