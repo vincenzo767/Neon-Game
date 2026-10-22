@@ -58,7 +58,7 @@ uniform float u_damage;    // 0..1 scorching
 uniform float u_snow;      // snow / sand cover on up-facing surfaces
 uniform vec3 u_cover;      // its colour (snow, desert sand)
 uniform vec3 u_bounce;     // light bounced up off the ground
-uniform vec2 u_metal;      // texture-layer range lit as bare metal (brass)
+uniform vec4 u_metal;      // two texture-layer ranges lit as bare metal (brass, pick steel)
 uniform float u_heat;      // warm glow (overheated vents, burning wreck)
 in vec3 v_world; in vec3 v_nrm; in vec3 v_uvl; in vec4 v_col; in float v_depth;
 out vec4 o;
@@ -73,7 +73,7 @@ void main() {
   // Snow settles on up-facing surfaces, broken up by world-space noise.
   float n1 = texture(u_noise, v_world.xy * 0.011).r, n2 = texture(u_noise, v_world.xy * 0.05 + 0.3).g;
   float sn = smoothstep(0.62, 0.95, N.z) * smoothstep(0.38, 0.62, n1 * 0.7 + n2 * 0.45) * u_snow * (1.0 - em);
-  float metal = step(u_metal.x - 0.5, v_uvl.z) * step(v_uvl.z, u_metal.y + 0.5) * (1.0 - sn);
+  float metal = max(step(u_metal.x - 0.5, v_uvl.z) * step(v_uvl.z, u_metal.y + 0.5), step(u_metal.z - 0.5, v_uvl.z) * step(v_uvl.z, u_metal.w + 0.5)) * (1.0 - sn);
   alb = mix(alb, u_cover, sn);
   spec = mix(spec, 0.45, sn);
   // Scorch damage: blotchy soot that grows with u_damage.
@@ -152,10 +152,17 @@ precision highp sampler2DArray;
 uniform sampler2DArray u_tex;
 uniform float u_layer;
 uniform float u_hdr;
+uniform vec4 u_add;      // additive glow mode: rgb, w = 1 (the texture's darkness is the mask)
 in vec3 v_uva;
 out vec4 o;
 void main() {
   float m = texture(u_tex, vec3(v_uva.xy, u_layer)).r * 2.0;
+  if (u_add.w > 0.5) {
+    float e2 = smoothstep(0.0, 0.2, v_uva.x) * smoothstep(1.0, 0.8, v_uva.x);
+    float g = clamp(1.0 - m, 0.0, 1.0);
+    o = vec4(u_add.rgb * g * g * clamp(v_uva.z, 0.0, 4.0) * e2, 1.0);
+    return;
+  }
   float e = smoothstep(0.0, 0.08, v_uva.x) * smoothstep(1.0, 0.92, v_uva.x);
   m = mix(1.0, m, clamp(v_uva.z, 0.0, 1.0) * e);
   if (u_hdr < 0.5) m = min(m, 1.0);
@@ -165,7 +172,9 @@ void main() {
 /** Per-model surroundings: what settles on it, ground bounce, metal layers, shadow tint. */
 export const SNOW_LOOK = { cover: [0.93, 0.96, 1.0], bounce: [0.165, 0.18, 0.204], shadow: [0.02, 0.035, 0.07], metal: null };
 export const SAND_LOOK = { cover: [0.84, 0.69, 0.46], bounce: [0.3, 0.22, 0.13], shadow: [0.06, 0.035, 0.015], metal: [TL.GOLD, TL.BRONZE] };
-const NO_METAL = [-9, -9];
+export const MINE_LOOK = { cover: [0.6, 0.5, 0.39], bounce: [0.24, 0.19, 0.14], shadow: [0.045, 0.03, 0.02], metal: [TL.BRONZE, TL.BRONZE, TL.CARBIDE, TL.CARBIDE] };
+const NO_METAL = [-9, -9, -9, -9];
+const metal4 = (m) => (!m ? NO_METAL : m.length === 4 ? m : [m[0], m[1], -9, -9]);
 
 const CACHE = new WeakMap();
 
@@ -265,7 +274,7 @@ export class TankRenderer {
     gl.useProgram(p.prog);
     gl.uniform3fv(u.u_cover, look.cover);
     gl.uniform3fv(u.u_bounce, look.bounce);
-    gl.uniform2fv(u.u_metal, look.metal || NO_METAL);
+    gl.uniform4fv(u.u_metal, metal4(look.metal));
     gl.useProgram(p.prog);
     gl.uniformMatrix4fv(u.u_vp, false, cam.vp);
     gl.uniform3f(u.u_eye, cam.ex, cam.ey, cam.ez);
@@ -355,14 +364,20 @@ export class TankRenderer {
 
   // ---------------------------------------------------------- trail pass
 
-  /** Tread ribbons: data = Float32Array of triangles (x y z u v a), n vertices. */
-  trail(cam, data, n, hdr = true, layer = TL.TREAD) {
+  /**
+   * Ground ribbons: data = Float32Array of triangles (x y z u v a), n vertices.
+   * Multiplicative (tread prints, trenches, cracks); with add = [r, g, b] the
+   * strip glows instead (the texture's darkness is the mask, depth tested but
+   * not written: molten fissures behind the hull stay hidden).
+   */
+  trail(cam, data, n, hdr = true, layer = TL.TREAD, add = null) {
     if (!n) return;
     const gl = this.gl, p = this.trailP, u = p.u;
     gl.useProgram(p.prog);
     gl.uniformMatrix4fv(u.u_vp, false, cam.vp);
     gl.uniform1f(u.u_layer, layer);
     gl.uniform1f(u.u_hdr, hdr ? 1 : 0);
+    if (add) gl.uniform4f(u.u_add, add[0], add[1], add[2], 1); else gl.uniform4f(u.u_add, 0, 0, 0, 0);
     gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.tex);
     gl.activeTexture(gl.TEXTURE0);
     gl.uniform1i(u.u_tex, 5);
@@ -371,13 +386,20 @@ export class TankRenderer {
     if (data.byteLength > this.trailCap) { gl.bufferData(gl.ARRAY_BUFFER, data.byteLength, gl.DYNAMIC_DRAW); this.trailCap = data.byteLength; }
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, n * 6);
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.DST_COLOR, gl.ZERO);
-    // Depth LESS + write: overlapping strips (a track crossing its own path)
-    // land once instead of multiplying darker and darker.
     gl.enable(gl.DEPTH_TEST);
-    gl.depthFunc(gl.LESS);
-    gl.depthMask(true);
+    if (add) {
+      gl.blendFunc(gl.ONE, gl.ONE);
+      gl.depthFunc(gl.LEQUAL);
+      gl.depthMask(false);
+    } else {
+      gl.blendFunc(gl.DST_COLOR, gl.ZERO);
+      // Depth LESS + write: overlapping strips (a track crossing its own path)
+      // land once instead of multiplying darker and darker.
+      gl.depthFunc(gl.LESS);
+      gl.depthMask(true);
+    }
     gl.drawArrays(gl.TRIANGLES, 0, n);
+    gl.depthMask(true);
     gl.depthFunc(gl.LEQUAL);
     gl.disable(gl.BLEND);
   }

@@ -25,8 +25,18 @@ export const TL = {
   SBMARK: 14,   // v 0..0.5 hazard stripes, v 0.5..1 Sandbreaker stencils
   RWHEEL: 15,   // spoked railway wheel face (counterweight, crank boss)
   WAKE: 16,     // sand ploughed off the line (multiplier / 2) for the train's wake
+  // IRON VEIN (open-pit mining fortress)
+  IVPAINT: 17,  // industrial ochre paint over steel: chipped, dust-caked, oil-stained
+  RUSTY: 18,    // weathered gunmetal with rust bloom, grease and dust
+  CARBIDE: 19,  // tool steel of the cutter picks: heat temper bands (metallic)
+  ROCK: 20,     // broken stone with strata and ore flecks (boulders, spikes, ore loads)
+  BELT: 21,     // conveyor belt rubber carrying crushed ore (v along the belt)
+  IVTRACK: 22,  // heavy track links caked with quarry dirt (8 links per tile along v)
+  IVMARK: 23,   // v 0..0.5 hazard stripes, v 0.5..1 Iron Vein stencils
+  EXCAV: 24,    // excavation trench (multiplier / 2): crushed rock, pick grooves, berms
+  CRACK: 25,    // ground fracture (multiplier / 2): jagged crack down the middle of the strip
 };
-export const LAYERS = 17;
+export const LAYERS = 26;
 
 function rng(seed) {
   let s = seed >>> 0 || 1;
@@ -498,14 +508,225 @@ function wake(S) {
   return [c, sp];
 }
 
+// ------------------------------------------------------- IRON VEIN layers
+
+/** Mining plate extras: dust caked in the lower seams, oil runs, heat bloom, rust weeps. */
+function minePost(S, rust, oil) {
+  return (ctx, sx, R, panels) => {
+    for (const [x, y, w, h] of panels) {
+      // Quarry dust packed into the lower edge of each panel.
+      if (R() < 0.7) {
+        const g = ctx.createLinearGradient(0, y + h - 16, 0, y + h - 2);
+        g.addColorStop(0, 'rgba(150,122,92,0)'); g.addColorStop(1, `rgba(150,122,92,${0.35 + R() * 0.3})`);
+        ctx.fillStyle = g; ctx.fillRect(x + 2, y + h - 16, w - 4, 14);
+        sx.fillStyle = 'rgba(30,30,30,0.6)'; sx.fillRect(x + 2, y + h - 10, w - 4, 8);
+      }
+      // Rust blooms in panel corners.
+      if (R() < 0.45 * rust) {
+        const cx = x + (R() < 0.5 ? 6 : w - 6), cy = y + (R() < 0.5 ? 6 : h - 6), r = 10 + R() * 26;
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        g.addColorStop(0, 'rgba(120,52,18,0.55)'); g.addColorStop(0.6, 'rgba(140,70,30,0.25)'); g.addColorStop(1, 'rgba(140,70,30,0)');
+        ctx.fillStyle = g; ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+      }
+    }
+    // Oil / grease runs (dark, glossy).
+    for (let i = 0; i < 26 * oil; i++) {
+      const x = R() * S, y = R() * S, len = 16 + R() * 70, w = 2 + R() * 5;
+      const g = ctx.createLinearGradient(0, y, 0, y + len);
+      g.addColorStop(0, 'rgba(16,12,8,0.55)'); g.addColorStop(1, 'rgba(16,12,8,0)');
+      wrap(S, x, y + len / 2, len, (xx, yy) => { ctx.fillStyle = g; ctx.fillRect(xx, yy - len / 2, w, len); sx.fillStyle = 'rgba(230,230,230,0.5)'; sx.fillRect(xx, yy - len / 2, w, len * 0.6); });
+    }
+    overlay(ctx, noise(S, 6, 5, 211, 0.45, 0.95), 'multiply', 0.22, S);
+    overlay(ctx, noise(S, 24, 4, 213, 0.55, 0.95), 'screen', 0.12, S); // dust haze
+  };
+}
+
+/** Pick steel: bright machined tip, temper colours toward the shank, soot. */
+function carbide(S) {
+  const c = canvas(S), ctx = c.getContext('2d'), sp = canvas(S), sx = sp.getContext('2d');
+  const R = rng(221);
+  // v runs along the pick (0 = base, 1 = tip), u around it.
+  const g = ctx.createLinearGradient(0, S, 0, 0);
+  g.addColorStop(0, '#2c2620'); g.addColorStop(0.35, '#5a4a3a'); g.addColorStop(0.55, '#6b5a7a');
+  g.addColorStop(0.68, '#8a7a52'); g.addColorStop(0.8, '#c9c6bf'); g.addColorStop(1, '#eeeae2');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+  for (let i = 0; i < 600; i++) { ctx.fillStyle = R() < 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'; ctx.fillRect(R() * S, 0, 1, S); }
+  for (let k = 0; k < 3; k++) { const y = S * (0.25 + k * 0.12); ctx.fillStyle = 'rgba(10,8,6,0.5)'; ctx.fillRect(0, y, S, 5); }
+  overlay(ctx, noise(S, 8, 4, 223), 'multiply', 0.25, S);
+  const gs = sx.createLinearGradient(0, S, 0, 0);
+  gs.addColorStop(0, 'rgb(90,90,90)'); gs.addColorStop(0.7, 'rgb(200,200,200)'); gs.addColorStop(1, 'rgb(255,255,255)');
+  sx.fillStyle = gs; sx.fillRect(0, 0, S, S);
+  return [c, sp];
+}
+
+/** Quarried stone: layered strata, fractures, oxidised ore flecks. */
+function rock(S) {
+  const c = canvas(S), ctx = c.getContext('2d'), sp = canvas(S), sx = sp.getContext('2d');
+  const R = rng(231);
+  ctx.fillStyle = '#7a6a58'; ctx.fillRect(0, 0, S, S);
+  overlay(ctx, noise(S, 4, 5, 233, 0.15, 0.9), 'multiply', 0.5, S);
+  overlay(ctx, noise(S, 16, 5, 235), 'overlay', 0.45, S);
+  for (let k = 0; k < 14; k++) {
+    const y = (k / 14) * S + R() * 8;
+    ctx.strokeStyle = R() < 0.5 ? 'rgba(40,30,22,0.35)' : 'rgba(200,180,150,0.22)'; ctx.lineWidth = 1 + R() * 3;
+    ctx.beginPath(); for (let x = 0; x <= S; x += 16) ctx.lineTo(x, y + Math.sin((x / S) * 6.283 + k) * 5); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(16,12,8,0.6)'; ctx.lineWidth = 1.3;
+  for (let i = 0; i < 40; i++) { let x = R() * S, y = R() * S; ctx.beginPath(); ctx.moveTo(x, y); for (let k = 0; k < 5; k++) { x += (R() - 0.5) * 40; y += (R() - 0.5) * 40; ctx.lineTo(x, y); } ctx.stroke(); }
+  sx.fillStyle = 'rgb(40,40,40)'; sx.fillRect(0, 0, S, S);
+  for (let i = 0; i < 160; i++) {
+    const x = R() * S, y = R() * S, r = 1 + R() * 4;
+    ctx.fillStyle = R() < 0.5 ? `rgba(170,90,40,${0.5 + R() * 0.4})` : `rgba(60,62,66,${0.5 + R() * 0.4})`;
+    wrap(S, x, y, r, (xx, yy) => { ctx.beginPath(); ctx.arc(xx, yy, r, 0, 7); ctx.fill(); });
+    if (R() < 0.3) { sx.fillStyle = 'rgb(210,210,210)'; sx.fillRect(x, y, 2, 2); }
+  }
+  return [c, sp];
+}
+
+/** Conveyor belt: dark rubber with cleats, crushed ore and dust riding on it. */
+function belt(S) {
+  const c = canvas(S), ctx = c.getContext('2d'), sp = canvas(S), sx = sp.getContext('2d');
+  const R = rng(241);
+  ctx.fillStyle = '#1c1916'; ctx.fillRect(0, 0, S, S);
+  overlay(ctx, noise(S, 8, 4, 243), 'overlay', 0.4, S);
+  sx.fillStyle = 'rgb(50,50,50)'; sx.fillRect(0, 0, S, S);
+  for (let k = 0; k < 8; k++) { const y = k * S / 8; ctx.fillStyle = '#2e2924'; ctx.fillRect(S * 0.06, y, S * 0.88, 6); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(S * 0.06, y, S * 0.88, 1.5); }
+  // Ore load: heaped in the middle of the belt (troughed idlers).
+  for (let i = 0; i < 260; i++) {
+    const x = S * (0.5 + (R() - 0.5) * (R() * 0.8)), y = R() * S, r = 2 + R() * 9;
+    const tone = R();
+    ctx.fillStyle = tone < 0.45 ? `rgb(${110 + R() * 40},${88 + R() * 30},${66 + R() * 24})` : tone < 0.75 ? `rgb(${70 + R() * 30},${62 + R() * 20},${56 + R() * 20})` : `rgb(${150 + R() * 50},${76 + R() * 30},${36 + R() * 20})`;
+    wrap(S, x, y, r, (xx, yy) => { ctx.beginPath(); ctx.ellipse(xx, yy, r, r * (0.6 + R() * 0.4), R() * 3, 0, 7); ctx.fill(); });
+    ctx.fillStyle = 'rgba(255,240,210,0.18)'; ctx.fillRect(x - r * 0.4, y - r * 0.4, r * 0.5, r * 0.3);
+  }
+  return [c, sp];
+}
+
+/** Heavy track links with quarry dirt packed between the grousers. */
+function ivTrack(S) {
+  const c = canvas(S), ctx = c.getContext('2d'), sp = canvas(S), sx = sp.getContext('2d');
+  const R = rng(251), L = S / 8;
+  ctx.fillStyle = '#16120e'; ctx.fillRect(0, 0, S, S);
+  sx.fillStyle = 'rgb(30,30,30)'; sx.fillRect(0, 0, S, S);
+  for (let k = 0; k < 8; k++) {
+    const y = k * L;
+    const g = ctx.createLinearGradient(0, y, 0, y + L);
+    g.addColorStop(0, '#5c564e'); g.addColorStop(0.5, '#3e3934'); g.addColorStop(1, '#27231f');
+    ctx.fillStyle = g; ctx.fillRect(S * 0.02, y + L * 0.08, S * 0.96, L * 0.8);
+    ctx.fillStyle = '#7a7268'; ctx.fillRect(S * 0.04, y + L * 0.24, S * 0.92, L * 0.24);
+    ctx.fillStyle = '#b0a798'; ctx.fillRect(S * 0.04, y + L * 0.24, S * 0.92, L * 0.05);
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(S * 0.04, y + L * 0.48, S * 0.92, L * 0.1);
+    sx.fillStyle = 'rgb(225,225,225)'; sx.fillRect(S * 0.04, y + L * 0.24, S * 0.92, L * 0.06);
+    for (const ex of [0.02, 0.98]) { ctx.fillStyle = '#1a1612'; ctx.beginPath(); ctx.arc(S * ex, y + L * 0.5, L * 0.2, 0, 7); ctx.fill(); ctx.fillStyle = '#857c70'; ctx.beginPath(); ctx.arc(S * ex, y + L * 0.5, L * 0.09, 0, 7); ctx.fill(); }
+    for (let i = 0; i < 16; i++) {
+      const px = S * (0.04 + R() * 0.92), py = y + L * (R() < 0.75 ? 0.58 + R() * 0.36 : 0.08 + R() * 0.14), r = 2 + R() * 8;
+      ctx.fillStyle = `rgba(${118 + R() * 40},${92 + R() * 30},${66 + R() * 24},${0.45 + R() * 0.4})`;
+      ctx.beginPath(); ctx.ellipse(px, py, r * 1.5, r * 0.7, 0, 0, 7); ctx.fill();
+      sx.fillStyle = 'rgb(40,40,40)'; sx.beginPath(); sx.ellipse(px, py, r * 1.5, r * 0.7, 0, 0, 7); sx.fill();
+    }
+  }
+  overlay(ctx, noise(S, 16, 4, 253), 'overlay', 0.35, S);
+  return [c, sp];
+}
+
+function ivMarks(S) {
+  const c = canvas(S), ctx = c.getContext('2d'), sp = canvas(S), sx = sp.getContext('2d');
+  ctx.fillStyle = '#d6a21c'; ctx.fillRect(0, 0, S, S / 2);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, S, S / 2); ctx.clip();
+  ctx.fillStyle = '#15120d';
+  for (let x = -S; x < S * 2; x += 64) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 32, 0); ctx.lineTo(x + 32 - S / 2, S / 2); ctx.lineTo(x - S / 2, S / 2); ctx.fill(); }
+  ctx.restore();
+  overlay(ctx, noise(S, 8, 5, 261, 0.3, 0.8), 'multiply', 0.45, S);
+  ctx.fillStyle = '#2b2622'; ctx.fillRect(0, S / 2, S, S / 2);
+  overlay(ctx, noise(S, 6, 4, 263, 0.3, 0.9), 'soft-light', 0.5, S);
+  ctx.fillStyle = 'rgba(222,170,60,0.9)';
+  ctx.font = `bold ${S * 0.16}px "Arial Black", Arial, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('IV-03', S / 2, S * 0.66);
+  ctx.font = `bold ${S * 0.065}px Arial, sans-serif`;
+  ctx.fillText('IRONCLAD SYNDICATE', S / 2, S * 0.81);
+  ctx.fillStyle = '#b83a1a'; ctx.fillRect(S * 0.1, S * 0.9, S * 0.8, S * 0.03);
+  sx.fillStyle = 'rgb(110,110,110)'; sx.fillRect(0, 0, S, S);
+  return [c, sp];
+}
+
+/**
+ * Excavation trench (multiplier / 2): a scraped, darker floor of crushed rock
+ * with pick grooves running along the cut, fractured edges and loose spoil
+ * pushed up into berms either side.
+ */
+function excav(S) {
+  const c = canvas(S), ctx = c.getContext('2d');
+  const R = rng(271);
+  const v = (m) => { const k = Math.round(Math.max(0, Math.min(1, m / 2)) * 255); return `rgb(${k},${Math.round(k * 0.98)},${Math.round(k * 0.95)})`; };
+  ctx.fillStyle = v(1); ctx.fillRect(0, 0, S, S);
+  for (const [x0, x1, m] of [[0, 0.05, 1.1], [0.05, 0.11, 1.22], [0.11, 0.15, 0.7], [0.85, 0.89, 0.7], [0.89, 0.95, 1.22], [0.95, 1, 1.1]]) { ctx.fillStyle = v(m); ctx.fillRect(x0 * S, 0, (x1 - x0) * S, S); }
+  ctx.fillStyle = v(0.86); ctx.fillRect(S * 0.15, 0, S * 0.7, S);
+  // Pick grooves along the cut.
+  for (let i = 0; i < 36; i++) { const x = S * (0.16 + R() * 0.68), w = 1 + R() * 3; ctx.fillStyle = v(R() < 0.65 ? 0.58 + R() * 0.1 : 0.98); ctx.fillRect(x, 0, w, S); }
+  // Crushed rock lumps (lit top, dark underside) and fractured edges.
+  for (let i = 0; i < 220; i++) {
+    const x = S * (0.12 + R() * 0.76), y = R() * S, r = 1.5 + R() * 6;
+    wrap(S, x, y, r * 2, (xx, yy) => {
+      ctx.fillStyle = v(0.5); ctx.beginPath(); ctx.ellipse(xx + r * 0.3, yy + r * 0.3, r, r * 0.8, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = v(1.0 + R() * 0.3); ctx.beginPath(); ctx.ellipse(xx, yy, r * 0.85, r * 0.65, R() * 3, 0, 7); ctx.fill();
+    });
+  }
+  for (const side of [0.15, 0.85]) {
+    ctx.strokeStyle = v(0.35); ctx.lineWidth = 2.5;
+    ctx.beginPath(); for (let y = 0; y <= S; y += 8) ctx.lineTo(S * side + (R() - 0.5) * 10, y); ctx.stroke();
+  }
+  const n = noise(S, 8, 4, 273, 0.45, 0.9);
+  ctx.save(); ctx.beginPath(); ctx.rect(S * 0.12, 0, S * 0.76, S); ctx.clip();
+  ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.35; ctx.drawImage(n, 0, 0); ctx.restore();
+  const sp = canvas(S); sp.getContext('2d').fillStyle = '#fff'; sp.getContext('2d').fillRect(0, 0, S, S);
+  return [c, sp];
+}
+
+/**
+ * Ground fracture (multiplier / 2): a jagged dark crack wandering down the
+ * centre of the strip, hairline branches, a lighter heaved lip on each side.
+ * The darkness doubles as the glow mask for molten fissures.
+ */
+function crack(S) {
+  const c = canvas(S), ctx = c.getContext('2d');
+  const R = rng(281);
+  const v = (m) => { const k = Math.round(Math.max(0, Math.min(1, m / 2)) * 255); return `rgb(${k},${k},${k})`; };
+  ctx.fillStyle = v(1); ctx.fillRect(0, 0, S, S);
+  // Heaved, dusty lips either side of the break.
+  const lg = ctx.createLinearGradient(0, 0, S, 0);
+  lg.addColorStop(0, v(1)); lg.addColorStop(0.3, v(1.12)); lg.addColorStop(0.45, v(0.8)); lg.addColorStop(0.55, v(0.8)); lg.addColorStop(0.7, v(1.12)); lg.addColorStop(1, v(1));
+  ctx.fillStyle = lg; ctx.fillRect(0, 0, S, S);
+  // The crack: a periodic jagged line (tiles along v).
+  const pts = [];
+  for (let k = 0; k <= 16; k++) pts.push([S * 0.5 + (k === 0 || k === 16 ? 0 : (R() - 0.5) * S * 0.18), (k / 16) * S]);
+  for (const [w, m] of [[S * 0.09, 0.55], [S * 0.05, 0.22], [S * 0.022, 0.05]]) {
+    ctx.strokeStyle = v(m); ctx.lineWidth = w; ctx.lineJoin = 'miter';
+    ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+  }
+  // Hairline branches.
+  for (let i = 0; i < 18; i++) {
+    const [x0, y0] = pts[1 + Math.floor(R() * 15)];
+    let x = x0, y = y0, a = (R() < 0.5 ? 0 : Math.PI) + (R() - 0.5) * 1.2;
+    ctx.strokeStyle = v(0.4); ctx.lineWidth = 1 + R() * 2;
+    ctx.beginPath(); ctx.moveTo(x, y);
+    for (let k = 0; k < 4; k++) { x += Math.cos(a) * S * 0.05; y += Math.sin(a) * S * 0.05; a += (R() - 0.5) * 0.8; ctx.lineTo(x, y); }
+    ctx.stroke();
+  }
+  const sp = canvas(S); sp.getContext('2d').fillStyle = '#fff'; sp.getContext('2d').fillRect(0, 0, S, S);
+  return [c, sp];
+}
+
 /** Paint every layer: returns [{rgb canvas, spec canvas}] in TL order. */
 export function paintTankLayers(S = 512) {
   const W = { base: '#c4ccd4', var: 0.42, seam: 'rgba(40,48,58,0.75)', light: 'rgba(255,255,255,0.55)', chip: '#5d646b', grimeCol: '60,58,52', boltCol: '#b3bbc3', grime: 1, wear: 1, seed: 11, paintSpec: 95 };
   const D = { base: '#59616a', var: 0.4, seam: 'rgba(12,15,18,0.8)', light: 'rgba(200,210,220,0.35)', chip: '#8f979e', grimeCol: '30,28,24', boltCol: '#8c949b', grime: 0.7, wear: 1.4, seed: 23, paintSpec: 140 };
   const G = { base: '#d49a30', var: 0.3, seam: 'rgba(58,34,8,0.85)', light: 'rgba(255,232,150,0.6)', chip: '#5c4020', grimeCol: '84,52,18', boltCol: '#f0cc78', grime: 1.0, wear: 1.0, seed: 41, paintSpec: 185, post: brassPost(S, 0.8, 1) };
   const B = { base: '#6e5532', var: 0.42, seam: 'rgba(24,16,6,0.85)', light: 'rgba(240,210,150,0.4)', chip: '#a88a52', grimeCol: '36,24,10', boltCol: '#c9a35e', grime: 0.9, wear: 1.3, seed: 47, paintSpec: 150, post: brassPost(S, 0.6, 0.5) };
+  const Y = { base: '#a8843a', var: 0.45, seam: 'rgba(36,26,12,0.85)', light: 'rgba(255,226,150,0.4)', chip: '#4a443e', grimeCol: '58,44,28', boltCol: '#c9b07a', grime: 1.3, wear: 1.8, seed: 61, paintSpec: 110, post: minePost(S, 0.8, 1) };
+  const U = { base: '#4c4844', var: 0.5, seam: 'rgba(10,9,8,0.85)', light: 'rgba(210,190,170,0.3)', chip: '#8a6a4a', grimeCol: '70,40,20', boltCol: '#8a8276', grime: 1.4, wear: 1.6, seed: 67, paintSpec: 150, post: minePost(S, 1.4, 1.2) };
   return [armour(S, W), armour(S, D), track(S), grille(S), snow(S), barrel(S), marks(S), glow(S), wheel(S), scorch(S), tread(S),
-    armour(S, G), armour(S, B), sandLayer(S), sbMarks(S), railWheel(S), wake(S)];
+    armour(S, G), armour(S, B), sandLayer(S), sbMarks(S), railWheel(S), wake(S),
+    armour(S, Y), armour(S, U), carbide(S), rock(S), belt(S), ivTrack(S), ivMarks(S), excav(S), crack(S)];
 }
 
 /** Merge rgb + spec → ImageData (A = spec). */

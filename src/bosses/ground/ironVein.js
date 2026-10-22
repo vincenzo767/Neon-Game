@@ -1,44 +1,41 @@
-import * as P from '../../patterns/index.js';
-import { every, artillery, clamp, DOWN, TAU, W, H } from '../util.js';
-import { PALS, hull, body, weather, track, drill, mpoly, poly, circ, armour, both, keyLight, hazard, vent, rivetRow, core, lamp, glowDot, pipe, turbine } from '../roster/art.js';
+import { every } from '../util.js';
+import { PALS, hull, body, weather, track, drill, mpoly, circ, armour, both, keyLight, hazard, core, lamp, pipe, turbine } from '../roster/art.js';
+import { IronVeinRig } from './ironVeinRig.js';
 
-// GROUND — IRON VEIN (underground drilling fortress)
-// A tunnel-boring machine turned fortress: a rotating cutter head the full
-// width of the hull, a segmented train of thrust rams, conveyor spoil and
-// ore cannons, crawling on six tracks. It fights where it digs — an open
-// pit, its own mine shafts, a magma cavern it has breached, a buried
-// military supply tunnel and finally a geothermal plant it bores into.
-// Signature: the cutter head's spinning spoil spirals, seismic lanes that
-// erupt from below, rockfall from the roof and ore slugs that shatter.
+// GROUND — IRON VEIN (open-pit mining war fortress), level 3 of the campaign.
+//
+// A real 3D machine in the Open-Pit Mine (ironVeinRig.js + world/tank/): a
+// colossal tracked excavator built around a tilted rotary cutter head. It
+// crawls forward in excavation passes with the cutter in the ground (leaving
+// a trench and track ruts), backs up onto a new lane, and fights with
+// mechanisms that all fire from their real positions on the model:
+//   rotary cutter head            ROTARY CUTTER FAN: chips and fragments off the rim
+//   two spoil conveyors           SPOIL CYCLONE: rotating ore streams from the heads
+//   two ore cannons               ORE CANNON CROSSFIRE: telegraphed crossing lanes, bursting shells
+//   cutter + hydraulics           SEISMIC FAULT LINES: cracks run down lanes, rock spikes erupt
+//   drive hub (deep core)         DEEP-CORE BREACH: glowing fissures fan out and erupt
+//   (the quarry benches)          QUARRY COLLAPSE: boulders break off the walls onto marked spots
+//   the whole machine             BORE CHARGE: a real charge down a marked lane, cutting a trench
+//   everything (low HP)           OVERDRIVE BARRAGE: the critical state of the last phase
+// Five parts are breakable (ore cannons, conveyors, the cutter drive); a broken
+// part stays broken and its attacks stop. Without the cutter drive the
+// machine can't drill: no fan (the aux launchers take over), no bore charge,
+// a weaker deep-core vent from the deck reactor, no trench.
+//
+// The 2D sprites below are only the fallback when no arena world is up.
 
-const S = {
-  spoil: { shape: 'orb', color: 'orange', n: 6, speed: 1.9, turn: 0.21 },
-  spoilB: { shape: 'rice', color: 'yellow', n: 6, speed: 2.4, turn: -0.17 },
-  ore: { shape: 'bigorb', color: 'orange', n: 1, speed: 2.2, fixed: true, split: { shape: 'kunai', color: 'yellow', n: 8, speed: 2.4 }, splitAt: 75 },
-  rock: { shape: 'bigorb', color: 'red', n: 1, speed: 1.4, accel: 0.03, maxSpd: 3.6, fixed: true },
-  grit: { shape: 'rice', color: 'orange', n: 2, speed: 2.1 },
-  seismic: { shape: 'orb', color: 'orange', n: 1, speed: 2.4, fixed: true },
-  magma: { shape: 'orb', color: 'red', n: 10, speed: 1.7 },
-  cutter: { shape: 'kunai', color: 'yellow', n: 7, spread: 1.4, speed: 2.9 },
-};
-
-const HEAD_Y = 112;
-
-const oreCannon = (ox, off) => ({
-  label: 'ORE CANNON', sprite: 'iv_cannon', ox, oy: -10, r: 13, hp: 95, medals: 3, score: 7000, bossDamage: 0.07, aim: true,
-  attack(pe, c, w, t) { if (every(c, t, 90, off)) P.aimed(w, pe.x, pe.y, S.ore); },
+const mount = (kind, side, label, o) => ({
+  label, sprite: o.sprite, mount: kind, side, free: true, quietClear: true,
+  r: o.r, hp: o.hp, medals: o.medals ?? 3, score: o.score, bossDamage: o.bd,
+  skip: (c) => !!(c.rig && c.rig.isDestroyed(kind, side)),
+  onSpawn: (pe, c) => c.rig && c.rig.partSpawned(kind, side, pe),
+  onClear: (p, c) => c.rig && c.rig.partCleared(kind, side, p),
+  onDown: (c) => c.rig && c.rig.partDestroyed(kind, side),
 });
-const conveyor = {
-  label: 'SPOIL CONVEYOR', sprite: 'iv_conveyor', ox: 0, oy: -92, r: 15, hp: 120, medals: 4, score: 9000, bossDamage: 0.08,
-  // Spoil flung off the belt arcs out to the sides and curls down.
-  attack(pe, c, w, t) {
-    if (!every(c, t, 12, 3)) return;
-    const s = w.rng.sign();
-    P.shoot(w, pe.x, pe.y, (s > 0 ? -0.35 : Math.PI + 0.35) + w.rng.range(-0.2, 0.2), 2.4, s > 0 ? SPOIL_R : SPOIL_L);
-  },
-};
-const SPOIL_R = { shape: 'orb', color: 'orange', angVel: 0.022 };
-const SPOIL_L = { shape: 'orb', color: 'orange', angVel: -0.022 };
+
+const MOUNTS = ['oreL', 'oreR', 'convL', 'convR', 'cutter'];
+const HEAD_Y = 112;
+const TAU = Math.PI * 2;
 
 // ------------------------------------------------------------------ art
 
@@ -106,9 +103,9 @@ function conveyorArt(ctx, w, h) {
 export default {
   id: 'iron_vein',
   name: 'IRON VEIN',
-  title: 'UNDERGROUND DRILLING FORTRESS',
+  title: 'OPEN-PIT MINING FORTRESS',
   archetype: 'ground',
-  sprite: 'b_ironvein', scale: 1, r: 58, glow: [1, 0.6, 0.2], score: 150000,
+  sprite: 'b_ironvein', scale: 1, r: 70, glow: [1, 0.55, 0.2], score: 150000,
   deathSequence: 'tank_cookoff',
   art(add) {
     add('b_ironvein', 216, 272, hull('b_ironvein', hullArt));
@@ -116,79 +113,70 @@ export default {
     add('iv_conveyor', 40, 30, conveyorArt, 2.5);
   },
   look: {
-    faction: 'ironclad', anim: 'crawler',
+    faction: 'ironclad', anim: 'none', noDecals: true, noWeak: true,
     weak: { x: 0, y: -16, r: 18, rgb: [1, 0.55, 0.15] },
     sites: [[-36, -90], [30, -24], [-30, 50], [40, 60], [-70, -10], [70, -80]],
   },
-  parts: { oreL: oreCannon(-44, 0), oreR: oreCannon(44, 45), conveyor },
-  desperation: { name: 'CORE BREACH' },
+  parts: {
+    oreL: mount('ore', 0, 'ORE CANNON', { sprite: 'iv_cannon', r: 17, hp: 110, score: 7000, bd: 0.06 }),
+    oreR: mount('ore', 1, 'ORE CANNON', { sprite: 'iv_cannon', r: 17, hp: 110, score: 7000, bd: 0.06 }),
+    convL: mount('conv', 0, 'SPOIL CONVEYOR', { sprite: 'iv_conveyor', r: 18, hp: 120, score: 8000, bd: 0.06 }),
+    convR: mount('conv', 1, 'SPOIL CONVEYOR', { sprite: 'iv_conveyor', r: 18, hp: 120, score: 8000, bd: 0.06 }),
+    cutter: mount('cutter', 0, 'CUTTER DRIVE', { sprite: 'iv_cannon', r: 22, hp: 260, score: 12000, bd: 0.08, medals: 5 }),
+  },
+  desperation: { name: 'CRITICAL OVERDRIVE' },
 
+  // move: { span (lateral range of the excavation passes) }. The last phase
+  // turns into CRITICAL OVERDRIVE (the sixth stage) below 45 % of its HP.
   phases: [
     {
-      name: 'CUTTER HEAD', hp: 720, arena: 'iv_open_pit', transitionFx: 'flash',
-      move: { type: 'hover', amp: 80, y: 130, freq: 0.008 }, parts: ['oreL', 'oreR'],
-      patterns: ['cutterHead', 'spoilSpiral'], musicLayer: 'ground_p1',
+      name: 'CUTTER ENGAGEMENT', hp: 720, arena: 'iv_open_pit', transitionFx: 'flash',
+      move: { span: 24 }, parts: MOUNTS,
+      patterns: ['cutterFan', 'auxSlow'], musicLayer: 'ground_p1',
     },
     {
-      name: 'SEISMIC LANES', hp: 770, arena: 'iv_mine_shaft', transitionFx: 'rockfall',
-      move: { type: 'sweep', amp: 70, y: 125, freq: 0.012 }, parts: ['conveyor'],
-      patterns: ['rockfall', 'seismicLanes'], musicLayer: 'ground_p2',
+      name: 'SPOIL PROCESSING', hp: 770, arena: 'iv_mine_shaft', transitionFx: 'rockfall',
+      move: { span: 28 }, parts: MOUNTS,
+      patterns: ['spoilCyclone', 'cutterFanSlow'], musicLayer: 'ground_p2',
     },
     {
-      name: 'MAGMA VENTS', hp: 820, arena: 'iv_magma_breach', transitionFx: 'lava_flood',
-      move: { type: 'figure8', amp: 90, ampY: 22, y: 125 }, parts: ['oreL', 'oreR', 'conveyor'],
-      patterns: ['spoilSpiral', 'magmaVents'], musicLayer: 'ground_p3',
+      name: 'ORE CANNON CROSSFIRE', hp: 820, arena: 'iv_magma_breach', transitionFx: 'rockfall',
+      move: { span: 30 }, parts: MOUNTS,
+      patterns: ['oreCrossfire', 'spoilCycloneSlow', 'boreCharge'], musicLayer: 'ground_p3',
     },
     {
-      name: 'CAVE-IN', hp: 860, arena: 'iv_supply_tunnel', transitionFx: 'rockfall',
-      move: { type: 'hover', amp: 100, y: 125 },
-      patterns: ['seismicLanes', 'cutterHead', 'rockfall'], musicLayer: 'ground_p4',
+      name: 'SEISMIC EXCAVATION', hp: 860, arena: 'iv_supply_tunnel', transitionFx: 'rockfall',
+      move: { span: 30 }, parts: MOUNTS,
+      patterns: ['seismicFaults', 'spoilCycloneSlow', 'cutterFanSlow'], musicLayer: 'ground_p4',
     },
     {
-      name: 'DEEP CORE BREACH', hp: 940, arena: 'iv_geothermal_plant', transitionFx: 'lava_flood',
-      move: { type: 'hover', amp: 110, y: 130, freq: 0.012 }, intensity: 1.1,
-      patterns: ['spoilSpiral', 'seismicLanes', 'magmaVents', 'cutterHead'], musicLayer: 'ground_p5',
+      name: 'DEEP-CORE BREACH', hp: 940, arena: 'iv_geothermal_plant', transitionFx: 'lava_flood',
+      move: { span: 30 }, parts: MOUNTS, intensity: 1.1, overdrive: true,
+      patterns: ['deepCore', 'quarryCollapse', 'oreCrossfireSlow', 'boreChargeSlow', 'overdrive'], musicLayer: 'ground_p5',
     },
   ],
 
   attacks: {
-    // Cutter head: flung disc-cutter chips in a wide fan, alternating sides.
-    cutterHead(c, w, t) {
-      if (every(c, t, 60)) P.fan(w, c.e.x, c.e.y + HEAD_Y, DOWN + ((t / 60) & 1 ? 0.25 : -0.25), S.cutter);
-      if (c.mk >= 2 && every(c, t, 30, 15)) P.aimed(w, c.e.x, c.e.y + HEAD_Y, S.grit);
-    },
-    spoilSpiral(c, w, t) {
-      if (every(c, t, 8)) P.spiral(w, c.e, S.spoil, 'spoil');
-      if (c.mk >= 2 && every(c, t, 11)) P.spiral(w, c.e, S.spoilB, 'spoilB');
-    },
-    // Rockfall: boulders shaken from the roof accelerate as they fall.
-    rockfall(c, w, t) {
-      if (every(c, t, 26)) P.shoot(w, w.rng.range(20, W - 20), -12, DOWN + w.rng.range(-0.08, 0.08), S.rock.speed, S.rock);
-      if (every(c, t, 9)) P.rain(w, S.grit);
-    },
-    // Seismic lanes: the floor cracks along a column, then erupts upward.
-    seismicLanes(c, w, t) {
-      if (!every(c, t, 170, 40)) return;
-      const n = c.mk >= 3 ? 3 : 2;
-      for (let k = 0; k < n; k++) {
-        const x = clamp(k === 0 ? w.aimX : w.rng.range(40, W - 40), 40, W - 40);
-        c.kit.hazard({
-          type: 'lane', x, w: 64, warn: 65, fire: 22, color: [1, 0.55, 0.15],
-          onFire: (h, w2) => {
-            for (let j = 0; j < 7; j++) P.shoot(w2, h.x + w2.rng.range(-24, 24), H - j * 20, -Math.PI / 2 + w2.rng.range(-0.2, 0.2), S.seismic.speed + j * 0.2, S.seismic);
-            w2.g.camera.addTrauma(0.08);
-          },
-        });
-      }
-    },
-    // Magma vents: breached pockets flare under the player and ring out.
-    magmaVents(c, w, t) {
-      if (every(c, t, 100, 50)) {
-        artillery(c, w.aimX, w.aimY, 40, 65, S.magma);
-        if (c.mk >= 2) artillery(c, w.rng.range(40, W - 40), w.rng.range(H * 0.4, H - 60), 36, 80, null);
-      }
-    },
+    cutterFan(c, w, t) { c.rig.cutterFan(t, 1); },
+    cutterFanSlow(c, w, t) { if (!c.rig.critical && c.rig.heavy !== 'seismic') c.rig.cutterFan(t, 0.6); },
+    auxSlow(c, w, t) { c.rig.auxBurst(t, 0.45); },
+    // The conveyors run in shifts (spin up, throw ore, run down) so the streams come in waves.
+    spoilCyclone(c, w, t) { if (t % 420 < 270 && c.rig.heavy !== 'deepcore') c.rig.spoilCyclone(t, 1); },
+    spoilCycloneSlow(c, w, t) { if (t % 560 < 220 && !c.rig.critical && !c.rig.heavy) c.rig.spoilCyclone(t, 0.6); },
+    oreCrossfire(c, w, t) { if (every(c, t, 300, 60)) c.rig.startCrossfire(); },
+    oreCrossfireSlow(c, w, t) { if (!c.rig.critical && every(c, t, 470, 200)) c.rig.startCrossfire(2); },
+    seismicFaults(c, w, t) { if (every(c, t, 250, 50)) c.rig.startSeismic(); },
+    deepCore(c, w, t) { if (!c.rig.critical && every(c, t, 560, 80)) c.rig.startDeepCore(); },
+    quarryCollapse(c, w, t) { if (!c.rig.critical && every(c, t, 420, 300)) c.rig.startCollapse(); },
+    boreCharge(c, w, t) { if (every(c, t, 460, 180)) c.rig.startBore(); },
+    boreChargeSlow(c, w, t) { if (every(c, t, 700, 450)) c.rig.startBore(); },
+    overdrive(c, w, t) { c.rig.overdrive(t); },
   },
 
-  update(c) { if (c.state === 'fight') c.e.rot = Math.sin(c.w.t * 0.5) * 0.003; },
+  update(c) {
+    if (!c.rig) c.rig = new IronVeinRig(c);
+    c.rig.update();
+  },
+  renderUnder(c, b, alpha) { if (c.rig) c.rig.renderUnder(b, alpha); },
+  renderOver(c, b, alpha) { if (c.rig) c.rig.renderOver(b, alpha); },
 };

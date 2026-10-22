@@ -22,6 +22,9 @@ const LIMIT = {
   cannonFire: [0.07, 2], shellImpact: [0.08, 2], mortarLaunch: [0.1, 2], railFire: [0.1, 1], railCharge: [0.3, 1],
   chuff: [0.06, 1], railClack: [0.09, 1], coupleClank: [0.12, 2], rocketLaunch: [0.06, 2], gatling: [0.05, 1],
   heavyCannon: [0.09, 2], sandBlast: [0.08, 2], steamVent: [0.25, 1], brakeScreech: [0.8, 1], trainHorn: [1.2, 1],
+  drillGrind: [0.12, 1], trackClank: [0.1, 1], rockChip: [0.08, 2], auxPop: [0.06, 2], conveyor: [0.2, 2], cannonLoad: [0.3, 1],
+  oreCannon: [0.08, 2], hydraulic: [0.3, 1], seismicCrack: [0.4, 1], seismicErupt: [0.1, 2], coreCharge: [1, 1], coreBlast: [0.6, 1],
+  rockfall: [0.8, 1], boulderImpact: [0.08, 2], boreRev: [0.8, 1],
 };
 
 /** Per-pilot output: one persistent gain node per voice (its loudness trim, M7c). */
@@ -178,6 +181,77 @@ const LIB = {
     tone(c, o, t, { type: 'sawtooth', f: 140, f2: 30, ft: 2.4, dur: 2.6, peak: 0.12, a: 0.05, filter: { type: 'lowpass', f: 700, f2: 150, ft: 2.4 }, pan: s.pan });
     LIB.steamVent(c, o, t + 0.3, s);
     LIB.brakeScreech(c, o, t + 0.1, s);
+  },
+
+  // ------------------------------------------------------------ Iron Vein (mining fortress)
+  // Cutter in the rock: a low grinding rumble, grit, a metallic squeal (s.v = load 0..1).
+  drillGrind(c, o, t, s) {
+    const v = s.v ?? 0.6;
+    noise(c, o, t, { color: 'brown', dur: 0.5, peak: 0.08 + 0.1 * v, a: 0.05, filter: { type: 'lowpass', f: 260 + 300 * v }, pan: s.pan });
+    noise(c, o, t, { color: 'pink', dur: 0.45, peak: 0.02 + 0.04 * v, a: 0.04, filter: { type: 'bandpass', f: 1600 + 900 * v, q: 2 }, pan: s.pan });
+    tone(c, o, t, { type: 'sawtooth', f: 55 + 30 * v, f2: 60 + 34 * v, ft: 0.4, dur: 0.5, peak: 0.04 + 0.04 * v, a: 0.05, filter: { type: 'lowpass', f: 400 }, pan: s.pan });
+    if (v > 0.5) metal(c, o, t + 0.1, { f: 380, bp: 3200, dur: 0.25, peak: 0.012 * v, q: 8, pan: s.pan });
+  },
+  trackClank(c, o, t, s) {
+    const v = s.v ?? 0.5;
+    metal(c, o, t, { f: 110, bp: 900, dur: 0.14, peak: 0.03 + 0.04 * v, q: 4, pan: s.pan });
+    noise(c, o, t, { color: 'brown', dur: 0.2, peak: 0.04 * v, a: 0.005, filter: { type: 'lowpass', f: 300 }, pan: s.pan });
+  },
+  rockChip(c, o, t, s) {
+    noise(c, o, t, { dur: 0.09, peak: 0.1, a: 0.001, filter: { type: 'bandpass', f: 1400, q: 1.4 }, pan: s.pan });
+    kick(c, o, t, { f0: 140, f1: 60, dur: 0.12, peak: 0.16, click: 0.15 });
+  },
+  auxPop(c, o, t, s) {
+    kick(c, o, t, { f0: 260, f1: 90, dur: 0.09, peak: 0.18, click: 0.25 });
+    noise(c, o, t, { dur: 0.06, peak: 0.07, a: 0.001, filter: { type: 'highpass', f: 1800 }, pan: s.pan });
+  },
+  conveyor(c, o, t, s) {
+    for (let k = 0; k < 5; k++) metal(c, o, t + k * 0.05, { f: 210, bp: 1300, dur: 0.05, peak: 0.016, q: 3, pan: s.pan });
+    noise(c, o, t, { color: 'brown', dur: 0.32, peak: 0.06, a: 0.02, filter: { type: 'lowpass', f: 500 }, pan: s.pan });
+  },
+  cannonLoad(c, o, t, s) {
+    metal(c, o, t, { f: 120, bp: 1100, dur: 0.25, peak: 0.06, q: 5, pan: s.pan });
+    tone(c, o, t + 0.08, { type: 'sawtooth', f: 90, f2: 420, ft: 0.45, dur: 0.5, peak: 0.03, filter: { type: 'lowpass', f: 1500 }, pan: s.pan });
+  },
+  oreCannon(c, o, t, s) {
+    kick(c, o, t, { f0: 140, f1: 32, dur: 0.6, peak: 0.7, click: 0.3, drive: 1.5 });
+    noise(c, o, t, { color: 'pink', dur: 0.5, peak: 0.2, a: 0.002, filter: { type: 'lowpass', f: 4200, f2: 260, ft: 0.45 }, pan: s.pan, send: { rev: 0.3 } });
+    noise(c, o, t + 0.04, { dur: 0.2, peak: 0.05, filter: { type: 'bandpass', f: 2200, q: 1 }, pan: s.pan });
+  },
+  hydraulic(c, o, t, s) {
+    noise(c, o, t, { color: 'white', dur: 0.6, peak: 0.05, a: 0.03, filter: { type: 'bandpass', f: 3000, f2: 1800, ft: 0.5, q: 2 }, pan: s.pan });
+    tone(c, o, t, { type: 'triangle', f: 160, f2: 110, ft: 0.6, dur: 0.6, peak: 0.05, a: 0.05, pan: s.pan });
+  },
+  seismicCrack(c, o, t, s) {
+    noise(c, o, t, { color: 'brown', dur: 1.6, peak: 0.28, a: 0.25, filter: { type: 'lowpass', f: 160, f2: 320, ft: 1.2 }, pan: s.pan });
+    for (let k = 0; k < 6; k++) noise(c, o, t + 0.2 + k * 0.17, { dur: 0.05, peak: 0.07, a: 0.001, filter: { type: 'bandpass', f: 900 + k * 200, q: 2 }, pan: s.pan });
+  },
+  seismicErupt(c, o, t, s) {
+    LIB.explode1(c, o, t, s);
+    noise(c, o, t + 0.03, { color: 'brown', dur: 0.6, peak: 0.16, a: 0.01, filter: { type: 'lowpass', f: 700, f2: 180, ft: 0.5 }, pan: s.pan });
+  },
+  coreCharge(c, o, t, s) {
+    tone(c, o, t, { type: 'sawtooth', f: 40, f2: 160, ft: 1.6, dur: 1.7, peak: 0.12, a: 0.3, filter: { type: 'lowpass', f: 300, f2: 1600, ft: 1.6 }, pan: s.pan, send: { rev: 0.3 } });
+    tone(c, o, t, { type: 'sine', f: 220, f2: 880, ft: 1.6, dur: 1.7, peak: 0.03, a: 0.4, pan: s.pan });
+    noise(c, o, t, { color: 'pink', dur: 1.7, peak: 0.05, a: 0.8, filter: { type: 'bandpass', f: 1200, q: 1 }, pan: s.pan });
+  },
+  coreBlast(c, o, t, s) {
+    LIB.explode3(c, o, t, s);
+    tone(c, o, t, { type: 'sine', f: 70, f2: 28, ft: 1.2, dur: 1.4, peak: 0.3, a: 0.005, pan: s.pan });
+  },
+  rockfall(c, o, t, s) {
+    noise(c, o, t, { color: 'brown', dur: 2.2, peak: 0.22, a: 0.4, filter: { type: 'lowpass', f: 260, f2: 480, ft: 1.8 }, pan: s.pan });
+    for (let k = 0; k < 8; k++) noise(c, o, t + 0.15 + k * 0.2, { dur: 0.05, peak: 0.05, a: 0.001, filter: { type: 'bandpass', f: 1200 + (k % 3) * 400, q: 2 }, pan: s.pan });
+  },
+  boulderImpact(c, o, t, s) {
+    kick(c, o, t, { f0: 110, f1: 30, dur: 0.5, peak: 0.6, click: 0.2, drive: 1.3 });
+    noise(c, o, t, { color: 'brown', dur: 0.7, peak: 0.2, a: 0.004, filter: { type: 'lowpass', f: 900, f2: 160, ft: 0.6 }, pan: s.pan });
+    noise(c, o, t + 0.02, { dur: 0.18, peak: 0.07, filter: { type: 'bandpass', f: 1800, q: 1 }, pan: s.pan });
+  },
+  boreRev(c, o, t, s) {
+    tone(c, o, t, { type: 'sawtooth', f: 32, f2: 110, ft: 1.2, dur: 1.4, peak: 0.16, a: 0.2, filter: { type: 'lowpass', f: 260, f2: 1100, ft: 1.2 }, pan: s.pan });
+    tone(c, o, t + 0.3, { type: 'square', f: 70, f2: 240, ft: 1.0, dur: 1.1, peak: 0.03, a: 0.3, filter: { type: 'bandpass', f: 900, q: 3 }, pan: s.pan });
+    noise(c, o, t, { color: 'brown', dur: 1.4, peak: 0.16, a: 0.4, filter: { type: 'lowpass', f: 420 } });
   },
 
   // ------------------------------------------------------------ feedback
