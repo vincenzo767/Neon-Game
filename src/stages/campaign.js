@@ -25,7 +25,7 @@ export const LEVELS = {
     { boss: 'white_fang', arena: 'wf_frozen_frontline', mini: 'mb_snowcat', terrain: 'land' },
     { boss: 'sandbreaker', arena: 'sb_dune_convoy', mini: 'mb_dune_raider', terrain: 'land' },
     { boss: 'iron_vein', arena: 'iv_open_pit', mini: 'mb_rock_crusher', terrain: 'land' },
-    { boss: 'urban_devastator', arena: 'ud_downtown_siege', mini: 'mb_siege_howitzer', terrain: 'land' },
+    { boss: 'urban_devastator', arena: 'ud_downtown_siege', mini: 'mb_pursuit_interceptor', terrain: 'land' },
     { boss: 'colossus_crawler', arena: 'cc_burning_overpass', mini: 'mb_armoured_train', terrain: 'land' },
   ],
   sea: [

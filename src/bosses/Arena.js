@@ -288,6 +288,12 @@ export class Arena {
     return v && v.groundSpeedAt ? v.groundSpeedAt(sy) : 1.5;
   }
 
+  /** Lateral ground shift at screen row `sy` (a boss panning the camera), world px per step. */
+  groundShift(sy) {
+    const v = this.view;
+    return v && v.groundShiftAt ? v.groundShiftAt(sy) : 0;
+  }
+
   enter(stageBiome) {
     this.active = true;
     this.exiting = false;

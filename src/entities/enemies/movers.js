@@ -104,7 +104,7 @@ export const MOVERS = {
   ground(e, w, p) {
     // Arena worlds report the true scroll of their ground / water plane at this screen row.
     e.y += (w.groundSpeed ? w.groundSpeed(e.y) : GROUND_SPEED) + (p.vy || 0);
-    e.x += (p.vx || 0) + (p.amp ? Math.sin(e.t * (p.freq ?? 0.02)) * p.amp * (p.freq ?? 0.02) : 0);
+    e.x += (p.vx || 0) + (p.amp ? Math.sin(e.t * (p.freq ?? 0.02)) * p.amp * (p.freq ?? 0.02) : 0) + (w.groundShift ? w.groundShift(e.y) : 0);
   },
 };
 

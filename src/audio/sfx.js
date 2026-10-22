@@ -25,6 +25,8 @@ const LIMIT = {
   drillGrind: [0.12, 1], trackClank: [0.1, 1], rockChip: [0.08, 2], auxPop: [0.06, 2], conveyor: [0.2, 2], cannonLoad: [0.3, 1],
   oreCannon: [0.08, 2], hydraulic: [0.3, 1], seismicCrack: [0.4, 1], seismicErupt: [0.1, 2], coreCharge: [1, 1], coreBlast: [0.6, 1],
   rockfall: [0.8, 1], boulderImpact: [0.08, 2], boreRev: [0.8, 1],
+  engineRoar: [0.35, 1], tireScreech: [0.25, 1], turboSpool: [1.2, 1], turboBlast: [0.8, 1], rotaryCannon: [0.07, 1], autoCannon: [0.05, 2],
+  barrierCrash: [0.5, 1], repairHum: [0.45, 1], turbineCharge: [1.2, 1], turbineDischarge: [0.8, 1],
 };
 
 /** Per-pilot output: one persistent gain node per voice (its loudness trim, M7c). */
@@ -252,6 +254,54 @@ const LIB = {
     tone(c, o, t, { type: 'sawtooth', f: 32, f2: 110, ft: 1.2, dur: 1.4, peak: 0.16, a: 0.2, filter: { type: 'lowpass', f: 260, f2: 1100, ft: 1.2 }, pan: s.pan });
     tone(c, o, t + 0.3, { type: 'square', f: 70, f2: 240, ft: 1.0, dur: 1.1, peak: 0.03, a: 0.3, filter: { type: 'bandpass', f: 900, q: 3 }, pan: s.pan });
     noise(c, o, t, { color: 'brown', dur: 1.4, peak: 0.16, a: 0.4, filter: { type: 'lowpass', f: 420 } });
+  },
+
+  // ------------------------------------------------------------ Urban Devastator (pursuit supercar)
+  // V-twin-ish roar: detuned saws through a sweeping lowpass (s.v = throttle 0..1).
+  engineRoar(c, o, t, s) {
+    const v = s.v ?? 0.5;
+    for (const d of [0, 0.7]) tone(c, o, t, { type: 'sawtooth', f: 46 + 30 * v + d, f2: 60 + 50 * v + d, ft: 0.5, dur: 0.6, peak: 0.05 + 0.06 * v, a: 0.06, filter: { type: 'lowpass', f: 300 + 500 * v, f2: 500 + 900 * v, ft: 0.5 }, pan: s.pan });
+    noise(c, o, t, { color: 'brown', dur: 0.55, peak: 0.05 + 0.06 * v, a: 0.05, filter: { type: 'lowpass', f: 400 + 300 * v }, pan: s.pan });
+  },
+  tireScreech(c, o, t, s) {
+    const v = s.v ?? 0.7;
+    tone(c, o, t, { type: 'sawtooth', f: 1900, f2: 1500, ft: 0.4, dur: 0.45, peak: 0.016 * v, a: 0.03, filter: { type: 'bandpass', f: 2300, q: 7 }, pan: s.pan });
+    noise(c, o, t, { color: 'pink', dur: 0.45, peak: 0.06 * v, a: 0.03, filter: { type: 'bandpass', f: 2800, q: 2.5 }, pan: s.pan });
+  },
+  turboSpool(c, o, t, s) {
+    tone(c, o, t, { type: 'sine', f: 400, f2: 3800, ft: 1.4, dur: 1.6, peak: 0.05, a: 0.2, pan: s.pan, send: { rev: 0.3 } });
+    tone(c, o, t, { type: 'sawtooth', f: 60, f2: 160, ft: 1.4, dur: 1.6, peak: 0.08, a: 0.3, filter: { type: 'lowpass', f: 400, f2: 1400, ft: 1.4 }, pan: s.pan });
+  },
+  turboBlast(c, o, t, s) {
+    kick(c, o, t, { f0: 110, f1: 40, dur: 0.5, peak: 0.5, click: 0.2, drive: 1.4 });
+    noise(c, o, t, { color: 'pink', dur: 1.1, peak: 0.2, a: 0.01, filter: { type: 'bandpass', f: 800, f2: 3000, ft: 0.6, q: 0.9 }, pan: s.pan, send: { rev: 0.3 } });
+    tone(c, o, t, { type: 'sawtooth', f: 70, f2: 150, ft: 0.8, dur: 1, peak: 0.1, a: 0.02, filter: { type: 'lowpass', f: 700 }, pan: s.pan });
+  },
+  rotaryCannon(c, o, t, s) {
+    for (let k = 0; k < 5; k++) noise(c, o, t + k * 0.022, { dur: 0.02, peak: 0.06, a: 0.001, filter: { type: 'bandpass', f: 2200, q: 1.8 }, pan: s.pan });
+    tone(c, o, t, { type: 'square', f: 180, dur: 0.12, peak: 0.02, a: 0.005, filter: { type: 'lowpass', f: 900 }, pan: s.pan });
+  },
+  autoCannon(c, o, t, s) {
+    kick(c, o, t, { f0: 240, f1: 90, dur: 0.1, peak: 0.18, click: 0.25 });
+    noise(c, o, t, { dur: 0.08, peak: 0.08, a: 0.001, filter: { type: 'bandpass', f: 1500, q: 1.2 }, pan: s.pan });
+  },
+  barrierCrash(c, o, t, s) {
+    LIB.explode2(c, o, t, s);
+    metal(c, o, t, { f: 90, bp: 1400, dur: 1.0, peak: 0.12, q: 5, pan: s.pan, send: { rev: 0.4 } });
+    for (let k = 0; k < 6; k++) noise(c, o, t + 0.05 + k * 0.07, { color: 'pink', dur: 0.12, peak: 0.08, a: 0.002, filter: { type: 'bandpass', f: 900 + k * 300, q: 2 }, pan: s.pan });
+  },
+  repairHum(c, o, t, s) {
+    for (const f of [330, 495, 660]) tone(c, o, t, { type: 'sine', f, f2: f * 1.02, ft: 0.5, dur: 0.6, peak: 0.025, a: 0.15, pan: s.pan, send: { rev: 0.5 } });
+    noise(c, o, t, { color: 'white', dur: 0.5, peak: 0.02, a: 0.1, filter: { type: 'bandpass', f: 5200, q: 4 }, pan: s.pan });
+  },
+  turbineCharge(c, o, t, s) {
+    tone(c, o, t, { type: 'sawtooth', f: 90, f2: 900, ft: 1.4, dur: 1.5, peak: 0.07, a: 0.3, filter: { type: 'lowpass', f: 600, f2: 3000, ft: 1.4 }, pan: s.pan });
+    tone(c, o, t, { type: 'sine', f: 600, f2: 2400, ft: 1.4, dur: 1.5, peak: 0.04, a: 0.4, pan: s.pan, send: { rev: 0.4 } });
+  },
+  turbineDischarge(c, o, t, s) {
+    kick(c, o, t, { f0: 160, f1: 28, dur: 0.9, peak: 0.85, click: 0.4, drive: 1.8 });
+    noise(c, o, t, { color: 'white', dur: 0.9, peak: 0.26, a: 0.002, filter: { type: 'lowpass', f: 9000, f2: 600, ft: 0.8 }, pan: s.pan, send: { rev: 0.5 } });
+    tone(c, o, t, { type: 'square', f: 1400, f2: 120, ft: 0.6, dur: 0.7, peak: 0.05, a: 0.002, filter: { type: 'bandpass', f: 1800, q: 1.5 }, pan: s.pan });
   },
 
   // ------------------------------------------------------------ feedback
