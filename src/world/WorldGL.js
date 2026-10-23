@@ -15,6 +15,8 @@ import { fbmTile } from './paint/noise.js';
 //   sky     fullscreen backdrop (gradient sky, space, deep water)
 
 const STRIDE = FLOATS * 4;
+const ZERO4 = new Float32Array(4);
+const ZERO_RINGS = new Float32Array(24);
 
 const LIT_VS = `#version 300 es
 layout(location=0) in vec3 a_pos;
@@ -122,9 +124,26 @@ uniform vec3 u_fogCol;
 uniform vec3 u_fog;
 uniform float u_exposure;
 uniform vec2 u_wind;
+// Optional (all zero = the classic surface): a ship ploughing through it, impact rings, HQ detail.
+uniform vec4 u_shipA;       // ship: world x, y, cos h, sin h (its forward is (sin h, cos h))
+uniform vec4 u_shipB;       // half length, half beam, speed (units / step), strength (0 = none)
+uniform vec4 u_shipC;       // wing sponsons (local): y0, y1, half-width (0 = none), -
+uniform vec4 u_rings[6];    // impact disturbances: x, y, radius, strength
+uniform vec4 u_hq;          // micro ripples, glitter boost, depth-colour variation, -
 in vec3 v_world; in float v_depth;
 out vec4 o;
 ${NOISE}
+// Approximate distance outside a ship's waterline (local: x right, y forward); negative inside.
+float hullD(vec2 q) {
+  float L = u_shipB.x, B = u_shipB.y, t = q.y / L;
+  float bow = clamp((t - 0.3) / 0.7, 0.0, 1.0);
+  float hw = B * sqrt(max(0.0, 1.0 - bow * bow)) * (1.0 - 0.22 * smoothstep(-0.86, -1.0, t));
+  if (u_shipC.z > 0.0 && q.y > u_shipC.x && q.y < u_shipC.y) {
+    float fr = clamp((u_shipC.y - q.y) / 50.0, 0.0, 1.0), bk = clamp((q.y - u_shipC.x) / 32.0, 0.0, 1.0);
+    hw = max(hw, mix(B, u_shipC.z, min(fr, bk)));
+  }
+  return max(abs(q.x) - hw, max(q.y - L, -L - q.y));
+}
 // Sum of directional swell trains (Gerstner-style slopes) + chop.
 // Returns height in .x and the slope (dh/dx, dh/dy) in .yz.
 vec3 waves(vec2 p, float t) {
@@ -163,18 +182,64 @@ void main() {
   }
   float t = u_time;
   vec3 w = waves(p, t);
-  vec3 n = normalize(vec3(-w.yz * u_wave.x * 1.4, 1.0));
+  vec2 ex = vec2(0.0);          // extra slope (ship, rings, micro ripples)
+  float xFoam = 0.0, shade = 1.0;
+  if (u_hq.x > 0.0) {
+    vec2 m1 = texture(u_noise, p * 0.035 + vec2(t * 0.06, t * 0.02)).rg - 0.5;
+    vec2 m2 = texture(u_noise, p * 0.11 - vec2(t * 0.05, -t * 0.07)).gb - 0.5;
+    ex += (m1 * 0.9 + m2 * 0.6) * u_hq.x;
+  }
+  if (u_shipB.w > 0.0) {
+    // The hull ploughs the sea: water piles against the bow, a pressure ripple runs off the
+    // sides, near-field Kelvin crests open behind the stem, a foam band hugs the waterline and
+    // the hull shades the water beside it. (The curved wake history is drawn as ribbons.)
+    vec2 dd = p - u_shipA.xy;
+    vec2 q = vec2(u_shipA.z * dd.x - u_shipA.w * dd.y, u_shipA.w * dd.x + u_shipA.z * dd.y);
+    float d = hullD(q), dp = max(d, 0.0);
+    float sp = clamp(u_shipB.z / 1.6, 0.0, 1.6);
+    float tb = clamp(q.y / u_shipB.x, -1.0, 1.0);
+    float bowK = smoothstep(0.25, 0.95, tb);
+    vec2 outL = normalize(vec2(sign(q.x) * (1.0 - bowK * 0.55), bowK * 0.85 + 0.001));
+    vec2 outW = vec2(u_shipA.z * outL.x + u_shipA.w * outL.y, -u_shipA.w * outL.x + u_shipA.z * outL.y);
+    float near = exp(-dp / (16.0 + 12.0 * sp));
+    ex += outW * sin(dp * 0.2 - t * 4.0 - q.y * 0.03) * near * (0.25 + 0.7 * sp) * (0.6 + bowK);
+    float behind = u_shipB.x - q.y;
+    float arm = abs(abs(q.x) - (u_shipB.y * 0.12 + behind * 0.34));
+    float kel = exp(-arm / (5.0 + behind * 0.025)) * smoothstep(0.0, 30.0, behind) * exp(-behind / 560.0) * step(0.0, d);
+    ex += outW * kel * sin(arm * 0.4 - t * 3.2) * 0.55 * sp;
+    float fn = fbm(p * 0.085 + vec2(t * 0.32, -t * 0.21));
+    float wl = smoothstep(6.0 + 9.0 * sp, 0.0, d) * step(-4.0, d);
+    float cushion = exp(-dp / (8.0 + 16.0 * sp)) * bowK;
+    xFoam = (wl * (0.4 + 0.6 * min(1.0, sp)) * smoothstep(0.22, 0.62, fn + 0.2 * sp)
+      + cushion * sp * smoothstep(0.18, 0.58, fn) * 1.3
+      + kel * sp * 0.45 * smoothstep(0.42, 0.68, fn)) * u_shipB.w;
+    shade = 1.0 - 0.3 * exp(-dp / 15.0) * u_shipB.w;
+  }
+  for (int i = 0; i < 6; i++) {
+    vec4 R = u_rings[i];
+    if (R.w <= 0.0) continue;
+    vec2 dd = p - R.xy;
+    float r = length(dd), wd = 5.0 + R.z * 0.09;
+    float band = exp(-pow((r - R.z) / wd, 2.0));
+    ex += dd / max(r, 1.0) * band * cos((r - R.z) * 0.45) * R.w * 1.4;
+    float fr = fbm(p * 0.11 + float(i) * 1.7 + t * 0.2);
+    xFoam = max(xFoam, band * R.w * smoothstep(0.28, 0.66, fr));
+    xFoam = max(xFoam, smoothstep(R.z * 0.8, 0.0, r) * R.w * R.w * smoothstep(0.32, 0.6, fbm(p * 0.09 - t * 0.5)));
+  }
+  vec3 n = normalize(vec3(-(w.yz * u_wave.x * 1.4 + ex), 1.0));
   vec3 v = normalize(u_eye - v_world);
   float ndv = max(0.0, dot(n, v));
   float fres = 0.04 + 0.96 * pow(1.0 - ndv, 5.0);
   // Water body: deeper in the troughs, a little lighter (subsurface) on the crests.
   vec3 body = mix(u_deep, u_shallow, clamp(w.x * 0.45 + 0.45, 0.0, 1.0));
+  if (u_hq.z > 0.0) body *= mix(1.0, 0.78 + 0.42 * texture(u_noise, p * 0.0028 + 0.13).r, u_hq.z);
   body += u_shallow * 0.35 * pow(max(0.0, dot(n, normalize(u_sunDir + vec3(0.0, 0.0, 0.4)))), 6.0);
   vec3 col = mix(body, u_sky, clamp(fres * 1.8, 0.0, 0.85));
   vec3 r = reflect(-v, n);
   vec3 sd = normalize(u_sunDir);
-  col += u_sunCol * pow(max(0.0, dot(r, sd)), 220.0) * 3.0;          // glitter
+  col += u_sunCol * pow(max(0.0, dot(r, sd)), 220.0) * 3.0 * (1.0 + u_hq.y);   // glitter
   col += u_sunCol * pow(max(0.0, dot(r, sd)), 18.0) * 0.06;          // sheen
+  col *= shade;
   // Whitecaps where the surface is steep and high; streaks along the wind.
   float steep = length(w.yz) * u_wave.x;
   float cap = smoothstep(u_foam.y, u_foam.y + 0.25, w.x * 0.6 + steep * 0.9 + (fbm(p * 0.07 + t * 0.15) - 0.5) * 0.6);
@@ -185,6 +250,7 @@ void main() {
   streak *= 0.5 + 0.5 * fbm(p * 0.05);
   float foam = clamp(cap * u_foam.x * 1.4 + streak * 0.45, 0.0, 1.0);
   foam = max(foam, swirlK * smoothstep(0.5, 0.8, fbm(p * 0.04 + vec2(t * 0.3))) * 0.85);
+  foam = max(foam, clamp(xFoam, 0.0, 1.0));
   col = mix(col, vec3(0.88, 0.92, 0.94) * (0.7 + 0.3 * ndv), foam);
   if (u_swirl.w > 0.0) col *= 1.0 - smoothstep(u_swirl.z * 0.22, 0.0, length(v_world.xy - u_swirl.xy)) * 0.95;
   col *= u_exposure;
@@ -654,6 +720,13 @@ export class WorldGL {
     gl.uniform2fv(u.u_wind, s.wind || [1, 0.3]);
     gl.uniform3fv(u.u_fogCol, A.fogCol); gl.uniform3fv(u.u_fog, A.fog);
     gl.uniform1f(u.u_exposure, A.exposure);
+    // Optional interaction / detail (a boss ship writes s.ship / s.rings; envs may set s.hq).
+    const sh = s.ship;
+    gl.uniform4fv(u.u_shipA, sh ? sh.a : ZERO4);
+    gl.uniform4fv(u.u_shipB, sh ? sh.b : ZERO4);
+    gl.uniform4fv(u.u_shipC, sh ? sh.c : ZERO4);
+    gl.uniform4fv(u.u_rings, s.rings || ZERO_RINGS);
+    gl.uniform4fv(u.u_hq, s.hq || ZERO4);
     this._surfQuad(rect, s.z || 0);
   }
 

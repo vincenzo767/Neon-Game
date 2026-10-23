@@ -451,6 +451,21 @@ export class ArenaWorld {
         continue;
       }
       const L = it.L;
+      if (L.period) {
+        // Periodic blend layer (lagoon shallows): each visible image of its resident chunks.
+        const fp = cam.footprint(L.z, 200);
+        if (!Number.isFinite(fp.y0)) continue;
+        for (let k = Math.floor(fp.y0 / L.length); k <= Math.floor(fp.y1 / L.length); k++) {
+          const c = this.chunks.get(`${L.id}:${this._wrap(L, k)}`);
+          if (!c || c.state !== 'ready') continue;
+          this._restoreIfLost(c);
+          const off = this.offBuf || (this.offBuf = [0, 0, 0]);
+          off[1] = (k - c.k) * L.length;
+          if (c.tex) w.drawLit(c.plane, { plane: c.tex, glow: c.glow, cut: 0.0, alpha: (L.alpha ?? 1) * fadeIn(c), detail: [0, 0], offset: off });
+          if (c.solid) w.drawLit(c.solid, { cut: 0.0, offset: off });
+        }
+        continue;
+      }
       for (const c of this.chunks.values()) {
         if (c.layer !== L.id || c.state !== 'ready') continue;
         this._restoreIfLost(c);

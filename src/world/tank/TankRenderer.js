@@ -183,6 +183,57 @@ void main() {
   o = vec4(vec3(m * 0.98, m * 0.99, m), 1.0);
 }`;
 
+// Ship wake foam (CORAL SIEGE): ribbons in WORLD space on the water, u across
+// the ribbon, age 0..1, intensity. The foam is procedural (three drifting
+// noise octaves thresholded by the local density), so it churns and breaks
+// into lace as it ages instead of reading as a painted stripe; under it the
+// churned water is a little darker. Premultiplied alpha over the water.
+const FOAM_VS = `#version 300 es
+layout(location=0) in vec3 a_pos;
+layout(location=1) in vec3 a_uva;
+uniform mat4 u_vp;
+uniform vec3 u_eye;
+uniform vec3 u_fwd;
+out vec3 v_uva; out vec3 v_world; out float v_depth;
+void main() { v_uva = a_uva; v_world = a_pos; v_depth = dot(a_pos - u_eye, u_fwd); gl_Position = u_vp * vec4(a_pos, 1.0); }`;
+
+const FOAM_FS = `#version 300 es
+precision highp float;
+uniform sampler2D u_noise;
+uniform float u_time;
+uniform vec3 u_col;        // lit foam colour
+uniform vec3 u_dark;       // churned-water tint under the foam
+uniform float u_profile;   // 0 = soft band (wake arms), 1 = centre-heavy wash (propeller race)
+uniform vec3 u_fogCol;
+uniform vec3 u_fog;
+uniform float u_exposure;
+in vec3 v_uva; in vec3 v_world; in float v_depth;
+out vec4 o;
+void main() {
+  float u = v_uva.x, age = clamp(v_uva.y, 0.0, 1.0), a = v_uva.z;
+  float across = 1.0 - abs(u * 2.0 - 1.0);
+  float prof = mix(smoothstep(0.0, 0.5, across), pow(across, 0.55), u_profile);
+  vec2 p = v_world.xy;
+  float t = u_time;
+  float n1 = texture(u_noise, p * 0.0055 + vec2(t * 0.004, -t * 0.006)).r;
+  float n2 = texture(u_noise, p * 0.021 + vec2(-t * 0.012, t * 0.009)).g;
+  float n3 = texture(u_noise, p * 0.068 + vec2(t * 0.03, t * 0.021)).b;
+  float n = n1 * 0.45 + n2 * 0.35 + n3 * 0.3;
+  float dens = clamp(a * prof, 0.0, 1.4);
+  float thr = 1.0 - dens * 0.78 - (1.0 - age) * 0.06;
+  float foam = smoothstep(thr - 0.06, thr + 0.1, n);
+  // Ageing foam breaks up into lace.
+  float lace = smoothstep(0.42, 0.58, n2 + n3 * 0.4 - age * 0.22);
+  foam *= mix(1.0, 0.3 + 0.7 * lace, smoothstep(0.12, 0.8, age));
+  float fa = foam * 0.94;
+  float dark = clamp(dens * 0.42, 0.0, 0.45) * (1.0 - fa);
+  vec3 col = u_col * (0.78 + 0.32 * n3) * u_exposure;
+  vec3 d = u_dark * u_exposure;
+  float f = clamp((v_depth - u_fog.x) / max(1.0, u_fog.y - u_fog.x), 0.0, 1.0) * u_fog.z;
+  col = mix(col, u_fogCol, f); d = mix(d, u_fogCol, f);
+  o = vec4(col * fa + d * dark, fa + dark);
+}`;
+
 /** Per-model surroundings: what settles on it, ground bounce, metal layers, shadow tint. */
 export const SNOW_LOOK = { cover: [0.93, 0.96, 1.0], bounce: [0.165, 0.18, 0.204], shadow: [0.02, 0.035, 0.07], metal: null };
 export const SAND_LOOK = { cover: [0.84, 0.69, 0.46], bounce: [0.3, 0.22, 0.13], shadow: [0.06, 0.035, 0.015], metal: [TL.GOLD, TL.BRONZE] };
@@ -190,6 +241,8 @@ export const CAR_LOOK = { cover: [0.4, 0.37, 0.34], bounce: [0.16, 0.11, 0.08], 
 // Gunmetal siege armour on a burning highway: warm firelit bounce, a light oily sheen (gloss), chrome pistons.
 export const CRAWLER_LOOK = { cover: [0.3, 0.28, 0.26], bounce: [0.22, 0.12, 0.06], shadow: [0.014, 0.012, 0.014], metal: [TL.SILVER, TL.SILVER, TL.BARREL, TL.BARREL], gloss: 0.4 };
 export const MINE_LOOK ={ cover: [0.6, 0.5, 0.39], bounce: [0.24, 0.19, 0.14], shadow: [0.045, 0.03, 0.02], metal: [TL.BRONZE, TL.BRONZE, TL.CARBIDE, TL.CARBIDE] };
+// Naval steel at sea: cool bounce off the lagoon, a wet sheen (gloss), bare gun steel; grime as the (unused) cover.
+export const NAVAL_LOOK = { cover: [0.26, 0.28, 0.3], bounce: [0.07, 0.15, 0.18], shadow: [0.0, 0.025, 0.04], metal: [TL.BARREL, TL.BARREL], gloss: 0.3 };
 const NO_METAL = [-9, -9, -9, -9];
 const metal4 = (m) => (!m ? NO_METAL : m.length === 4 ? m : [m[0], m[1], -9, -9]);
 
@@ -221,6 +274,7 @@ export class TankRenderer {
     this.tank = compileProgram(gl, TANK_VS, TANK_FS, 'tank-lit');
     this.shadow = compileProgram(gl, SHADOW_VS, SHADOW_FS, 'tank-shadow');
     this.trailP = compileProgram(gl, TRAIL_VS, TRAIL_FS, 'tank-trail');
+    this.foamP = compileProgram(gl, FOAM_VS, FOAM_FS, 'tank-foam');
     this.tex = this._textures();
     if (!MODEL) MODEL = buildWhiteFang();
     this.mesh = {};
@@ -431,6 +485,41 @@ export class TankRenderer {
     gl.drawArrays(gl.TRIANGLES, 0, n);
     gl.depthMask(true);
     gl.depthFunc(gl.LEQUAL);
+    gl.disable(gl.BLEND);
+  }
+
+  /**
+   * Wake foam ribbons on the water (same vertex format as trail(): x y z u age a).
+   * o: { col (lit foam), dark (churned water), profile (0 band, 1 centre-heavy wash) }
+   */
+  foam(cam, A, data, n, o) {
+    if (!n) return;
+    const gl = this.gl, p = this.foamP, u = p.u;
+    gl.useProgram(p.prog);
+    gl.uniformMatrix4fv(u.u_vp, false, cam.vp);
+    gl.uniform3f(u.u_eye, cam.ex, cam.ey, cam.ez);
+    gl.uniform3fv(u.u_fwd, cam.f);
+    gl.uniform1f(u.u_time, A.time);
+    gl.uniform3fv(u.u_col, o.col);
+    gl.uniform3fv(u.u_dark, o.dark);
+    gl.uniform1f(u.u_profile, o.profile || 0);
+    gl.uniform3fv(u.u_fogCol, A.fogCol);
+    gl.uniform3fv(u.u_fog, A.fog);
+    gl.uniform1f(u.u_exposure, A.exposure);
+    gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, this.wgl.noiseTex);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.uniform1i(u.u_noise, 4);
+    gl.bindVertexArray(this.trailVao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.trailBuf);
+    if (data.byteLength > this.trailCap) { gl.bufferData(gl.ARRAY_BUFFER, data.byteLength, gl.DYNAMIC_DRAW); this.trailCap = data.byteLength; }
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, n * 6);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
+    gl.depthMask(false);
+    gl.drawArrays(gl.TRIANGLES, 0, n);
+    gl.depthMask(true);
     gl.disable(gl.BLEND);
   }
 
