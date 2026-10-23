@@ -28,6 +28,8 @@ const LIMIT = {
   engineRoar: [0.35, 1], tireScreech: [0.25, 1], turboSpool: [1.2, 1], turboBlast: [0.8, 1], rotaryCannon: [0.07, 1], autoCannon: [0.05, 2],
   barrierCrash: [0.5, 1], repairHum: [0.45, 1], turbineCharge: [1.2, 1], turbineDischarge: [0.8, 1],
   crawlerStep: [0.09, 2], crawlerLand: [0.25, 1], crawlerLeap: [0.4, 1], climbScrape: [0.3, 1], executionAlarm: [1.5, 1],
+  navalGun: [0.08, 2], shipHorn: [2.5, 1], vlsLaunch: [0.1, 2], waterSplash: [0.08, 2], chargeSplash: [0.06, 2], depthCharge: [0.1, 2],
+  ciws: [0.07, 1], thunder: [1.2, 1], shipEngine: [1.2, 1],
 };
 
 /** Per-pilot output: one persistent gain node per voice (its loudness trim, M7c). */
@@ -332,6 +334,49 @@ const LIB = {
   // Klaxon: two alternating tones, three times.
   executionAlarm(c, o, t, s) {
     for (let k = 0; k < 6; k++) tone(c, o, t + k * 0.2, { type: 'square', f: k & 1 ? 620 : 880, dur: 0.18, peak: 0.05, a: 0.01, filter: { type: 'lowpass', f: 2400 }, pan: s.pan, send: { rev: 0.3 } });
+  },
+
+  // ------------------------------------------------------------ Coral Siege (battleship)
+  // Main gun: a deep concussive boom, a blast of air, a long rolling rumble across the water.
+  navalGun(c, o, t, s) {
+    const v = s.v ?? 1;
+    kick(c, o, t, { f0: 120, f1: 22, dur: 1.1, peak: 0.95 * v, click: 0.45, drive: 2 });
+    noise(c, o, t, { color: 'pink', dur: 0.7, peak: 0.3 * v, a: 0.002, filter: { type: 'lowpass', f: 4200, f2: 220, ft: 0.6 }, pan: s.pan, send: { rev: 0.45 } });
+    noise(c, o, t + 0.08, { color: 'brown', dur: 1.8, peak: 0.16 * v, a: 0.1, filter: { type: 'lowpass', f: 320, f2: 90, ft: 1.6 }, pan: s.pan, send: { rev: 0.5 } });
+  },
+  shipHorn(c, o, t, s) {
+    const v = s.v ?? 1;
+    for (const f of [73, 110, 146.5]) tone(c, o, t, { type: 'sawtooth', f, dur: 1.9, peak: 0.05 * v, a: 0.15, filter: { type: 'lowpass', f: 700 }, pan: s.pan, send: { rev: 0.6 } });
+  },
+  vlsLaunch(c, o, t, s) {
+    noise(c, o, t, { color: 'white', dur: 0.25, peak: 0.12, a: 0.002, filter: { type: 'highpass', f: 1800 }, pan: s.pan });
+    kick(c, o, t + 0.12, { f0: 110, f1: 50, dur: 0.3, peak: 0.35, click: 0.1 });
+    noise(c, o, t + 0.12, { color: 'pink', dur: 1.0, peak: 0.16, a: 0.03, filter: { type: 'bandpass', f: 600, f2: 2400, ft: 0.8, q: 1.2 }, pan: s.pan, send: { rev: 0.3 } });
+  },
+  waterSplash(c, o, t, s) {
+    kick(c, o, t, { f0: 100, f1: 40, dur: 0.45, peak: 0.5, click: 0.15 });
+    noise(c, o, t, { color: 'white', dur: 0.9, peak: 0.2, a: 0.004, filter: { type: 'bandpass', f: 2600, f2: 700, ft: 0.8, q: 0.8 }, pan: s.pan, send: { rev: 0.3 } });
+  },
+  chargeSplash(c, o, t, s) {
+    noise(c, o, t, { color: 'white', dur: 0.35, peak: 0.08, a: 0.002, filter: { type: 'bandpass', f: 1800, q: 1 }, pan: s.pan });
+  },
+  // Depth charge: a muffled underwater thud, then the dome of water breaking the surface.
+  depthCharge(c, o, t, s) {
+    kick(c, o, t, { f0: 70, f1: 24, dur: 1.0, peak: 0.85, click: 0.05, drive: 1.6 });
+    noise(c, o, t, { color: 'brown', dur: 0.6, peak: 0.25, a: 0.01, filter: { type: 'lowpass', f: 260 } });
+    noise(c, o, t + 0.18, { color: 'white', dur: 1.3, peak: 0.2, a: 0.03, filter: { type: 'bandpass', f: 2200, f2: 600, ft: 1.2, q: 0.7 }, pan: s.pan, send: { rev: 0.4 } });
+  },
+  ciws(c, o, t, s) {
+    for (let k = 0; k < 5; k++) noise(c, o, t + k * 0.018, { dur: 0.02, peak: 0.06, a: 0.001, filter: { type: 'bandpass', f: 2400, q: 1.6 }, pan: s.pan });
+  },
+  thunder(c, o, t, s) {
+    noise(c, o, t, { color: 'white', dur: 0.15, peak: 0.12, a: 0.001, filter: { type: 'highpass', f: 1500 }, pan: s.pan });
+    noise(c, o, t + 0.05, { color: 'brown', dur: 2.6, peak: 0.4, a: 0.05, filter: { type: 'lowpass', f: 420, f2: 70, ft: 2.4 }, pan: s.pan, send: { rev: 0.6 } });
+  },
+  shipEngine(c, o, t, s) {
+    const v = s.v ?? 0.6;
+    tone(c, o, t, { type: 'sawtooth', f: 38, f2: 41, ft: 1.4, dur: 1.5, peak: 0.05 * v, a: 0.3, filter: { type: 'lowpass', f: 180 }, pan: s.pan });
+    noise(c, o, t, { color: 'brown', dur: 1.5, peak: 0.05 * v, a: 0.3, filter: { type: 'lowpass', f: 300 }, pan: s.pan });
   },
 
   // ------------------------------------------------------------ feedback

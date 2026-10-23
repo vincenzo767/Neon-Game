@@ -49,8 +49,13 @@ export const TL = {
   CCARMOR: 35,  // heavy dark gunmetal plate: deep seams, rivets, scratches, heat-blued edges, soot, red warning paint
   CCMARK: 36,   // v 0..0.5 yellow / black hazard stripes, v 0.5..1 Colossus Crawler stencils
   FOOT: 37,     // footprint stamp (multiplier / 2): crushed asphalt pad, claw gouges, radial cracks
+  // CORAL SIEGE (coastal-assault battleship)
+  NAVY: 38,     // naval steel-blue armour plate: weld seams, rivets, salt crust, rust weeps, soot
+  NDECK: 39,    // gunmetal deck plating: non-skid grain, tie-down rings, worn walkway paint, scuffs
+  NHULL: 40,    // weathered hull plating above the boot-top: salt streaks, rust runs, chipped paint
+  CSMARK: 41,   // v 0..0.5 yellow / black hazard stripes, v 0.5..1 Coral Siege hull number + stencils
 };
-export const LAYERS = 38;
+export const LAYERS = 42;
 
 function rng(seed) {
   let s = seed >>> 0 || 1;
@@ -1023,6 +1028,85 @@ function footprint(S) {
   return [c, sp];
 }
 
+// ------------------------------------------------------ CORAL SIEGE layers
+
+/** Naval plate extras: white salt crust along the lower seams, rust weeping from bolts, soot. */
+function navalPost(S, salt, rust) {
+  return (ctx, sx, R, panels) => {
+    for (const [x, y, w, h] of panels) {
+      // Salt crust collecting along the bottom seam of a plate (spray dries there).
+      if (R() < 0.55 * salt) {
+        const g = ctx.createLinearGradient(0, y + h - 22, 0, y + h - 2);
+        g.addColorStop(0, 'rgba(225,232,236,0)'); g.addColorStop(1, `rgba(225,232,236,${0.12 + R() * 0.18})`);
+        ctx.fillStyle = g; ctx.fillRect(x + 3, y + h - 22, w - 6, 20);
+        for (let k = 0; k < 10; k++) { ctx.fillStyle = `rgba(235,240,242,${0.1 + R() * 0.2})`; ctx.fillRect(x + 4 + R() * (w - 8), y + h - 6 - R() * 10, 1 + R() * 3, 1 + R() * 2); }
+      }
+      // Faded repaint patches (a slightly bluer grey), typical of a warship's refits.
+      if (R() < 0.18) { ctx.fillStyle = `rgba(110,130,150,${0.08 + R() * 0.08})`; ctx.fillRect(x + 6 + R() * 10, y + 6 + R() * 10, w * (0.3 + R() * 0.4), h * (0.3 + R() * 0.4)); }
+    }
+    // Rust runs (orange-brown, thin, long) down the plate (+v).
+    for (let i = 0; i < 46 * rust; i++) {
+      const x = R() * S, y = R() * S, l = 20 + R() * 110, w = 1 + R() * 2.4;
+      const g = ctx.createLinearGradient(0, y, 0, y + l);
+      g.addColorStop(0, `rgba(120,62,28,${0.25 + R() * 0.3})`); g.addColorStop(1, 'rgba(120,62,28,0)');
+      ctx.fillStyle = g; ctx.fillRect(x, y, w, l);
+    }
+    // Salt-spray speckle and dried water marks.
+    for (let i = 0; i < 500 * salt; i++) { ctx.fillStyle = `rgba(230,236,240,${0.05 + R() * 0.12})`; ctx.fillRect(R() * S, R() * S, 1 + R() * 2, 1 + R() * 2); }
+    for (let i = 0; i < 12 * salt; i++) {
+      const x = R() * S, y = R() * S, r = 10 + R() * 30;
+      ctx.strokeStyle = `rgba(220,228,232,${0.06 + R() * 0.08})`; ctx.lineWidth = 1 + R();
+      ctx.beginPath(); ctx.ellipse(x, y, r, r * (0.4 + R() * 0.4), R() * 3, 0, 6.283); ctx.stroke();
+    }
+    // Soot drifting back from the funnels.
+    overlay(ctx, noise(S, 5, 5, 517, 0.5, 0.95), 'multiply', 0.16, S);
+  };
+}
+
+/** Deck plating: anti-slip grain, tie-down rings on a grid, worn yellow walkway lines. */
+function deckPost(S) {
+  return (ctx, sx, R) => {
+    for (let i = 0; i < 9000; i++) { const v = R(); ctx.fillStyle = v < 0.5 ? `rgba(0,0,0,${0.06 + R() * 0.08})` : `rgba(255,255,255,${0.03 + R() * 0.05})`; ctx.fillRect(R() * S, R() * S, 1.4, 1.4); }
+    const g = S / 4;
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+      const x = i * g + g / 2, y = j * g + g / 2;
+      ctx.strokeStyle = 'rgba(10,12,14,0.55)'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.stroke();
+      ctx.strokeStyle = 'rgba(190,198,205,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x - 0.6, y - 0.6, 6, 3.3, 5.6); ctx.stroke();
+      sx.fillStyle = 'rgb(200,200,200)'; sx.beginPath(); sx.arc(x, y, 5, 0, 7); sx.fill();
+    }
+    // Walkway lines, worn through to bare metal in places.
+    for (const x of [S * 0.08, S * 0.92]) {
+      ctx.fillStyle = 'rgba(205,165,40,0.55)'; ctx.fillRect(x - 3, 0, 6, S);
+      for (let k = 0; k < 30; k++) { ctx.fillStyle = 'rgba(70,74,78,0.7)'; ctx.fillRect(x - 3, R() * S, 6, 2 + R() * 10); }
+    }
+    // Boot scuffs and dragged-chain marks.
+    for (let i = 0; i < 60; i++) { const x = R() * S, y = R() * S, a = R() * 6.283, l = 6 + R() * 30; ctx.strokeStyle = `rgba(20,22,24,${0.1 + R() * 0.15})`; ctx.lineWidth = 2 + R() * 3; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); ctx.stroke(); }
+  };
+}
+
+function csMarks(S) {
+  const c = canvas(S), ctx = c.getContext('2d'), sp = canvas(S), sx = sp.getContext('2d');
+  ctx.fillStyle = '#d8a81c'; ctx.fillRect(0, 0, S, S / 2);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, S, S / 2); ctx.clip();
+  ctx.fillStyle = '#141619';
+  for (let x = -S; x < S * 2; x += 64) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 32, 0); ctx.lineTo(x + 32 - S / 2, S / 2); ctx.lineTo(x - S / 2, S / 2); ctx.fill(); }
+  ctx.restore();
+  overlay(ctx, noise(S, 8, 5, 531, 0.3, 0.8), 'multiply', 0.4, S);
+  // Hull-number panel: naval grey with a big white shadowed number.
+  ctx.fillStyle = '#5d6a76'; ctx.fillRect(0, S / 2, S, S / 2);
+  overlay(ctx, noise(S, 6, 4, 533, 0.3, 0.9), 'soft-light', 0.5, S);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `bold ${S * 0.2}px "Arial Black", Arial, sans-serif`;
+  ctx.fillStyle = 'rgba(20,24,28,0.6)'; ctx.fillText('21', S / 2 + 4, S * 0.68 + 4);
+  ctx.fillStyle = 'rgba(232,236,238,0.92)'; ctx.fillText('21', S / 2, S * 0.68);
+  ctx.font = `bold ${S * 0.05}px Arial, sans-serif`;
+  ctx.fillStyle = 'rgba(200,40,36,0.85)';
+  ctx.fillText('IRONCLAD BROTHERHOOD · CORAL SIEGE', S / 2, S * 0.86);
+  ctx.fillStyle = '#d8a81c'; ctx.fillRect(S * 0.08, S * 0.93, S * 0.84, S * 0.025);
+  sx.fillStyle = 'rgb(110,110,110)'; sx.fillRect(0, 0, S, S);
+  return [c, sp];
+}
+
 /** Paint every layer: returns [{rgb canvas, spec canvas}] in TL order. */
 export function paintTankLayers(S = 512) {
   const W = { base: '#c4ccd4', var: 0.42, seam: 'rgba(40,48,58,0.75)', light: 'rgba(255,255,255,0.55)', chip: '#5d646b', grimeCol: '60,58,52', boltCol: '#b3bbc3', grime: 1, wear: 1, seed: 11, paintSpec: 95 };
@@ -1034,11 +1118,15 @@ export function paintTankLayers(S = 512) {
   const K = { base: '#111216', var: 0.14, seam: 'rgba(0,0,0,0.7)', light: 'rgba(140,150,165,0.16)', chip: '#6a7078', grimeCol: '40,36,32', boltCol: '#22252a', grime: 0.3, wear: 0.3, seed: 301, paintSpec: 225, post: carPost(S) };
   const V = { base: '#9aa1aa', var: 0.28, seam: 'rgba(20,24,30,0.8)', light: 'rgba(255,255,255,0.55)', chip: '#4a4f56', grimeCol: '50,46,42', boltCol: '#d6dadf', grime: 0.5, wear: 0.7, seed: 307, paintSpec: 225, post: brushed(S) };
   const C = { base: '#3a3e44', var: 0.45, seam: 'rgba(4,5,6,0.9)', light: 'rgba(190,200,215,0.32)', chip: '#8c939b', grimeCol: '22,20,18', boltCol: '#6d747c', grime: 1.1, wear: 1.5, seed: 401, paintSpec: 160, post: crawlerPost(S) };
+  const N = { base: '#76889a', var: 0.36, seam: 'rgba(16,22,30,0.85)', light: 'rgba(225,235,245,0.45)', chip: '#3c4652', grimeCol: '44,46,48', boltCol: '#a3b0bc', grime: 0.9, wear: 1.0, seed: 501, paintSpec: 135, post: navalPost(S, 1, 0.8) };
+  const ND = { base: '#56646f', var: 0.32, seam: 'rgba(10,12,16,0.8)', light: 'rgba(170,182,195,0.3)', chip: '#7f8a94', grimeCol: '26,26,26', boltCol: '#78838d', grime: 0.6, wear: 1.2, seed: 509, paintSpec: 90, post: deckPost(S) };
+  const NH = { base: '#56626e', var: 0.45, seam: 'rgba(12,16,22,0.85)', light: 'rgba(200,212,224,0.35)', chip: '#2e353d', grimeCol: '70,46,28', boltCol: '#8a96a2', grime: 1.4, wear: 1.5, seed: 523, paintSpec: 120, post: navalPost(S, 1.5, 1.6) };
   return [armour(S, W), armour(S, D), track(S), grille(S), snow(S), barrel(S), marks(S), glow(S), wheel(S), scorch(S), tread(S),
     armour(S, G), armour(S, B), sandLayer(S), sbMarks(S), railWheel(S), wake(S),
     armour(S, Y), armour(S, U), carbide(S), rock(S), belt(S), ivTrack(S), ivMarks(S), excav(S), crack(S),
     armour(S, K), carbonFibre(S), armour(S, V), tyre(S), rimFace(S), smokedGlass(S), udMarks(S), skidMark(S), concreteLayer(S),
-    armour(S, C), ccMarks(S), footprint(S)];
+    armour(S, C), ccMarks(S), footprint(S),
+    armour(S, N), armour(S, ND), armour(S, NH), csMarks(S)];
 }
 
 /** Merge rgb + spec → ImageData (A = spec). */
