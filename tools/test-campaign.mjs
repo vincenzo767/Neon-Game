@@ -32,7 +32,7 @@ const fail = (m) => { if (fails < 50) console.log('FAIL', m); fails++; };
 if (CAMPAIGN_ORDER.join() !== 'ground,sea,aerial,mecha,extraterrestrial,abyssal') fail(`archetype order ${CAMPAIGN_ORDER}`);
 if (CAMPAIGN_LENGTH !== 30) fail(`campaign length ${CAMPAIGN_LENGTH}`);
 const seen = { boss: new Set(), arena: new Set(), mini: new Set() };
-const SEA_ENVS = new Set(['ocean', 'harbor', 'arctic', 'coast', 'lagoon']);
+const SEA_ENVS = new Set(['ocean', 'harbor', 'arctic', 'coast', 'lagoon', 'polar']);
 const DEEP_ENVS = new Set(['seabed', 'ruins', 'flesh']);
 const LAND_ENVS = new Set(['terrain', 'city', 'highway', 'battlefield', 'frontline', 'dunesea', 'openpit', 'downtown', 'overpass', 'scrapyard', 'foundry', 'reactor', 'tunnel', 'datacenter']);
 for (const a of CAMPAIGN_ORDER) {

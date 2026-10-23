@@ -217,6 +217,24 @@ Object.assign(TRANSITIONS, {
     },
   },
 
+  /**
+   * Section shift (WHITEOUT BREAKER): the arena world stays up and the camera
+   * travels along the hull, so this never covers the screen — a cold vignette
+   * and drifting frost streaks frame the move instead.
+   */
+  section_shift: {
+    init(tr, R) { tr.streaks = Array.from({ length: 26 }, () => ({ x: R.range(0, W), y: R.range(0, H), l: R.range(60, 180), v: R.range(6, 14), w: R.range(1.5, 4) })); },
+    draw(b, F, k, tr) {
+      const c = Math.sin(Math.min(1, Math.max(0, k)) * Math.PI);
+      for (const x of [-30, W + 30]) b.draw(F.glow, x, H / 2, 260, H * 1.5, 0, 0.55, 0.75, 1, 0.22 * c, 1);
+      b.draw(F.glow, W / 2, -40, W * 1.6, 220, 0, 0.6, 0.8, 1, 0.16 * c, 1);
+      for (const s of tr.streaks) {
+        const y = ((s.y + k * s.v * 90) % (H + 200)) - 100;
+        b.draw(F.laser, s.x, y, s.l, s.w, Math.PI / 2, 0.8, 1, 1.25, 0.12 * c, 1);
+      }
+    },
+  },
+
   /** Cracks race across the screen, then it shatters into white ice. */
   ice_crack: {
     init(tr, R) {

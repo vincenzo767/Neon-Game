@@ -24,6 +24,7 @@ import openpit from './openpit.js';
 import downtown from './downtown.js';
 import overpass from './overpass.js';
 import lagoon from './lagoon.js';
+import polar from './polar.js';
 
 // Environment module registry (reusable environment kits). Arena configs
 // reference these by id (`env`). Each module:
@@ -33,6 +34,6 @@ import lagoon from './lagoon.js';
 //              layout(c) → data, paint(p, lay, [prev, next], c), mesh(mb, lay, c) }
 // See docs/ARENA_REWORK.md.
 
-export const ENVS = Object.fromEntries([highway, tunnel, scrapyard, foundry, battlefield, sky, ocean, reactor, orbit, seabed, city, harbor, arctic, datacenter, planet, space, ruins, flesh, terrain, coast, frontline, dunesea, openpit, downtown, overpass, lagoon].map((e) => [e.id, e]));
+export const ENVS = Object.fromEntries([highway, tunnel, scrapyard, foundry, battlefield, sky, ocean, reactor, orbit, seabed, city, harbor, arctic, datacenter, planet, space, ruins, flesh, terrain, coast, frontline, dunesea, openpit, downtown, overpass, lagoon, polar].map((e) => [e.id, e]));
 
 export const envIds = () => Object.keys(ENVS);

@@ -528,7 +528,10 @@ export function selectPhases(def, count, desperation) {
   const n = Math.max(1, Math.min(authored.length, count));
   const set = (def.phaseSets && def.phaseSets[n]) || (authored.length === 5 ? DEFAULT_PHASE_SETS[n] : null)
     || authored.map((_, i) => i).slice(authored.length - n);
-  const out = set.map((i) => ({ ...authored[i] }));
+  // A boss whose phase sets don't shrink with the difficulty (WHITEOUT BREAKER: every
+  // difficulty fights all ten sections) scales their HP instead.
+  const hs = (def.phaseHpScale && def.phaseHpScale[n]) || 1;
+  const out = set.map((i) => ({ ...authored[i], hp: Math.max(1, Math.round(authored[i].hp * hs)) }));
   if (desperation && !def.mini) { // mid-bosses never get a desperation phase
     const last = authored[authored.length - 1];
     const d = def.desperation || {};

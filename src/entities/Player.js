@@ -233,9 +233,10 @@ export class Player {
     w.event('ultimate', def);   // scene shows the cut-in (+ hit-stop freeze)
   }
 
-  hit() {
+  /** lethal: a hit no pilot ability can absorb (WHITEOUT BREAKER's frost beam); i-frames still apply upstream. */
+  hit(lethal = false) {
     if (this.state !== 'alive') return;
-    if (this.def.onHit && this.def.onHit(this, this.w)) return; // absorbed (e.g. brace)
+    if (!lethal && this.def.onHit && this.def.onHit(this, this.w)) return; // absorbed (e.g. brace)
     this.state = 'dying';
     this.stateT = DEATHBOMB_WINDOW;
     const post = this.w.r.post;
