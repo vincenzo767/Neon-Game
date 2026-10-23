@@ -45,8 +45,12 @@ export const TL = {
   UDMARK: 32,   // v 0..0.5 red / black hazard stripes, v 0.5..1 Urban Devastator stencils
   SKID: 33,     // tyre skid mark (multiplier / 2): rubber streak with striations
   CONCRETE: 34, // chipped barrier concrete (roadblocks, debris)
+  // COLOSSUS CRAWLER (eight-legged siege machine)
+  CCARMOR: 35,  // heavy dark gunmetal plate: deep seams, rivets, scratches, heat-blued edges, soot, red warning paint
+  CCMARK: 36,   // v 0..0.5 yellow / black hazard stripes, v 0.5..1 Colossus Crawler stencils
+  FOOT: 37,     // footprint stamp (multiplier / 2): crushed asphalt pad, claw gouges, radial cracks
 };
-export const LAYERS = 35;
+export const LAYERS = 38;
 
 function rng(seed) {
   let s = seed >>> 0 || 1;
@@ -922,6 +926,103 @@ function concreteLayer(S) {
   return [c, sp];
 }
 
+// ------------------------------------------------ COLOSSUS CRAWLER layers
+
+/** Siege armour extras: heat-blued plate edges, soot, deep weld beads, faded red warning paint. */
+function crawlerPost(S) {
+  return (ctx, sx, R, panels) => {
+    for (const [x, y, w, h] of panels) {
+      // Heat tint creeping in from the seams (blue-violet → straw), strongest on a few plates.
+      if (R() < 0.35) {
+        const g = ctx.createLinearGradient(x, y, x, y + h);
+        g.addColorStop(0, `rgba(70,80,140,${0.12 + R() * 0.12})`); g.addColorStop(0.25, 'rgba(150,110,60,0.06)'); g.addColorStop(0.6, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+      }
+      // Weld beads along some seams.
+      if (R() < 0.3) {
+        ctx.strokeStyle = 'rgba(150,145,140,0.35)'; ctx.lineWidth = 2.2; ctx.setLineDash([2, 2]);
+        ctx.beginPath(); ctx.moveTo(x + 5, y + h - 5); ctx.lineTo(x + w - 5, y + h - 5); ctx.stroke(); ctx.setLineDash([]);
+      }
+      // Faded red warning paint on a few panels (chevron band).
+      if (R() < 0.12 && w > 60) {
+        ctx.save(); ctx.beginPath(); ctx.rect(x + 6, y + 6, w - 12, 14); ctx.clip();
+        ctx.fillStyle = 'rgba(150,20,22,0.55)'; ctx.fillRect(x, y, w, 20);
+        ctx.fillStyle = 'rgba(15,14,14,0.6)';
+        for (let k = x - 20; k < x + w; k += 18) { ctx.beginPath(); ctx.moveTo(k, y + 6); ctx.lineTo(k + 9, y + 6); ctx.lineTo(k + 18, y + 20); ctx.lineTo(k + 9, y + 20); ctx.fill(); }
+        ctx.restore();
+      }
+    }
+    // Soot plumes and oil weeping down the plate (+v).
+    for (let i = 0; i < 40; i++) {
+      const x = R() * S, y = R() * S, l = 30 + R() * 120;
+      const g = ctx.createLinearGradient(0, y, 0, y + l);
+      g.addColorStop(0, `rgba(8,7,6,${0.2 + R() * 0.25})`); g.addColorStop(1, 'rgba(8,7,6,0)');
+      ctx.fillStyle = g; ctx.fillRect(x, y, 3 + R() * 10, l);
+    }
+    overlay(ctx, noise(S, 6, 5, 401, 0.45, 0.95), 'multiply', 0.22, S);
+  };
+}
+
+function ccMarks(S) {
+  const c = canvas(S), ctx = c.getContext('2d'), sp = canvas(S), sx = sp.getContext('2d');
+  ctx.fillStyle = '#d2a019'; ctx.fillRect(0, 0, S, S / 2);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, S, S / 2); ctx.clip();
+  ctx.fillStyle = '#121214';
+  for (let x = -S; x < S * 2; x += 64) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 32, 0); ctx.lineTo(x + 32 - S / 2, S / 2); ctx.lineTo(x - S / 2, S / 2); ctx.fill(); }
+  ctx.restore();
+  overlay(ctx, noise(S, 8, 5, 411, 0.3, 0.8), 'multiply', 0.45, S);
+  ctx.fillStyle = '#26282c'; ctx.fillRect(0, S / 2, S, S / 2);
+  overlay(ctx, noise(S, 6, 4, 413, 0.3, 0.9), 'soft-light', 0.45, S);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(205,30,34,0.9)';
+  ctx.font = `bold ${S * 0.15}px "Arial Black", Arial, sans-serif`;
+  ctx.fillText('CC-05', S / 2, S * 0.65);
+  ctx.font = `bold ${S * 0.058}px Arial, sans-serif`;
+  ctx.fillStyle = 'rgba(210,200,170,0.8)';
+  ctx.fillText('IRONCLAD BROTHERHOOD', S / 2, S * 0.8);
+  ctx.fillStyle = '#d2a019'; ctx.fillRect(S * 0.1, S * 0.9, S * 0.8, S * 0.03);
+  sx.fillStyle = 'rgb(120,120,120)'; sx.fillRect(0, 0, S, S);
+  return [c, sp];
+}
+
+/** Footprint stamp (multiplier / 2): crushed pad, three claw gouges forward (+v up), radial cracks, heaved rim. */
+function footprint(S) {
+  const c = canvas(S), ctx = c.getContext('2d');
+  const R = rng(421), m = S / 2;
+  const v = (k) => { const q = Math.round(Math.max(0, Math.min(1, k / 2)) * 255); return `rgb(${q},${q},${q})`; };
+  ctx.fillStyle = v(1); ctx.fillRect(0, 0, S, S);
+  // Heaved, dusty rim.
+  const rim = ctx.createRadialGradient(m, m, S * 0.18, m, m, S * 0.46);
+  rim.addColorStop(0, v(1.12)); rim.addColorStop(0.6, v(1.08)); rim.addColorStop(1, v(1));
+  ctx.fillStyle = rim; ctx.beginPath(); ctx.arc(m, m, S * 0.46, 0, 7); ctx.fill();
+  // Radial cracks.
+  for (let i = 0; i < 11; i++) {
+    let a = (i / 11) * 6.283 + R() * 0.4, x = m + Math.cos(a) * S * 0.16, y = m + Math.sin(a) * S * 0.16;
+    ctx.strokeStyle = v(0.35 + R() * 0.2); ctx.lineWidth = 1.5 + R() * 2.5;
+    ctx.beginPath(); ctx.moveTo(x, y);
+    const n = 3 + Math.floor(R() * 3);
+    for (let k = 0; k < n; k++) { a += (R() - 0.5) * 0.7; const l = S * (0.04 + R() * 0.05); x += Math.cos(a) * l; y += Math.sin(a) * l; ctx.lineTo(x, y); }
+    ctx.stroke();
+  }
+  // The pad: hexagonal crushed bowl, darkest in the middle, pebbled.
+  const pad = (s, col) => {
+    ctx.beginPath();
+    for (let k = 0; k < 6; k++) { const a = (k / 6) * 6.283 + 0.52; const r = S * s * (k === 1 || k === 4 ? 1.12 : 1); ctx.lineTo(m + Math.cos(a) * r, m + Math.sin(a) * r * 1.1); }
+    ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+  };
+  pad(0.2, v(0.62)); pad(0.15, v(0.48)); pad(0.09, v(0.4));
+  for (let i = 0; i < 160; i++) { const a = R() * 6.283, d = R() * S * 0.19; ctx.fillStyle = v(R() < 0.5 ? 0.3 : 0.85); ctx.fillRect(m + Math.cos(a) * d, m + Math.sin(a) * d, 2, 2); }
+  // Three claw gouges dragged forward (−y on the canvas is +v: the foot's forward).
+  for (const dx of [-0.11, 0, 0.11]) {
+    const x0 = m + dx * S, y0 = m - S * 0.16;
+    const g = ctx.createLinearGradient(x0, y0, x0, y0 - S * 0.2);
+    g.addColorStop(0, v(0.3)); g.addColorStop(1, v(0.9));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x0 - S * 0.022, y0); ctx.lineTo(x0 + S * 0.022, y0); ctx.lineTo(x0 + S * 0.006, y0 - S * 0.21); ctx.lineTo(x0 - S * 0.006, y0 - S * 0.21); ctx.closePath(); ctx.fill();
+  }
+  const sp = canvas(S); sp.getContext('2d').fillStyle = '#fff'; sp.getContext('2d').fillRect(0, 0, S, S);
+  return [c, sp];
+}
+
 /** Paint every layer: returns [{rgb canvas, spec canvas}] in TL order. */
 export function paintTankLayers(S = 512) {
   const W = { base: '#c4ccd4', var: 0.42, seam: 'rgba(40,48,58,0.75)', light: 'rgba(255,255,255,0.55)', chip: '#5d646b', grimeCol: '60,58,52', boltCol: '#b3bbc3', grime: 1, wear: 1, seed: 11, paintSpec: 95 };
@@ -932,10 +1033,12 @@ export function paintTankLayers(S = 512) {
   const U = { base: '#4c4844', var: 0.5, seam: 'rgba(10,9,8,0.85)', light: 'rgba(210,190,170,0.3)', chip: '#8a6a4a', grimeCol: '70,40,20', boltCol: '#8a8276', grime: 1.4, wear: 1.6, seed: 67, paintSpec: 150, post: minePost(S, 1.4, 1.2) };
   const K = { base: '#111216', var: 0.14, seam: 'rgba(0,0,0,0.7)', light: 'rgba(140,150,165,0.16)', chip: '#6a7078', grimeCol: '40,36,32', boltCol: '#22252a', grime: 0.3, wear: 0.3, seed: 301, paintSpec: 225, post: carPost(S) };
   const V = { base: '#9aa1aa', var: 0.28, seam: 'rgba(20,24,30,0.8)', light: 'rgba(255,255,255,0.55)', chip: '#4a4f56', grimeCol: '50,46,42', boltCol: '#d6dadf', grime: 0.5, wear: 0.7, seed: 307, paintSpec: 225, post: brushed(S) };
+  const C = { base: '#3a3e44', var: 0.45, seam: 'rgba(4,5,6,0.9)', light: 'rgba(190,200,215,0.32)', chip: '#8c939b', grimeCol: '22,20,18', boltCol: '#6d747c', grime: 1.1, wear: 1.5, seed: 401, paintSpec: 160, post: crawlerPost(S) };
   return [armour(S, W), armour(S, D), track(S), grille(S), snow(S), barrel(S), marks(S), glow(S), wheel(S), scorch(S), tread(S),
     armour(S, G), armour(S, B), sandLayer(S), sbMarks(S), railWheel(S), wake(S),
     armour(S, Y), armour(S, U), carbide(S), rock(S), belt(S), ivTrack(S), ivMarks(S), excav(S), crack(S),
-    armour(S, K), carbonFibre(S), armour(S, V), tyre(S), rimFace(S), smokedGlass(S), udMarks(S), skidMark(S), concreteLayer(S)];
+    armour(S, K), carbonFibre(S), armour(S, V), tyre(S), rimFace(S), smokedGlass(S), udMarks(S), skidMark(S), concreteLayer(S),
+    armour(S, C), ccMarks(S), footprint(S)];
 }
 
 /** Merge rgb + spec → ImageData (A = spec). */
