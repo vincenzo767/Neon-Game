@@ -30,6 +30,7 @@ const LIMIT = {
   crawlerStep: [0.09, 2], crawlerLand: [0.25, 1], crawlerLeap: [0.4, 1], climbScrape: [0.3, 1], executionAlarm: [1.5, 1],
   navalGun: [0.08, 2], shipHorn: [2.5, 1], vlsLaunch: [0.1, 2], waterSplash: [0.08, 2], chargeSplash: [0.06, 2], depthCharge: [0.1, 2],
   ciws: [0.07, 1], thunder: [1.2, 1], shipEngine: [1.2, 1],
+  frostCharge: [1.2, 1], frostBeam: [0.8, 1], iceShatter: [0.07, 2], cryoShot: [0.07, 2],
 };
 
 /** Per-pilot output: one persistent gain node per voice (its loudness trim, M7c). */
@@ -377,6 +378,34 @@ const LIB = {
     const v = s.v ?? 0.6;
     tone(c, o, t, { type: 'sawtooth', f: 38, f2: 41, ft: 1.4, dur: 1.5, peak: 0.05 * v, a: 0.3, filter: { type: 'lowpass', f: 180 }, pan: s.pan });
     noise(c, o, t, { color: 'brown', dur: 1.5, peak: 0.05 * v, a: 0.3, filter: { type: 'lowpass', f: 300 }, pan: s.pan });
+  },
+
+  // ------------------------------------------------------------ Whiteout Breaker (cryogenic weapons)
+  // Frost emitter charging: a rising glassy whine over a deepening drone, crystalline shimmer.
+  frostCharge(c, o, t, s) {
+    const d = s.dur ?? 2.4;
+    tone(c, o, t, { type: 'sine', f: 180, f2: 1400, ft: d, dur: d + 0.1, peak: 0.07, a: 0.4, filter: { type: 'lowpass', f: 5000 }, pan: s.pan, send: { rev: 0.5 } });
+    tone(c, o, t, { type: 'sawtooth', f: 55, f2: 42, ft: d, dur: d + 0.1, peak: 0.06, a: 0.6, filter: { type: 'lowpass', f: 240 }, pan: s.pan });
+    for (let k = 0; k < 10; k++) tone(c, o, t + (k / 10) * d, { type: 'triangle', f: 2200 + k * 260, dur: 0.18, peak: 0.025 + k * 0.004, a: 0.005, pan: s.pan, send: { rev: 0.6 } });
+  },
+  // The beam itself: a roaring hiss with a low drone and crackling ice.
+  frostBeam(c, o, t, s) {
+    const d = s.dur ?? 1.6;
+    kick(c, o, t, { f0: 90, f1: 30, dur: 0.8, peak: 0.7, click: 0.3, drive: 1.6 });
+    noise(c, o, t, { color: 'white', dur: d, peak: 0.24, a: 0.02, filter: { type: 'bandpass', f: 3200, f2: 1800, ft: d, q: 0.6 }, pan: s.pan, send: { rev: 0.5 } });
+    tone(c, o, t, { type: 'sawtooth', f: 62, f2: 58, ft: d, dur: d, peak: 0.09, a: 0.05, filter: { type: 'lowpass', f: 400 }, pan: s.pan });
+    for (let k = 0; k < 14; k++) noise(c, o, t + Math.random() * d, { color: 'white', dur: 0.03, peak: 0.08, a: 0.001, filter: { type: 'highpass', f: 4000 }, pan: s.pan });
+  },
+  // Ice breaking: a sharp crack, then shards tinkling down.
+  iceShatter(c, o, t, s) {
+    noise(c, o, t, { color: 'white', dur: 0.12, peak: 0.22, a: 0.001, filter: { type: 'highpass', f: 2200 }, pan: s.pan });
+    kick(c, o, t, { f0: 160, f1: 60, dur: 0.25, peak: 0.3, click: 0.2 });
+    for (let k = 0; k < 6; k++) tone(c, o, t + 0.05 + Math.random() * 0.4, { type: 'triangle', f: 2600 + Math.random() * 2400, dur: 0.12, peak: 0.03, a: 0.002, pan: s.pan, send: { rev: 0.4 } });
+  },
+  // Cryo projector / frost mortar shot: a pressurised whoosh and a cold ping.
+  cryoShot(c, o, t, s) {
+    noise(c, o, t, { color: 'pink', dur: 0.35, peak: 0.16, a: 0.004, filter: { type: 'bandpass', f: 1600, f2: 4200, ft: 0.3, q: 0.8 }, pan: s.pan });
+    tone(c, o, t + 0.02, { type: 'sine', f: 1900, f2: 1200, ft: 0.25, dur: 0.3, peak: 0.05, a: 0.003, pan: s.pan, send: { rev: 0.5 } });
   },
 
   // ------------------------------------------------------------ feedback

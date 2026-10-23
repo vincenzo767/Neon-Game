@@ -127,7 +127,7 @@ uniform vec2 u_wind;
 // Optional (all zero = the classic surface): a ship ploughing through it, impact rings, HQ detail.
 uniform vec4 u_shipA;       // ship: world x, y, cos h, sin h (its forward is (sin h, cos h))
 uniform vec4 u_shipB;       // half length, half beam, speed (units / step), strength (0 = none)
-uniform vec4 u_shipC;       // wing sponsons (local): y0, y1, half-width (0 = none), -
+uniform vec4 u_shipC;       // wing sponsons (local): y0, y1, half-width (0 = none), bow length (fraction of the half length; 0 = 0.7)
 uniform vec4 u_rings[6];    // impact disturbances: x, y, radius, strength
 uniform vec4 u_hq;          // micro ripples, glitter boost, depth-colour variation, -
 in vec3 v_world; in float v_depth;
@@ -136,7 +136,8 @@ ${NOISE}
 // Approximate distance outside a ship's waterline (local: x right, y forward); negative inside.
 float hullD(vec2 q) {
   float L = u_shipB.x, B = u_shipB.y, t = q.y / L;
-  float bow = clamp((t - 0.3) / 0.7, 0.0, 1.0);
+  float b0 = u_shipC.w > 0.0 ? 1.0 - u_shipC.w : 0.3;
+  float bow = clamp((t - b0) / (1.0 - b0), 0.0, 1.0);
   float hw = B * sqrt(max(0.0, 1.0 - bow * bow)) * (1.0 - 0.22 * smoothstep(-0.86, -1.0, t));
   if (u_shipC.z > 0.0 && q.y > u_shipC.x && q.y < u_shipC.y) {
     float fr = clamp((u_shipC.y - q.y) / 50.0, 0.0, 1.0), bk = clamp((q.y - u_shipC.x) / 32.0, 0.0, 1.0);
@@ -203,7 +204,8 @@ void main() {
     vec2 outW = vec2(u_shipA.z * outL.x + u_shipA.w * outL.y, -u_shipA.w * outL.x + u_shipA.z * outL.y);
     float near = exp(-dp / (16.0 + 12.0 * sp));
     ex += outW * sin(dp * 0.2 - t * 4.0 - q.y * 0.03) * near * (0.25 + 0.7 * sp) * (0.6 + bowK);
-    float behind = u_shipB.x - q.y;
+    // Clamped: far ahead of the bow a negative value made the arm width negative → exp(+inf) × 0 = NaN.
+    float behind = max(0.0, u_shipB.x - q.y);
     float arm = abs(abs(q.x) - (u_shipB.y * 0.12 + behind * 0.34));
     float kel = exp(-arm / (5.0 + behind * 0.025)) * smoothstep(0.0, 30.0, behind) * exp(-behind / 560.0) * step(0.0, d);
     ex += outW * kel * sin(arm * 0.4 - t * 3.2) * 0.55 * sp;

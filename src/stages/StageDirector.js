@@ -208,12 +208,18 @@ export class StageDirector {
     }
     if (c.state !== 'fight') return;
     if (++sm.t < sm.next) return;
+    // A boss may hold its reinforcements (e.g. while a lethal telegraph is up).
+    if (c.def.summonHold && c.def.summonHold(c)) { sm.t = sm.next - 30; return; }
     let alive = 0;
     for (const en of w.enemies.active) if (en.alive && !en.boss && !en.ctrl && en.kind !== 'bosspart' && en.kind !== 'bossminion') alive++;
     if (alive >= SUMMON_ALIVE_CAP) { sm.t = sm.next - 60; return; }
     const R = new RNG(`${this.plan.seed}:summon:${this.plan.index}:${sm.n}`);
-    const ids = pool.filter((id) => TEMPLATES.find((t) => t.id === id).minStage <= this.plan.index % 30);
-    const pick = R.pick(ids.length ? ids : pool);
+    // ...and restrict which formations it calls in (a fortress covering the screen takes no boats).
+    const fits = (id) => !c.def.summonFilter || c.def.summonFilter(TEMPLATES.find((t) => t.id === id), c);
+    const allowed = pool.filter(fits);
+    if (!allowed.length) return;
+    const ids = allowed.filter((id) => TEMPLATES.find((t) => t.id === id).minStage <= this.plan.index % 30);
+    const pick = R.pick(ids.length ? ids : allowed);
     const tpl = TEMPLATES.find((t) => t.id === pick);
     const elite = this.plan.diff.eliteChance + 0.05 * c.number;
     const ctx = { ev: (t, id, x, y, p = null) => ({ t, id, x, y, p, elite: R.next() < elite }) };

@@ -76,28 +76,34 @@ for (const [id, n] of Object.entries(counts)) if (n !== SEEDS) fail(`${id} appea
 // Phase / arena contract.
 const SETS = { 3: [0, 2, 4], 4: [0, 1, 3, 4], 5: [0, 1, 2, 3, 4] };
 for (const b of Object.values(ROSTER).flat()) {
-  if (b.phases.length !== 5) fail(`${b.id} has ${b.phases.length} phases`);
+  // Sectioned bosses (WHITEOUT BREAKER) declare their own phase sets: every phase on the
+  // boss's own arena configs, the sets and the desperation phase follow the boss.
+  const sectioned = !!b.phaseSets;
+  if (!sectioned && b.phases.length !== 5) fail(`${b.id} has ${b.phases.length} phases`);
   b.phases.forEach((ph, i) => {
     const cfg = ARENAS[ph.arena];
     if (!cfg) return fail(`${b.id} phase ${i + 1} arena ${ph.arena} missing`);
-    if (cfg.boss !== b.id || cfg.phase !== i + 1) fail(`${b.id} phase ${i + 1} → ${ph.arena} owned by ${cfg.boss} p${cfg.phase}`);
+    if (cfg.boss !== b.id || (!sectioned && cfg.phase !== i + 1)) fail(`${b.id} phase ${i + 1} → ${ph.arena} owned by ${cfg.boss} p${cfg.phase}`);
     if (!ph.musicLayer || !/^(ground|aerial|sea|mecha|alien|abyssal)_p[1-5]$/.test(ph.musicLayer)) fail(`${b.id} phase ${i + 1} musicLayer ${ph.musicLayer}`);
     for (const p of ph.patterns || []) if (!b.attacks || typeof b.attacks[p] !== 'function') fail(`${b.id} phase ${i + 1} pattern ${p} not defined`);
     for (const p of ph.parts || []) if (!b.parts || !b.parts[p]) fail(`${b.id} phase ${i + 1} part ${p} not defined`);
   });
   for (const [n, set] of Object.entries(SETS)) {
     const out = selectPhases(b, Number(n), false);
-    if (out.map((p) => b.phases.findIndex((q) => q.name === p.name)).join() !== set.join()) fail(`${b.id} phase set for ${n}: ${out.map((p) => p.name)}`);
+    if (out.map((p) => b.phases.findIndex((q) => q.name === p.name)).join() !== (sectioned ? b.phaseSets[n] : set).join()) fail(`${b.id} phase set for ${n}: ${out.map((p) => p.name)}`);
   }
   const ext = selectPhases(b, 5, true);
-  if (ext.length !== 6 || !ext[5].desperation) fail(`${b.id} extreme has no desperation phase`);
+  const nExt = (sectioned ? b.phaseSets[5].length : 5) + 1;
+  if (ext.length !== nExt || !ext[nExt - 1].desperation) fail(`${b.id} extreme has no desperation phase`);
   else {
-    const r = resolveArena(ext[5].arena);
-    if (!r.world || !arenaConfig(`${b.phases[4].arena}~desperation`)) fail(`${b.id} desperation arena does not resolve`);
+    const r = resolveArena(ext[nExt - 1].arena);
+    if (!r.world || !arenaConfig(`${b.phases[b.phases.length - 1].arena}~desperation`)) fail(`${b.id} desperation arena does not resolve`);
   }
 }
 // Every config is used by exactly one boss phase.
 const used = new Set(Object.values(ROSTER).flat().flatMap((b) => b.phases.map((p) => p.arena)));
+// A sectioned boss fights on one world; its other configs are moods of it (owned, not phase-bound).
+for (const b of Object.values(ROSTER).flat()) if (b.phaseSets) for (const a of ARENA_LIST) if (a.boss === b.id) used.add(a.id);
 for (const a of ARENA_LIST) if (!used.has(a.id)) fail(`arena ${a.id} is not referenced by any boss`);
 if (ARENA_LIST.length !== 150) fail(`expected 150 boss arena configs, found ${ARENA_LIST.length}`);
 

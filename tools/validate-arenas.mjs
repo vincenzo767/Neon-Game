@@ -75,7 +75,11 @@ for (const b of Object.values(BOSSES)) {
   if (b.archetype === 'prototype') continue;
   (byArch[b.archetype] = byArch[b.archetype] || []).push(b.id);
   const where = `boss ${b.id}`;
-  if (!b.phases || b.phases.length !== 5) err(`${where}: needs 5 authored phases (has ${b.phases ? b.phases.length : 0})`);
+  // A boss with its own phase sets (WHITEOUT BREAKER: ten sections) may author any count;
+  // each set must then index real phases.
+  if (b.phaseSets) {
+    for (const [n, set] of Object.entries(b.phaseSets)) if (!set.length || set.some((i) => !b.phases || !b.phases[i])) err(`${where}: phaseSets[${n}] indexes a missing phase`);
+  } else if (!b.phases || b.phases.length !== 5) err(`${where}: needs 5 authored phases (has ${b.phases ? b.phases.length : 0})`);
   for (const [i, ph] of (b.phases || []).entries()) {
     const ref = typeof ph.arena === 'string' ? ph.arena : ph.arena && ph.arena.id;
     if (!ref) { warn(`${where} phase ${i + 1}: legacy theme arena (${ph.arena && ph.arena.theme})`); continue; }
