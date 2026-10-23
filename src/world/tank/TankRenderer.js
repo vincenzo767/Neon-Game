@@ -187,7 +187,9 @@ void main() {
 export const SNOW_LOOK = { cover: [0.93, 0.96, 1.0], bounce: [0.165, 0.18, 0.204], shadow: [0.02, 0.035, 0.07], metal: null };
 export const SAND_LOOK = { cover: [0.84, 0.69, 0.46], bounce: [0.3, 0.22, 0.13], shadow: [0.06, 0.035, 0.015], metal: [TL.GOLD, TL.BRONZE] };
 export const CAR_LOOK = { cover: [0.4, 0.37, 0.34], bounce: [0.16, 0.11, 0.08], shadow: [0.012, 0.012, 0.018], metal: [TL.SILVER, TL.SILVER, TL.RIM, TL.RIM], gloss: 1 };
-export const MINE_LOOK = { cover: [0.6, 0.5, 0.39], bounce: [0.24, 0.19, 0.14], shadow: [0.045, 0.03, 0.02], metal: [TL.BRONZE, TL.BRONZE, TL.CARBIDE, TL.CARBIDE] };
+// Gunmetal siege armour on a burning highway: warm firelit bounce, a light oily sheen (gloss), chrome pistons.
+export const CRAWLER_LOOK = { cover: [0.3, 0.28, 0.26], bounce: [0.22, 0.12, 0.06], shadow: [0.014, 0.012, 0.014], metal: [TL.SILVER, TL.SILVER, TL.BARREL, TL.BARREL], gloss: 0.4 };
+export const MINE_LOOK ={ cover: [0.6, 0.5, 0.39], bounce: [0.24, 0.19, 0.14], shadow: [0.045, 0.03, 0.02], metal: [TL.BRONZE, TL.BRONZE, TL.CARBIDE, TL.CARBIDE] };
 const NO_METAL = [-9, -9, -9, -9];
 const metal4 = (m) => (!m ? NO_METAL : m.length === 4 ? m : [m[0], m[1], -9, -9]);
 
@@ -302,6 +304,7 @@ export class TankRenderer {
     // The tank sits in the foreground of a top-down view: a third of the arena haze keeps it crisp.
     gl.uniform3f(u.u_fog, A.fog[0], A.fog[1], A.fog[2] * 0.35);
     gl.uniform1f(u.u_exposure, A.exposure);
+    this.uc = [NaN, NaN, NaN, NaN, NaN, NaN, NaN]; // draw() uniform cache: reset with the program bind
     gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.tex);
     gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, this.wgl.noiseTex);
     gl.activeTexture(gl.TEXTURE0);
@@ -326,12 +329,16 @@ export class TankRenderer {
     if (!m || !m.count) return;
     const gl = this.gl, u = this.tank.u;
     gl.uniformMatrix4fv(u.u_model, false, model);
-    gl.uniform2f(u.u_scroll, o.scroll ? o.scroll[0] : 0, o.scroll ? o.scroll[1] : 0);
-    gl.uniform1f(u.u_glow, o.glow ?? 0.6);
-    gl.uniform1f(u.u_flash, o.flash || 0);
-    gl.uniform1f(u.u_damage, o.damage || 0);
-    gl.uniform1f(u.u_snow, o.snow ?? 0.35);
-    gl.uniform1f(u.u_heat, o.heat || 0);
+    // Per-draw uniforms are only re-sent when they change (bosses built from
+    // dozens of parts share most values; GL calls dominate their draw cost).
+    const c = this.uc, sx = o.scroll ? o.scroll[0] : 0, sy = o.scroll ? o.scroll[1] : 0;
+    if (sx !== c[0] || sy !== c[1]) { gl.uniform2f(u.u_scroll, sx, sy); c[0] = sx; c[1] = sy; }
+    const g = o.glow ?? 0.6, f = o.flash || 0, d = o.damage || 0, sn = o.snow ?? 0.35, h = o.heat || 0;
+    if (g !== c[2]) { gl.uniform1f(u.u_glow, g); c[2] = g; }
+    if (f !== c[3]) { gl.uniform1f(u.u_flash, f); c[3] = f; }
+    if (d !== c[4]) { gl.uniform1f(u.u_damage, d); c[4] = d; }
+    if (sn !== c[5]) { gl.uniform1f(u.u_snow, sn); c[5] = sn; }
+    if (h !== c[6]) { gl.uniform1f(u.u_heat, h); c[6] = h; }
     gl.bindVertexArray(m.vao);
     gl.drawElements(gl.TRIANGLES, m.count, gl.UNSIGNED_INT, 0);
   }

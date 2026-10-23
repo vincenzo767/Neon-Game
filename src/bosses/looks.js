@@ -12,11 +12,6 @@
 // Offsets are sprite-local (boss centre, facing down) like part offsets.
 
 export const LOOKS = {
-  colossus_crawler: {
-    faction: 'ironclad', anim: 'crawler',
-    weak: { x: 0, y: -48, r: 22, rgb: [1, 0.45, 0.1] },
-    sites: [[-48, -74], [50, -8], [-22, 72], [46, 72], [-120, -62], [120, 50]],
-  },
   skywarden_carrier: {
     faction: 'stratos', anim: 'carrier',
     weak: { x: 0, y: -30, r: 22, rgb: [0.25, 0.9, 1] },

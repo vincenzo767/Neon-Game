@@ -762,7 +762,8 @@ function meshScaffoldFace(mb, sc) {
 function meshVehicle(mb, w) {
   const R = new RNG(`dtv:${w.seed}`), c = Math.cos(w.rot), s = Math.sin(w.rot);
   const at2 = (u, v) => [w.x + u * c - v * s, w.y + u * s + v * c];
-  const box = (u, v, z, bw, bl, bh, side, top = side, o = {}) => { const [x, y] = at2(u, v); mb.box(x, y, z, bw, bl, bh, w.rot + (o.dr || 0), { top, side, tint: o.tint }); };
+  const z0 = w.z || 0; // base height (a wreck left on a deck / an upper level)
+  const box = (u, v, z, bw, bl, bh, side, top = side, o = {}) => { const [x, y] = at2(u, v); mb.box(x, y, z0 + z, bw, bl, bh, w.rot + (o.dr || 0), { top, side, tint: o.tint }); };
   const burnt = w.burnt, paint = burnt ? null : w.col.map((v) => v * 2.4);
   const body = burnt ? 'rust' : 'steel_painted', roof = burnt ? 'roof_burnt' : 'steel_painted';
   const wheels = (hw, ys) => { for (const v of ys) for (const u of [-hw, hw]) box(u, v, 0, 2.2, 5.2, 4.2, 'metal_dark'); };
@@ -783,15 +784,15 @@ function meshVehicle(mb, w) {
       wheels(8, [-10, 0, 10]);
       box(0, 0, 2, 17, 32, 7, burnt ? 'rust' : 'metal_dark', roof, { tint: burnt ? null : [0.9, 1.0, 0.8] });
       box(0, -3, 9, 8, 9, 3, 'metal_dark');
-      { const [x, y] = at2(0, -3); mb.beam([x, y, 10.5], [x - s * 16, y + c * 16, 10.8], 1.2, 1.2, 'metal_dark'); }
+      { const [x, y] = at2(0, -3); mb.beam([x, y, z0 + 10.5], [x - s * 16, y + c * 16, z0 + 10.8], 1.2, 1.2, 'metal_dark'); }
       break;
     case 'tank': {
       for (const u of [-8, 8]) box(u, 0, 0, 6, 38, 5, 'metal_dark');
       box(0, 0, 3, 18, 34, 5, burnt ? 'rust' : 'metal_dark', 'roof_burnt');
       const tr = R.range(-1.2, 1.2), [tx, ty] = at2(R.range(-2, 2), -2);
-      mb.box(tx, ty, 8, 12, 14, 5, w.rot + tr, { top: 'rust', side: 'metal_dark' });
+      mb.box(tx, ty, z0 + 8, 12, 14, 5, w.rot + tr, { top: 'rust', side: 'metal_dark' });
       const ga = w.rot + tr + Math.PI / 2;
-      mb.beam([tx, ty, 10.5], [tx + Math.cos(ga) * 24, ty + Math.sin(ga) * 24, R.chance(0.4) ? 4 : 10.5], 1.8, 1.8, 'metal_dark');
+      mb.beam([tx, ty, z0 + 10.5], [tx + Math.cos(ga) * 24, ty + Math.sin(ga) * 24, z0 + (R.chance(0.4) ? 4 : 10.5)], 1.8, 1.8, 'metal_dark');
       break;
     }
     case 'ambulance':
@@ -809,4 +810,4 @@ function meshVehicle(mb, w) {
   }
 }
 
-export { XW };
+export { XW, meshVehicle, WRECK };

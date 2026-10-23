@@ -27,6 +27,7 @@ const LIMIT = {
   rockfall: [0.8, 1], boulderImpact: [0.08, 2], boreRev: [0.8, 1],
   engineRoar: [0.35, 1], tireScreech: [0.25, 1], turboSpool: [1.2, 1], turboBlast: [0.8, 1], rotaryCannon: [0.07, 1], autoCannon: [0.05, 2],
   barrierCrash: [0.5, 1], repairHum: [0.45, 1], turbineCharge: [1.2, 1], turbineDischarge: [0.8, 1],
+  crawlerStep: [0.09, 2], crawlerLand: [0.25, 1], crawlerLeap: [0.4, 1], climbScrape: [0.3, 1], executionAlarm: [1.5, 1],
 };
 
 /** Per-pilot output: one persistent gain node per voice (its loudness trim, M7c). */
@@ -302,6 +303,35 @@ const LIB = {
     kick(c, o, t, { f0: 160, f1: 28, dur: 0.9, peak: 0.85, click: 0.4, drive: 1.8 });
     noise(c, o, t, { color: 'white', dur: 0.9, peak: 0.26, a: 0.002, filter: { type: 'lowpass', f: 9000, f2: 600, ft: 0.8 }, pan: s.pan, send: { rev: 0.5 } });
     tone(c, o, t, { type: 'square', f: 1400, f2: 120, ft: 0.6, dur: 0.7, peak: 0.05, a: 0.002, filter: { type: 'bandpass', f: 1800, q: 1.5 }, pan: s.pan });
+  },
+
+  // ------------------------------------------------------------ Colossus Crawler (eight-legged siege machine)
+  // Heavy footfall: a low thud, a metal clank of the foot pad, grit (s.v = weight 0..1).
+  crawlerStep(c, o, t, s) {
+    const v = s.v ?? 0.6;
+    kick(c, o, t, { f0: 90, f1: 34, dur: 0.32, peak: 0.25 + 0.3 * v, click: 0.1, drive: 1.2 });
+    metal(c, o, t + 0.01, { f: 140, bp: 900, dur: 0.25, peak: 0.03 + 0.03 * v, q: 6, pan: s.pan });
+    noise(c, o, t, { color: 'brown', dur: 0.3, peak: 0.06 * v, a: 0.004, filter: { type: 'lowpass', f: 600 }, pan: s.pan });
+  },
+  crawlerLand(c, o, t, s) {
+    const v = s.v ?? 1;
+    kick(c, o, t, { f0: 120, f1: 22, dur: 1.0, peak: 0.9 * v, click: 0.4, drive: 1.8 });
+    LIB.explode2(c, o, t, s);
+    metal(c, o, t + 0.02, { f: 70, bp: 700, dur: 1.2, peak: 0.1 * v, q: 4, pan: s.pan, send: { rev: 0.5 } });
+    noise(c, o, t, { color: 'brown', dur: 1.4, peak: 0.25 * v, a: 0.01, filter: { type: 'lowpass', f: 900, f2: 140, ft: 1.2 }, pan: s.pan });
+  },
+  crawlerLeap(c, o, t, s) {
+    kick(c, o, t, { f0: 80, f1: 40, dur: 0.5, peak: 0.5, click: 0.2, drive: 1.3 });
+    noise(c, o, t, { color: 'pink', dur: 0.9, peak: 0.16, a: 0.02, filter: { type: 'bandpass', f: 500, f2: 2200, ft: 0.7, q: 0.8 }, pan: s.pan, send: { rev: 0.3 } });
+    tone(c, o, t, { type: 'sawtooth', f: 60, f2: 140, ft: 0.6, dur: 0.7, peak: 0.08, a: 0.03, filter: { type: 'lowpass', f: 600 }, pan: s.pan });
+  },
+  climbScrape(c, o, t, s) {
+    noise(c, o, t, { color: 'pink', dur: 0.6, peak: 0.07, a: 0.05, filter: { type: 'bandpass', f: 1400, q: 1.5 }, pan: s.pan });
+    for (let k = 0; k < 4; k++) noise(c, o, t + 0.1 + k * 0.12, { dur: 0.05, peak: 0.05, a: 0.001, filter: { type: 'bandpass', f: 900 + k * 300, q: 2 }, pan: s.pan });
+  },
+  // Klaxon: two alternating tones, three times.
+  executionAlarm(c, o, t, s) {
+    for (let k = 0; k < 6; k++) tone(c, o, t + k * 0.2, { type: 'square', f: k & 1 ? 620 : 880, dur: 0.18, peak: 0.05, a: 0.01, filter: { type: 'lowpass', f: 2400 }, pan: s.pan, send: { rev: 0.3 } });
   },
 
   // ------------------------------------------------------------ feedback
